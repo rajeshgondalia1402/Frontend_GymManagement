@@ -28,6 +28,9 @@ import { MyDietPlanPage } from '@/pages/member/MyDietPlanPage';
 import { MyExercisePlansPage } from '@/pages/member/MyExercisePlansPage';
 import { MembershipPage } from '@/pages/member/MembershipPage';
 
+// Test Page
+import { TestUIComponents } from '@/pages/TestUIComponents';
+
 // Protected Route Component
 function ProtectedRoute({ 
   children, 
@@ -228,6 +231,9 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Test UI Components page - publicly accessible for testing */}
+        <Route path="/test-ui" element={<TestUIComponents />} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
