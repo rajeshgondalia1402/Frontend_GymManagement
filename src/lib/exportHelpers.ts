@@ -80,7 +80,7 @@ export function downloadPdfTable(
     body: data.map(row => 
       columns.map(col => {
         const value = row[col.dataKey];
-        return value === null || value === undefined ? '' : String(value);
+        return (value ?? '').toString();
       })
     ),
     startY: title ? 25 : 15,
