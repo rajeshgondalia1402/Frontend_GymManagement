@@ -1,4 +1,3 @@
-import api from './api';
 import { API_BASE_URL } from './api';
 import axios from 'axios';
 import type { LoginCredentials, User, ApiResponse } from '@/types';
