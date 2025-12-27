@@ -1,6 +1,13 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// PDF export color constants - matching the primary theme color
+const PDF_COLORS = {
+  primary: [59, 130, 246] as [number, number, number], // Primary blue - matches hsl(221.2 83.2% 53.3%)
+  alternateRow: [249, 250, 251] as [number, number, number], // Light gray background
+  textWhite: 255,
+};
+
 /**
  * Export data as CSV file
  * 
@@ -109,12 +116,12 @@ export function downloadPdfTable(
       cellPadding: 3,
     },
     headStyles: {
-      fillColor: [59, 130, 246], // Primary blue color
-      textColor: 255,
+      fillColor: PDF_COLORS.primary,
+      textColor: PDF_COLORS.textWhite,
       fontStyle: 'bold',
     },
     alternateRowStyles: {
-      fillColor: [249, 250, 251], // Light gray
+      fillColor: PDF_COLORS.alternateRow,
     },
   });
 
