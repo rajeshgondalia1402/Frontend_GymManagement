@@ -44,16 +44,16 @@ export function LoginPage() {
       // Redirect based on role
       switch (response.user.role) {
         case 'ADMIN':
-          navigate('/admin');
+          navigate('/admin', { replace: true });
           break;
         case 'GYM_OWNER':
-          navigate('/gym-owner');
+          navigate('/gym-owner', { replace: true });
           break;
         case 'MEMBER':
-          navigate('/member');
+          navigate('/member', { replace: true });
           break;
         default:
-          navigate('/');
+          navigate('/', { replace: true });
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

@@ -3,8 +3,9 @@ export type Role = 'ADMIN' | 'GYM_OWNER' | 'MEMBER';
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name?: string; // Made optional since backend might not send it
   role: Role;
+  roleId?: string; // Backend sends roleId (UUID)
   isActive: boolean;
   createdAt: string;
   ownedGym?: { id: string; name: string };
@@ -29,8 +30,9 @@ export interface GymSubscriptionPlan {
   name: string;
   description?: string;
   price: number;
+  currency?: 'INR' | 'USD';
   durationDays: number;
-  features: string[];
+  features: string[] | string;
   isActive: boolean;
   createdAt: string;
 }
@@ -167,7 +169,7 @@ export interface AdminDashboard {
   totalMembers: number;
   totalTrainers: number;
   subscriptionPlans: number;
-  recentGyms: Gym[];
+  recentGyms?: Gym[];
 }
 
 export interface GymOwnerDashboard {

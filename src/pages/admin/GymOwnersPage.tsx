@@ -82,7 +82,8 @@ export function GymOwnersPage() {
     createMutation.mutate(data);
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(n => n[0])
@@ -150,7 +151,7 @@ export function GymOwnersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {owners?.filter((o: User) => o.ownedGym).length || 0}
+              {Array.isArray(owners) ? owners.filter((o: User) => o.ownedGym).length : 0}
             </div>
           </CardContent>
         </Card>
@@ -161,7 +162,7 @@ export function GymOwnersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {owners?.filter((o: User) => !o.ownedGym).length || 0}
+              {Array.isArray(owners) ? owners.filter((o: User) => !o.ownedGym).length : 0}
             </div>
           </CardContent>
         </Card>
@@ -188,7 +189,7 @@ export function GymOwnersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {owners?.map((owner: User) => (
+                {Array.isArray(owners) && owners.length > 0 ? owners.map((owner: User) => (
                   <TableRow key={owner.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -227,7 +228,13 @@ export function GymOwnersPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      No gym owners found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           )}

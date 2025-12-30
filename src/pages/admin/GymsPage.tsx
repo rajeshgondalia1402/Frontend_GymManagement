@@ -7,7 +7,7 @@ import { Plus, Search, Building2, MoreVertical, Edit, Trash2, Power } from 'luci
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -128,7 +128,7 @@ export function GymsPage() {
     createMutation.mutate(data);
   };
 
-  const availableOwners = owners?.filter((o: User) => !o.ownedGym) || [];
+  const availableOwners = Array.isArray(owners) ? owners.filter((o: User) => !o.ownedGym) : [];
 
   return (
     <div className="space-y-6">
@@ -173,7 +173,7 @@ export function GymsPage() {
                     <SelectValue placeholder="Select a plan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {plans?.map((plan: GymSubscriptionPlan) => (
+                    {Array.isArray(plans) && plans.map((plan: GymSubscriptionPlan) => (
                       <SelectItem key={plan.id} value={plan.id}>
                         {plan.name} - ${plan.price}/month
                       </SelectItem>
@@ -222,7 +222,7 @@ export function GymsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.data.map((gym: Gym) => (
+                  {data?.data && Array.isArray(data.data) ? data.data.map((gym: Gym) => (
                     <TableRow key={gym.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -295,7 +295,13 @@ export function GymsPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        No gyms found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
 
