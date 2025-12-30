@@ -23,28 +23,28 @@ export function AdminDashboard() {
   const statCards = [
     {
       title: 'Total Gyms',
-      value: stats.totalGyms,
+      value: stats?.totalGyms || 0,
       icon: <Building2 className="h-5 w-5" />,
       color: 'bg-blue-500',
-      description: `${stats.activeGyms} active, ${stats.inactiveGyms} inactive`,
+      description: `${stats?.activeGyms || 0} active, ${stats?.inactiveGyms || 0} inactive`,
     },
     {
       title: 'Gym Owners',
-      value: stats.totalGymOwners,
+      value: stats?.totalGymOwners || 0,
       icon: <Users className="h-5 w-5" />,
       color: 'bg-green-500',
       description: 'Registered owners',
     },
     {
       title: 'Total Members',
-      value: stats.totalMembers,
+      value: stats?.totalMembers || 0,
       icon: <UserCog className="h-5 w-5" />,
       color: 'bg-purple-500',
       description: 'Across all gyms',
     },
     {
       title: 'Subscription Plans',
-      value: stats.subscriptionPlans,
+      value: stats?.subscriptionPlans || 0,
       icon: <CreditCard className="h-5 w-5" />,
       color: 'bg-orange-500',
       description: 'Active plans',
@@ -87,25 +87,26 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.recentGyms.map((gym) => (
-                <div key={gym.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{gym.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {gym.owner ? `Owner: ${gym.owner.name}` : 'No owner assigned'}
-                    </p>
+              {stats.recentGyms && stats.recentGyms.length > 0 ? (
+                stats.recentGyms.map((gym) => (
+                  <div key={gym.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-900">{gym.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {gym.owner ? `Owner: ${gym.owner.name || gym.owner.email}` : 'No owner assigned'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={gym.isActive ? 'success' : 'secondary'}>
+                        {gym.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {format(new Date(gym.createdAt), 'MMM d, yyyy')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant={gym.isActive ? 'success' : 'secondary'}>
-                      {gym.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {format(new Date(gym.createdAt), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {stats.recentGyms.length === 0 && (
+                ))
+              ) : (
                 <p className="text-center text-gray-500 py-4">No gyms registered yet</p>
               )}
             </div>
@@ -123,20 +124,20 @@ export function AdminDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">Total Trainers</span>
-                <span className="font-bold text-gray-900">{stats.totalTrainers}</span>
+                <span className="font-bold text-gray-900">{stats?.totalTrainers || 0}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">Active Gyms</span>
-                <span className="font-bold text-gray-900">{stats.activeGyms}</span>
+                <span className="font-bold text-gray-900">{stats?.activeGyms || 0}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">Inactive Gyms</span>
-                <span className="font-bold text-gray-900">{stats.inactiveGyms}</span>
+                <span className="font-bold text-gray-900">{stats?.inactiveGyms || 0}</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">Avg Members/Gym</span>
                 <span className="font-bold text-gray-900">
-                  {stats.totalGyms > 0 ? Math.round(stats.totalMembers / stats.totalGyms) : 0}
+                  {stats && stats.totalGyms > 0 ? Math.round(stats.totalMembers / stats.totalGyms) : 0}
                 </span>
               </div>
             </div>

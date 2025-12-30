@@ -17,8 +17,8 @@ export const adminService = {
 
   // Subscription Plans
   async getSubscriptionPlans(): Promise<GymSubscriptionPlan[]> {
-    const response = await api.get<ApiResponse<GymSubscriptionPlan[]>>('/admin/subscription-plans');
-    return response.data.data;
+    const response = await api.get<ApiResponse<{ items: GymSubscriptionPlan[], pagination: any }>>('/admin/subscription-plans');
+    return response.data.data.items;
   },
 
   async createSubscriptionPlan(data: Partial<GymSubscriptionPlan>): Promise<GymSubscriptionPlan> {

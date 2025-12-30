@@ -68,14 +68,15 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   if (!user) return null;
 
-  const navItems = navItemsByRole[user.role] || [];
+  const navItems = navItemsByRole[user.role as Role] || [];
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(n => n[0])
@@ -145,11 +146,11 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.role.replace('_', ' ')}</p>
+                    <p className="text-sm font-medium">{user?.name || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">{user?.role?.replace('_', ' ') || 'User'}</p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -185,7 +186,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           <div className="flex-1" />
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground hidden sm:block">
-              {user.email}
+              {user?.email || ''}
             </span>
           </div>
         </header>

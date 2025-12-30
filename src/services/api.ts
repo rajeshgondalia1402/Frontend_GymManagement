@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 console.debug('API base URL:', API_BASE_URL);
 
