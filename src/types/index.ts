@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'GYM_OWNER' | 'MEMBER';
+export type Role = 'ADMIN' | 'GYM_OWNER' | 'TRAINER' | 'MEMBER' | 'PT_MEMBER';
 
 export interface User {
   id: string;
@@ -10,6 +10,19 @@ export interface User {
   createdAt: string;
   ownedGym?: { id: string; name: string };
   memberProfile?: MemberProfile;
+  trainerProfile?: TrainerProfile;
+  gymId?: string; // For trainers/members - their assigned gym
+}
+
+export interface TrainerProfile {
+  id: string;
+  specialization?: string;
+  experience?: number;
+  phone?: string;
+  isActive: boolean;
+  gymId: string;
+  gym?: { id: string; name: string };
+  _count?: { members: number };
 }
 
 export interface AuthState {
@@ -40,18 +53,32 @@ export interface GymSubscriptionPlan {
 export interface Gym {
   id: string;
   name: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  mobileNo?: string;
+  phoneNo?: string;
+  email?: string;
+  gstRegNo?: string;
+  website?: string;
+  note?: string;
+  gymLogo?: string;
+  // Legacy field for backward compatibility
+  logo?: string;
   address?: string;
   phone?: string;
-  email?: string;
-  logo?: string;
   isActive: boolean;
   ownerId?: string;
   owner?: { id: string; name: string; email: string };
+  subscriptionPlanId?: string;
   subscriptionPlan?: GymSubscriptionPlan;
   subscriptionStart?: string;
   subscriptionEnd?: string;
   _count?: { members: number; trainers: number };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Trainer {
@@ -190,6 +217,54 @@ export interface MemberDashboard {
   assignedTrainer: Trainer | null;
   currentDietPlan: DietPlan | null;
   exercisePlans: ExercisePlan[];
+}
+
+export interface Occupation {
+  id: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EnquiryType {
+  id: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentType {
+  id: string;
+  name: string;
+  paymentTypeName?: string;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ExpenseGroup {
+  id: string;
+  expenseGroupName: string;
+  name?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
+}
+
+export interface Designation {
+  id: string;
+  designationName: string;
+  name?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
 }
 
 export interface ApiResponse<T> {

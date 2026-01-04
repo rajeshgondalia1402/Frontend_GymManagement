@@ -43,10 +43,13 @@ export function TrainersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: trainers, isLoading } = useQuery({
+  const { data: trainers, isLoading, error } = useQuery({
     queryKey: ['trainers'],
     queryFn: gymOwnerService.getTrainers,
   });
+
+  // Debug log
+  console.debug('Trainers data:', trainers, 'error:', error);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<TrainerFormData>({
     resolver: zodResolver(trainerSchema),
@@ -78,8 +81,12 @@ export function TrainersPage() {
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    if (!name) return '??';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
   };
+
+  // Ensure trainers is always an array
+  const trainersList = Array.isArray(trainers) ? trainers : [];
 
   return (
     <div className="space-y-6">
@@ -139,19 +146,37 @@ export function TrainersPage() {
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-red-500 mb-2">Failed to load trainers</p>
+            <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Unknown error'}</p>
+          </CardContent>
+        </Card>
+      ) : trainersList.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Dumbbell className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">No trainers yet</h3>
+            <p className="text-muted-foreground">Add your first trainer to get started</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {trainers?.map((trainer: Trainer) => (
+          {trainersList.map((trainer: Trainer) => {
+            const trainerName = trainer.user?.name || 'Unknown';
+            const trainerEmail = trainer.user?.email || '';
+            return (
             <Card key={trainer.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback>{getInitials(trainer.user.name)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(trainerName)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-lg">{trainer.user.name}</CardTitle>
-                      <CardDescription>{trainer.user.email}</CardDescription>
+                      <CardTitle className="text-lg">{trainerName}</CardTitle>
+                      <CardDescription>{trainerEmail}</CardDescription>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -210,18 +235,9 @@ export function TrainersPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
-      )}
-
-      {trainers?.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Dumbbell className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No trainers yet</h3>
-            <p className="text-muted-foreground">Add your first trainer to get started</p>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

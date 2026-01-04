@@ -41,10 +41,13 @@ export function DietPlansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: dietPlans, isLoading } = useQuery({
+  const { data: dietPlans, isLoading, error } = useQuery({
     queryKey: ['diet-plans'],
     queryFn: gymOwnerService.getDietPlans,
   });
+
+  // Debug log
+  console.debug('Diet plans data:', dietPlans, 'error:', error);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<DietPlanFormData>({
     resolver: zodResolver(dietPlanSchema),
@@ -144,9 +147,24 @@ export function DietPlansPage() {
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-red-500 mb-2">Failed to load diet plans</p>
+            <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Unknown error'}</p>
+          </CardContent>
+        </Card>
+      ) : !Array.isArray(dietPlans) || dietPlans.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <UtensilsCrossed className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">No diet plans yet</h3>
+            <p className="text-muted-foreground">Create your first diet plan to get started</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {dietPlans?.map((plan: DietPlan) => (
+          {dietPlans.map((plan: DietPlan) => (
             <Card key={plan.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -202,16 +220,6 @@ export function DietPlansPage() {
             </Card>
           ))}
         </div>
-      )}
-
-      {dietPlans?.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <UtensilsCrossed className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No diet plans yet</h3>
-            <p className="text-muted-foreground">Create your first diet plan to get started</p>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
