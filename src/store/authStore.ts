@@ -19,10 +19,26 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: true,
 
       setAuth: (user, accessToken, refreshToken) => {
-        // Normalize role formats from backend (e.g. 'ROLE_ADMIN' or 'admin')
-        const normalizedRole = (user.role as string)
+        // Normalize role formats from backend (e.g. 'ROLE_ADMIN' or 'admin' or 'trainer')
+        let normalizedRole = (user.role as string)
           .toUpperCase()
           .replace(/^ROLE_/, '') as any;
+        
+        // Handle variations of role names
+        const roleMapping: Record<string, string> = {
+          'ADMIN': 'ADMIN',
+          'GYM_OWNER': 'GYM_OWNER',
+          'GYMOWNER': 'GYM_OWNER',
+          'OWNER': 'GYM_OWNER',
+          'TRAINER': 'TRAINER',
+          'PT_TRAINER': 'TRAINER',
+          'PTTRAINER': 'TRAINER',
+          'MEMBER': 'MEMBER',
+          'PT_MEMBER': 'PT_MEMBER',
+          'PTMEMBER': 'PT_MEMBER',
+        };
+        
+        normalizedRole = roleMapping[normalizedRole] || normalizedRole;
 
         set({
           user: { ...user, role: normalizedRole },

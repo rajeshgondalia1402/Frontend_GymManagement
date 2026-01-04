@@ -56,8 +56,19 @@ export function LoginPage() {
           navigate('/', { replace: true });
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Login failed. Please try again.');
+      const error = err as { response?: { data?: { message?: string } }; message?: string; code?: string };
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Cannot connect to server. Please ensure the backend is running at http://localhost:5000';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      console.error('Login error:', error);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

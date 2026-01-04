@@ -58,14 +58,17 @@ type MemberFormData = z.infer<typeof memberSchema>;
 
 export function MembersPage() {
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['members', page, statusFilter],
-    queryFn: () => gymOwnerService.getMembers(page, 10, statusFilter || undefined),
+    queryFn: () => gymOwnerService.getMembers(page, 10, statusFilter === 'all' ? undefined : statusFilter),
   });
+
+  // Debug log for API response
+  console.debug('Members page data:', data, 'error:', error);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<MemberFormData>({
     resolver: zodResolver(memberSchema),
@@ -97,10 +100,12 @@ export function MembersPage() {
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    if (!name) return '??';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
   };
 
   const getMembershipStatus = (member: Member) => {
+    if (!member.membershipEnd) return 'expired';
     const endDate = new Date(member.membershipEnd);
     const now = new Date();
     if (endDate < now) return 'expired';
@@ -178,7 +183,7 @@ export function MembersPage() {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="expired">Expired</SelectItem>
               </SelectContent>
@@ -189,6 +194,16 @@ export function MembersPage() {
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Spinner />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-red-500 mb-2">Failed to load members</p>
+              <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Unknown error'}</p>
+            </div>
+          ) : !data?.data?.length ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-muted-foreground">No members found</p>
+              <p className="text-sm text-muted-foreground">Click "Add Member" to create your first member</p>
             </div>
           ) : (
             <>
@@ -204,18 +219,20 @@ export function MembersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.data.map((member: Member) => {
+                  {(data?.data || []).map((member: Member) => {
                     const status = getMembershipStatus(member);
+                    const userName = member.user?.name || 'Unknown';
+                    const userEmail = member.user?.email || '';
                     return (
                       <TableRow key={member.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarFallback>{getInitials(member.user.name)}</AvatarFallback>
+                              <AvatarFallback>{getInitials(userName)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{member.user.name}</p>
-                              <p className="text-sm text-muted-foreground">{member.user.email}</p>
+                              <p className="font-medium">{userName}</p>
+                              <p className="text-sm text-muted-foreground">{userEmail}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -276,7 +293,7 @@ export function MembersPage() {
               {data?.pagination && (
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {data.data.length} of {data.pagination.total} members
+                    Showing {data.data?.length || 0} of {data.pagination.total} members
                   </p>
                   <div className="flex gap-2">
                     <Button
