@@ -206,9 +206,11 @@ export const adminService = {
       owners = (data as any).items;
     }
     
-    // Map the response to ensure ownedGym has the correct structure
+    // Map the response to ensure ownedGym has the correct structure and name is populated
     return owners.map((owner: any) => ({
       ...owner,
+      // Map firstName/lastName to name if name is not present
+      name: owner.name || `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || owner.email,
       // Handle different response formats: gymName, gym, or ownedGym
       ownedGym: owner.ownedGym || owner.gym || (owner.gymName ? { id: owner.gymId || '', name: owner.gymName } : null),
       gymName: owner.gymName, // Keep original gymName for direct access
