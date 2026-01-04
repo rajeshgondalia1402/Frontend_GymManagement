@@ -11,7 +11,9 @@ import type {
   DietAssignment,
   ExerciseAssignment,
   ExpenseGroup,
-  Designation
+  Designation,
+  BodyPart,
+  WorkoutExercise
 } from '@/types';
 
 export const gymOwnerService = {
@@ -309,8 +311,8 @@ export const gymOwnerService = {
   },
 
   // Workout Exercises
-  async getWorkoutExercises(): Promise<any[]> {
-    const response = await api.get<ApiResponse<any[] | { items: any[] }>>('/gym-owner/workout-exercises');
+  async getWorkoutExercises(): Promise<WorkoutExercise[]> {
+    const response = await api.get<ApiResponse<WorkoutExercise[] | { items: WorkoutExercise[] }>>('/gym-owner/workout-exercises');
     console.debug('WorkoutExercises API response:', response.data);
     const data = response.data.data;
     
@@ -318,32 +320,76 @@ export const gymOwnerService = {
       return data;
     } else if (data && typeof data === 'object') {
       if ('items' in data) {
-        return (data as { items: any[] }).items;
+        return (data as { items: WorkoutExercise[] }).items;
       } else if ('workoutExercises' in data) {
-        return (data as { workoutExercises: any[] }).workoutExercises;
+        return (data as { workoutExercises: WorkoutExercise[] }).workoutExercises;
       } else if ('data' in data) {
-        return (data as { data: any[] }).data;
+        return (data as { data: WorkoutExercise[] }).data;
       }
     }
     return [];
   },
 
-  async getWorkoutExercise(id: string): Promise<any> {
-    const response = await api.get<ApiResponse<any>>(`/gym-owner/workout-exercises/${id}`);
+  async getWorkoutExercise(id: string): Promise<WorkoutExercise> {
+    const response = await api.get<ApiResponse<WorkoutExercise>>(`/gym-owner/workout-exercises/${id}`);
     return response.data.data;
   },
 
-  async createWorkoutExercise(data: { exerciseName: string }): Promise<any> {
-    const response = await api.post<ApiResponse<any>>('/gym-owner/workout-exercises', data);
+  async createWorkoutExercise(data: { bodyPartId: string; exerciseName: string; shortCode?: string; description?: string }): Promise<WorkoutExercise> {
+    const response = await api.post<ApiResponse<WorkoutExercise>>('/gym-owner/workout-exercises', data);
     return response.data.data;
   },
 
-  async updateWorkoutExercise(id: string, data: { exerciseName: string }): Promise<any> {
-    const response = await api.put<ApiResponse<any>>(`/gym-owner/workout-exercises/${id}`, data);
+  async updateWorkoutExercise(id: string, data: { bodyPartId?: string; exerciseName?: string; shortCode?: string; description?: string }): Promise<WorkoutExercise> {
+    const response = await api.put<ApiResponse<WorkoutExercise>>(`/gym-owner/workout-exercises/${id}`, data);
     return response.data.data;
   },
 
   async deleteWorkoutExercise(id: string): Promise<void> {
     await api.delete(`/gym-owner/workout-exercises/${id}`);
+  },
+
+  async toggleWorkoutExerciseStatus(id: string): Promise<WorkoutExercise> {
+    const response = await api.patch<ApiResponse<WorkoutExercise>>(`/gym-owner/workout-exercises/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  // Body Parts
+  async getBodyParts(): Promise<BodyPart[]> {
+    const response = await api.get<ApiResponse<BodyPart[] | { items: BodyPart[] }>>('/gym-owner/body-parts');
+    console.debug('BodyParts API response:', response.data);
+    const data = response.data.data;
+    
+    if (Array.isArray(data)) {
+      return data;
+    } else if (data && typeof data === 'object') {
+      if ('items' in data) {
+        return (data as { items: BodyPart[] }).items;
+      } else if ('bodyParts' in data) {
+        return (data as { bodyParts: BodyPart[] }).bodyParts;
+      } else if ('data' in data) {
+        return (data as { data: BodyPart[] }).data;
+      }
+    }
+    return [];
+  },
+
+  async getBodyPart(id: string): Promise<BodyPart> {
+    const response = await api.get<ApiResponse<BodyPart>>(`/gym-owner/body-parts/${id}`);
+    return response.data.data;
+  },
+
+  async createBodyPart(data: { bodyPartName: string; description?: string }): Promise<BodyPart> {
+    const response = await api.post<ApiResponse<BodyPart>>('/gym-owner/body-parts', data);
+    return response.data.data;
+  },
+
+  async updateBodyPart(id: string, data: { bodyPartName: string; description?: string }): Promise<BodyPart> {
+    const response = await api.put<ApiResponse<BodyPart>>(`/gym-owner/body-parts/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteBodyPart(id: string): Promise<void> {
+    await api.delete(`/gym-owner/body-parts/${id}`);
   },
 };
