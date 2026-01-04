@@ -79,7 +79,9 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
       submenu: [
         { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
+        { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
         { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
+        
       ],
     },
   ],
