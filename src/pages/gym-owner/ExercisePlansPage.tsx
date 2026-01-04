@@ -46,13 +46,16 @@ type ExercisePlanFormData = z.infer<typeof exercisePlanSchema>;
 
 export function ExercisePlansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('daily');
   const queryClient = useQueryClient();
 
-  const { data: exercisePlans, isLoading } = useQuery({
+  const { data: exercisePlans, isLoading, error } = useQuery({
     queryKey: ['exercise-plans'],
     queryFn: gymOwnerService.getExercisePlans,
   });
+
+  // Debug log
+  console.debug('Exercise plans data:', exercisePlans, 'error:', error);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ExercisePlanFormData>({
     resolver: zodResolver(exercisePlanSchema),
@@ -165,9 +168,24 @@ export function ExercisePlansPage() {
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-red-500 mb-2">Failed to load exercise plans</p>
+            <p className="text-sm text-muted-foreground">{(error as Error)?.message || 'Unknown error'}</p>
+          </CardContent>
+        </Card>
+      ) : !Array.isArray(exercisePlans) || exercisePlans.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">No exercise plans yet</h3>
+            <p className="text-muted-foreground">Create your first exercise plan to get started</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {exercisePlans?.map((plan: ExercisePlan) => (
+          {exercisePlans.map((plan: ExercisePlan) => (
             <Card key={plan.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -223,16 +241,6 @@ export function ExercisePlansPage() {
             </Card>
           ))}
         </div>
-      )}
-
-      {exercisePlans?.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No exercise plans yet</h3>
-            <p className="text-muted-foreground">Create your first exercise plan to get started</p>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

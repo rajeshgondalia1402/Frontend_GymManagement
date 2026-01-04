@@ -2,7 +2,11 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+// Backend server base URL (without /api/v1) - used for static files like images
+export const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+// API base URL (with /api/v1 prefix)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || `${BACKEND_BASE_URL}/api/v1`;
 
 console.debug('API base URL:', API_BASE_URL);
 
