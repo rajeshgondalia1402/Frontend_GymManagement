@@ -267,6 +267,30 @@ export interface Designation {
   gymId?: string;
 }
 
+export interface BodyPart {
+  id: string;
+  bodyPartName: string;
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  bodyPartId: string;
+  exerciseName: string;
+  shortCode?: string;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
+  bodyPart?: BodyPart;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
