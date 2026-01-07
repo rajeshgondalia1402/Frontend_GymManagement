@@ -18,7 +18,11 @@ import {
   Briefcase,
   MessageSquare,
   Wallet,
-  BadgeCheck
+  BadgeCheck,
+  UserPlus,
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,7 +34,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
+import { authService } from '@/services/auth.service';
+import { toast } from '@/hooks/use-toast';
 import type { Role } from '@/types';
 
 interface NavItem {
@@ -71,6 +85,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
     { title: 'Members', href: '/gym-owner/members', icon: Users },
     { title: 'Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
+    { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
     { title: 'Diet Plans', href: '/gym-owner/diet-plans', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
     {
@@ -112,6 +127,19 @@ interface SidebarLayoutProps {
 export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<{
+    currentPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+  }>({});
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -136,6 +164,56 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const resetChangePasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setPasswordErrors({});
+  };
+
+  const handleChangePassword = async () => {
+    const errors: typeof passwordErrors = {};
+    
+    if (!currentPassword) {
+      errors.currentPassword = 'Current password is required';
+    }
+    if (!newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (newPassword.length < 6) {
+      errors.newPassword = 'New password must be at least 6 characters';
+    }
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Please confirm your new password';
+    } else if (newPassword && newPassword !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setPasswordErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await authService.changePassword(currentPassword, newPassword);
+      toast({ title: 'Password changed successfully' });
+      setChangePasswordOpen(false);
+      resetChangePasswordForm();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to change password',
+        description: error?.response?.data?.message || 'Please check your current password',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const toggleSubmenu = (title: string) => {
@@ -307,6 +385,10 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Change Password
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -343,6 +425,125 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={changePasswordOpen} onOpenChange={(open) => {
+        setChangePasswordOpen(open);
+        if (!open) resetChangePasswordForm();
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordErrors.currentPassword) {
+                      setPasswordErrors(prev => ({ ...prev, currentPassword: undefined }));
+                    }
+                  }}
+                  placeholder="Enter current password"
+                  className={`pr-10 ${passwordErrors.currentPassword ? 'border-red-500' : ''}`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              {passwordErrors.currentPassword && (
+                <p className="text-sm text-red-500">{passwordErrors.currentPassword}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordErrors.newPassword) {
+                      setPasswordErrors(prev => ({ ...prev, newPassword: undefined }));
+                    }
+                  }}
+                  placeholder="Enter new password (min 6 characters)"
+                  className={`pr-10 ${passwordErrors.newPassword ? 'border-red-500' : ''}`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              {passwordErrors.newPassword && (
+                <p className="text-sm text-red-500">{passwordErrors.newPassword}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    if (passwordErrors.confirmPassword) {
+                      setPasswordErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                    }
+                  }}
+                  placeholder="Confirm new password"
+                  className={`pr-10 ${passwordErrors.confirmPassword ? 'border-red-500' : ''}`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              {passwordErrors.confirmPassword && (
+                <p className="text-sm text-red-500">{passwordErrors.confirmPassword}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setChangePasswordOpen(false);
+                  resetChangePasswordForm();
+                }}
+                disabled={isChangingPassword}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+                {isChangingPassword ? 'Changing...' : 'Change Password'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
