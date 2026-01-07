@@ -29,6 +29,7 @@ import { ExpenseGroupMasterPage } from '@/pages/gym-owner/ExpenseGroupMasterPage
 import { DesignationMasterPage } from '@/pages/gym-owner/DesignationMasterPage';
 import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
 import { BodyPartMasterPage } from '@/pages/gym-owner/BodyPartMasterPage';
+import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -274,6 +275,16 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <SidebarLayout>
                 <BodyPartMasterPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/member-inquiries"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberInquiriesPage />
               </SidebarLayout>
             </RoleGuard>
           }

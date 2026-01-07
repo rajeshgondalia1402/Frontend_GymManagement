@@ -9,6 +9,7 @@ import { TrainersPage } from '@/pages/gym-owner/TrainersPage';
 import { DietPlansPage } from '@/pages/gym-owner/DietPlansPage';
 import { ExercisePlansPage } from '@/pages/gym-owner/ExercisePlansPage';
 import { MemberDetailPage } from '@/pages/gym-owner/MemberDetailPage';
+import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
 
 /**
  * Gym Owner Routes - STRICT ISOLATION
@@ -88,6 +89,16 @@ export const OwnerRoutes = () => (
         <GymOwnerGuard>
           <SidebarLayout>
             <ExercisePlansPage />
+          </SidebarLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/member-inquiries"
+      element={
+        <GymOwnerGuard>
+          <SidebarLayout>
+            <MemberInquiriesPage />
           </SidebarLayout>
         </GymOwnerGuard>
       }

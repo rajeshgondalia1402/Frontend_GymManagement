@@ -13,7 +13,10 @@ import type {
   ExpenseGroup,
   Designation,
   BodyPart,
-  WorkoutExercise
+  WorkoutExercise,
+  MemberInquiry,
+  CreateMemberInquiry,
+  UpdateMemberInquiry
 } from '@/types';
 
 export const gymOwnerService = {
@@ -391,5 +394,61 @@ export const gymOwnerService = {
 
   async deleteBodyPart(id: string): Promise<void> {
     await api.delete(`/gym-owner/body-parts/${id}`);
+  },
+
+  // Member Inquiries
+  async getMemberInquiries(
+    userId: string,
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginatedResponse<MemberInquiry>> {
+    const response = await api.get(`/gym-owner/member-inquiries/by-user/${userId}`, {
+      params: { page, limit, search, sortBy, sortOrder },
+    });
+    const responseData = response.data;
+    console.debug('getMemberInquiries raw response:', responseData);
+    
+    // Handle wrapped response: { success, data: { items, pagination } }
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      // Transform items to data for PaginatedResponse compatibility
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination,
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<MemberInquiry>;
+    }
+    return responseData;
+  },
+
+  async getMemberInquiry(id: string): Promise<MemberInquiry> {
+    const response = await api.get<ApiResponse<MemberInquiry>>(`/gym-owner/member-inquiries/${id}`);
+    return response.data.data;
+  },
+
+  async createMemberInquiry(data: CreateMemberInquiry): Promise<MemberInquiry> {
+    const response = await api.post<ApiResponse<MemberInquiry>>('/gym-owner/member-inquiries', data);
+    return response.data.data;
+  },
+
+  async updateMemberInquiry(id: string, data: UpdateMemberInquiry): Promise<MemberInquiry> {
+    const response = await api.put<ApiResponse<MemberInquiry>>(`/gym-owner/member-inquiries/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteMemberInquiry(id: string): Promise<void> {
+    await api.delete(`/gym-owner/member-inquiries/${id}`);
+  },
+
+  async toggleMemberInquiryStatus(id: string): Promise<MemberInquiry> {
+    const response = await api.patch<ApiResponse<MemberInquiry>>(`/gym-owner/member-inquiries/${id}/toggle-status`);
+    return response.data.data;
   },
 };

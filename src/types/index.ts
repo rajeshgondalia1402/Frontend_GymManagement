@@ -291,6 +291,50 @@ export interface WorkoutExercise {
   bodyPart?: BodyPart;
 }
 
+export interface MemberInquiry {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  inquiryDate: string;
+  dob?: string;
+  followUp: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
+  userId?: string;
+}
+
+export interface CreateMemberInquiry {
+  fullName: string;
+  contactNo: string;
+  inquiryDate: string;
+  dob?: string;
+  followUp?: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+}
+
+export interface UpdateMemberInquiry extends CreateMemberInquiry {
+  isActive?: boolean;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;

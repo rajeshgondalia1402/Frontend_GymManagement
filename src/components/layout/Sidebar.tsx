@@ -12,6 +12,7 @@ import {
   ClipboardList,
   User,
   Calendar,
+  UserPlus,
 } from 'lucide-react';
 
 interface NavItem {
@@ -31,6 +32,7 @@ const gymOwnerNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/gym-owner', icon: <LayoutDashboard className="h-5 w-5" /> },
   { label: 'Members', path: '/gym-owner/members', icon: <Users className="h-5 w-5" /> },
   { label: 'Trainers', path: '/gym-owner/trainers', icon: <UserCog className="h-5 w-5" /> },
+  { label: 'Member Inquiries', path: '/gym-owner/member-inquiries', icon: <UserPlus className="h-5 w-5" /> },
   { label: 'Diet Plans', path: '/gym-owner/diet-plans', icon: <UtensilsCrossed className="h-5 w-5" /> },
   { label: 'Exercise Plans', path: '/gym-owner/exercise-plans', icon: <Dumbbell className="h-5 w-5" /> },
   { label: 'Assignments', path: '/gym-owner/assignments', icon: <ClipboardList className="h-5 w-5" /> },

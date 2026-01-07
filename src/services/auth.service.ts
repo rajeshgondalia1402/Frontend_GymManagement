@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import api, { API_BASE_URL } from './api';
 import axios from 'axios';
 import type { LoginCredentials, User, ApiResponse, Role } from '@/types';
 
@@ -82,7 +82,7 @@ export const authService = {
   },
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await axios.post(`${API_BASE_URL}/auth/change-password`, { currentPassword, newPassword });
+    await api.post('/auth/change-password', { currentPassword, newPassword });
   },
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
