@@ -1,9 +1,9 @@
 import api from './api';
-import type { 
-  ApiResponse, 
+import type {
+  ApiResponse,
   PaginatedResponse,
-  GymOwnerDashboard, 
-  Trainer, 
+  GymOwnerDashboard,
+  Trainer,
   Member,
   DietPlan,
   ExercisePlan,
@@ -16,7 +16,8 @@ import type {
   WorkoutExercise,
   MemberInquiry,
   CreateMemberInquiry,
-  UpdateMemberInquiry
+  UpdateMemberInquiry,
+  CoursePackage
 } from '@/types';
 
 export const gymOwnerService = {
@@ -31,7 +32,7 @@ export const gymOwnerService = {
     const response = await api.get('/gym-owner/trainers');
     const responseData = response.data;
     console.debug('getTrainers raw response:', responseData);
-    
+
     // Handle wrapped response: { success, data: [...] }
     if (responseData.success !== undefined && Array.isArray(responseData.data)) {
       return responseData.data;
@@ -82,7 +83,7 @@ export const gymOwnerService = {
     // Handle both response formats: { data: [...], pagination: {...} } or { success, data: { data: [...], pagination: {...} } }
     const responseData = response.data;
     console.debug('getMembers raw response:', responseData);
-    
+
     // If the response is wrapped in success/data structure
     if (responseData.success !== undefined && responseData.data?.data) {
       return responseData.data;
@@ -128,7 +129,7 @@ export const gymOwnerService = {
     const response = await api.get('/gym-owner/diet-plans');
     const responseData = response.data;
     console.debug('getDietPlans raw response:', responseData);
-    
+
     // Handle wrapped response: { success, data: [...] }
     if (responseData.success !== undefined && Array.isArray(responseData.data)) {
       return responseData.data;
@@ -164,7 +165,7 @@ export const gymOwnerService = {
     const response = await api.get('/gym-owner/exercise-plans');
     const responseData = response.data;
     console.debug('getExercisePlans raw response:', responseData);
-    
+
     // Handle wrapped response: { success, data: [...] }
     if (responseData.success !== undefined && Array.isArray(responseData.data)) {
       return responseData.data;
@@ -215,10 +216,10 @@ export const gymOwnerService = {
   },
 
   async assignExercisePlan(
-    memberId: string, 
-    exercisePlanId: string, 
+    memberId: string,
+    exercisePlanId: string,
     dayOfWeek?: number,
-    startDate?: string, 
+    startDate?: string,
     endDate?: string
   ): Promise<ExerciseAssignment> {
     const response = await api.post<ApiResponse<ExerciseAssignment>>('/gym-owner/assign/exercise-plan', {
@@ -240,7 +241,7 @@ export const gymOwnerService = {
     const response = await api.get<ApiResponse<ExpenseGroup[] | { items: ExpenseGroup[] }>>('/gym-owner/expense-groups');
     console.debug('Expense Groups API response:', response.data);
     const data = response.data.data;
-    
+
     if (Array.isArray(data)) {
       return data;
     } else if (data && typeof data === 'object') {
@@ -279,7 +280,7 @@ export const gymOwnerService = {
     const response = await api.get<ApiResponse<Designation[] | { items: Designation[] }>>('/gym-owner/designations');
     console.debug('Designations API response:', response.data);
     const data = response.data.data;
-    
+
     if (Array.isArray(data)) {
       return data;
     } else if (data && typeof data === 'object') {
@@ -318,7 +319,7 @@ export const gymOwnerService = {
     const response = await api.get<ApiResponse<WorkoutExercise[] | { items: WorkoutExercise[] }>>('/gym-owner/workout-exercises');
     console.debug('WorkoutExercises API response:', response.data);
     const data = response.data.data;
-    
+
     if (Array.isArray(data)) {
       return data;
     } else if (data && typeof data === 'object') {
@@ -362,7 +363,7 @@ export const gymOwnerService = {
     const response = await api.get<ApiResponse<BodyPart[] | { items: BodyPart[] }>>('/gym-owner/body-parts');
     console.debug('BodyParts API response:', response.data);
     const data = response.data.data;
-    
+
     if (Array.isArray(data)) {
       return data;
     } else if (data && typeof data === 'object') {
@@ -410,7 +411,7 @@ export const gymOwnerService = {
     });
     const responseData = response.data;
     console.debug('getMemberInquiries raw response:', responseData);
-    
+
     // Handle wrapped response: { success, data: { items, pagination } }
     if (responseData.success !== undefined && responseData.data) {
       const innerData = responseData.data;
@@ -449,6 +450,81 @@ export const gymOwnerService = {
 
   async toggleMemberInquiryStatus(id: string): Promise<MemberInquiry> {
     const response = await api.patch<ApiResponse<MemberInquiry>>(`/gym-owner/member-inquiries/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  // Course Packages
+  async getCoursePackages(
+    page = 1,
+    limit = 10,
+    search?: string,
+    isActive?: boolean,
+    sortBy = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginatedResponse<CoursePackage>> {
+    const params: Record<string, any> = { page, limit, sortBy, sortOrder };
+    if (search) params.search = search;
+    if (isActive !== undefined) params.isActive = isActive;
+
+    const response = await api.get('/gym-owner/course-packages', { params });
+    const responseData = response.data;
+    console.debug('getCoursePackages raw response:', responseData);
+
+    // Handle wrapped response: { success, data: { items, pagination } }
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<CoursePackage>;
+    }
+    return responseData;
+  },
+
+  async getCoursePackage(id: string): Promise<CoursePackage> {
+    const response = await api.get<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}`);
+    return response.data.data;
+  },
+
+  async createCoursePackage(data: {
+    packageName: string;
+    description?: string;
+    fees: number;
+    maxDiscount: number;
+    discountType: 'PERCENTAGE' | 'AMOUNT';
+  }): Promise<CoursePackage> {
+    const response = await api.post<ApiResponse<CoursePackage>>('/gym-owner/course-packages', data);
+    return response.data.data;
+  },
+
+  async updateCoursePackage(id: string, data: {
+    packageName?: string;
+    description?: string;
+    fees?: number;
+    maxDiscount?: number;
+    discountType?: 'PERCENTAGE' | 'AMOUNT';
+    isActive?: boolean;
+  }): Promise<CoursePackage> {
+    const response = await api.put<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteCoursePackage(id: string): Promise<void> {
+    await api.delete(`/gym-owner/course-packages/${id}`);
+  },
+
+  async toggleCoursePackageStatus(id: string): Promise<CoursePackage> {
+    const response = await api.patch<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}/toggle-status`);
     return response.data.data;
   },
 };

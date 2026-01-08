@@ -291,6 +291,19 @@ export interface WorkoutExercise {
   bodyPart?: BodyPart;
 }
 
+export interface CoursePackage {
+  id: string;
+  packageName: string;
+  description?: string;
+  fees: number;
+  maxDiscount: number;
+  discountType: 'PERCENTAGE' | 'AMOUNT';
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  gymId?: string;
+}
+
 export interface MemberInquiry {
   id: string;
   fullName: string;

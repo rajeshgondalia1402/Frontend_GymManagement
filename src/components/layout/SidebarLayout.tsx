@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Users, 
-  CreditCard, 
-  Dumbbell, 
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  CreditCard,
+  Dumbbell,
   UtensilsCrossed,
   ClipboardList,
   User,
@@ -22,7 +22,8 @@ import {
   UserPlus,
   KeyRound,
   Eye,
-  EyeOff
+  EyeOff,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Members', href: '/gym-owner/members', icon: Users },
     { title: 'Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
     { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+    { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
     { title: 'Diet Plans', href: '/gym-owner/diet-plans', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
     {
@@ -96,7 +98,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
         { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
         { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
-        
+
       ],
     },
   ],
@@ -178,7 +180,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
   const handleChangePassword = async () => {
     const errors: typeof passwordErrors = {};
-    
+
     if (!currentPassword) {
       errors.currentPassword = 'Current password is required';
     }
@@ -192,13 +194,13 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     } else if (newPassword && newPassword !== confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
-    
+
     setPasswordErrors(errors);
-    
+
     if (Object.keys(errors).length > 0) {
       return;
     }
-    
+
     setIsChangingPassword(true);
     try {
       await authService.changePassword(currentPassword, newPassword);
@@ -242,7 +244,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
     <div className="flex h-screen bg-gray-100">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -277,7 +279,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
               if (isSubmenuItem(item)) {
                 const isExpanded = expandedMenus.includes(item.title);
                 const hasActiveChild = isSubmenuActive(item.submenu);
-                
+
                 return (
                   <div key={item.title} className="space-y-1">
                     {/* Parent Menu Button */}
@@ -304,7 +306,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                         )}
                       />
                     </button>
-                    
+
                     {/* Submenu Items with Animation */}
                     <div
                       className={cn(
