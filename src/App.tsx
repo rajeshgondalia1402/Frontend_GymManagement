@@ -30,6 +30,7 @@ import { DesignationMasterPage } from '@/pages/gym-owner/DesignationMasterPage';
 import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
 import { BodyPartMasterPage } from '@/pages/gym-owner/BodyPartMasterPage';
 import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
+import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -95,9 +96,9 @@ function App() {
     <>
       <Routes>
         {/* ==================== PUBLIC ROUTES ==================== */}
-        <Route 
-          path="/login" 
-          element={isAuthenticated ? <RoleBasedRedirect /> : <LoginPage />} 
+        <Route
+          path="/login"
+          element={isAuthenticated ? <RoleBasedRedirect /> : <LoginPage />}
         />
 
         {/* Role-based redirect */}
@@ -285,6 +286,16 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <SidebarLayout>
                 <MemberInquiriesPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/course-packages"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <CoursePackagesPage />
               </SidebarLayout>
             </RoleGuard>
           }
