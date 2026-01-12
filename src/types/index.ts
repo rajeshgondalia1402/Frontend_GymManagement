@@ -12,6 +12,7 @@ export interface User {
   memberProfile?: MemberProfile;
   trainerProfile?: TrainerProfile;
   gymId?: string; // For trainers/members - their assigned gym
+  subscriptionName?: string; // Subscription plan name from login response
 }
 
 export interface TrainerProfile {
@@ -111,15 +112,41 @@ export interface MemberProfile {
 
 export interface Member {
   id: string;
+  memberId?: string;                    // Auto-generated member ID (e.g., 1413)
+  firstName?: string;                   // First name (new API field)
+  lastName?: string;                    // Last name (new API field)
+  email?: string;                       // Direct email (new API field)
   phone?: string;
+  altContactNo?: string;                // Alternate contact number
   dateOfBirth?: string;
   gender?: string;
   address?: string;
+  occupation?: string;                  // Member's occupation
+  maritalStatus?: string;               // Marital status
+  bloodGroup?: string;                  // Blood group
+  anniversaryDate?: string;             // Anniversary date
   emergencyContact?: string;
   healthNotes?: string;
-  membershipStart: string;
-  membershipEnd: string;
+  idProofType?: string;                 // Type of ID proof (Aadhar, PAN, etc.)
+  idProofDocument?: string;             // Path to uploaded ID document
+  memberPhoto?: string;                 // Path to member photo
+  smsFacility?: boolean;                // SMS facility enabled
+  isActive?: boolean;                   // For soft delete
+  memberType?: 'REGULAR' | 'PT_MEMBER'; // Member type
+  // Membership dates (support both old and new field names)
+  membershipStart?: string;
+  membershipEnd?: string;
+  membershipStartDate?: string;         // New API field name
+  membershipEndDate?: string;           // New API field name
   membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  // Course package and fee details
+  coursePackageId?: string;             // Course package ID
+  coursePackage?: CoursePackage;        // Course package object
+  packageFees?: number;                 // Original package fees
+  maxDiscount?: number;                 // Maximum allowed discount
+  afterDiscount?: number;               // Amount after applying max discount
+  extraDiscount?: number;               // Additional extra discount
+  finalFees?: number;                   // Final fees after all discounts
   userId: string;
   gymId: string;
   user: { id: string; name: string; email: string; isActive?: boolean };

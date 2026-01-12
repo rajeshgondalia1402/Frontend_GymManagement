@@ -25,6 +25,7 @@ import { TrainersPage } from '@/pages/gym-owner/TrainersPage';
 import { DietPlansPage } from '@/pages/gym-owner/DietPlansPage';
 import { ExercisePlansPage } from '@/pages/gym-owner/ExercisePlansPage';
 import { MemberDetailPage } from '@/pages/gym-owner/MemberDetailPage';
+import { MemberFormPage } from '@/pages/gym-owner/MemberFormPage';
 import { ExpenseGroupMasterPage } from '@/pages/gym-owner/ExpenseGroupMasterPage';
 import { DesignationMasterPage } from '@/pages/gym-owner/DesignationMasterPage';
 import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
@@ -196,6 +197,26 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <SidebarLayout>
                 <MembersPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/members/new"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberFormPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/members/:id/edit"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberFormPage />
               </SidebarLayout>
             </RoleGuard>
           }

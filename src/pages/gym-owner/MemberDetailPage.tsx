@@ -113,7 +113,7 @@ export function MemberDetailPage() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const membershipExpired = new Date(member.membershipEnd) < new Date();
+  const membershipExpired = member.membershipEnd ? new Date(member.membershipEnd) < new Date() : true;
 
   return (
     <div className="space-y-6">
@@ -133,7 +133,7 @@ export function MemberDetailPage() {
               <CardTitle className="text-2xl">{member.user.name}</CardTitle>
               <CardDescription>{member.user.email}</CardDescription>
             </div>
-            <Badge 
+            <Badge
               variant={membershipExpired ? 'destructive' : 'default'}
               className="ml-auto"
             >
@@ -149,7 +149,7 @@ export function MemberDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>Expires: {format(new Date(member.membershipEnd), 'MMM dd, yyyy')}</span>
+              <span>Expires: {member.membershipEnd ? format(new Date(member.membershipEnd), 'MMM dd, yyyy') : 'N/A'}</span>
             </div>
             {member.phone && (
               <div className="flex items-center gap-2">
@@ -338,8 +338,8 @@ export function MemberDetailPage() {
                 <Button
                   className="w-full"
                   disabled={!selectedExercise || assignExerciseMutation.isPending}
-                  onClick={() => assignExerciseMutation.mutate({ 
-                    memberId: id!, 
+                  onClick={() => assignExerciseMutation.mutate({
+                    memberId: id!,
                     exercisePlanId: selectedExercise,
                     dayOfWeek: selectedDay ? parseInt(selectedDay) : undefined
                   })}
