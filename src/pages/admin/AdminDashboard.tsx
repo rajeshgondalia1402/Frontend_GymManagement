@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '@/services/admin.service';
@@ -19,16 +20,50 @@ import {
   PieChart,
   Zap,
   Shield,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-dashboard'],
     queryFn: adminService.getDashboard,
   });
+
+  // Live clock effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format date with ordinal suffix
+  const formatLiveDateTime = (date: Date) => {
+    const day = date.getDate();
+    const ordinal = (d: number) => {
+      if (d > 3 && d < 21) return 'th';
+      switch (d % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    const time = date.toLocaleString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    return `${day}${ordinal(day)} ${month} ${year} | ${time}`;
+  };
 
   if (isLoading) {
     return <Loading message="Loading dashboard..." />;
@@ -62,10 +97,15 @@ export function AdminDashboard() {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm text-slate-400">Platform Status</p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-mono text-sm">
+                    {formatLiveDateTime(currentTime)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
                   <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-                  <span className="text-green-400 font-medium">All Systems Operational</span>
+                  <span className="text-green-400 text-xs font-medium">All Systems Operational</span>
                 </div>
               </div>
             </div>
@@ -312,9 +352,9 @@ export function AdminDashboard() {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold ${index === 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
-                        index === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' :
-                          index === 2 ? 'bg-gradient-to-br from-purple-500 to-purple-600' :
-                            'bg-gradient-to-br from-gray-400 to-gray-500'
+                      index === 1 ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' :
+                        index === 2 ? 'bg-gradient-to-br from-purple-500 to-purple-600' :
+                          'bg-gradient-to-br from-gray-400 to-gray-500'
                       }`}>
                       {gym.name.charAt(0).toUpperCase()}
                     </div>
@@ -328,8 +368,8 @@ export function AdminDashboard() {
                   <div className="text-right">
                     <Badge
                       className={`${gym.isActive
-                          ? 'bg-green-100 text-green-700 border-green-200'
-                          : 'bg-gray-100 text-gray-600 border-gray-200'
+                        ? 'bg-green-100 text-green-700 border-green-200'
+                        : 'bg-gray-100 text-gray-600 border-gray-200'
                         }`}
                     >
                       {gym.isActive ? 'Active' : 'Inactive'}

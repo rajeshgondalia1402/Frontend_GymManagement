@@ -9,6 +9,7 @@ import { TrainersPage } from '@/pages/gym-owner/TrainersPage';
 import { DietPlansPage } from '@/pages/gym-owner/DietPlansPage';
 import { ExercisePlansPage } from '@/pages/gym-owner/ExercisePlansPage';
 import { MemberDetailPage } from '@/pages/gym-owner/MemberDetailPage';
+import { MemberFormPage } from '@/pages/gym-owner/MemberFormPage';
 import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
 import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 
@@ -50,6 +51,26 @@ export const OwnerRoutes = () => (
         <GymOwnerGuard>
           <SidebarLayout>
             <MembersPage />
+          </SidebarLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/members/new"
+      element={
+        <GymOwnerGuard>
+          <SidebarLayout>
+            <MemberFormPage />
+          </SidebarLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/members/:id/edit"
+      element={
+        <GymOwnerGuard>
+          <SidebarLayout>
+            <MemberFormPage />
           </SidebarLayout>
         </GymOwnerGuard>
       }

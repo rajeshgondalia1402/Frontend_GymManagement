@@ -1,5 +1,5 @@
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -7,7 +7,6 @@ import {
   UtensilsCrossed,
   ClipboardList,
   AlertTriangle,
-  Calendar,
   TrendingUp,
   UserPlus,
   Package,
@@ -15,20 +14,56 @@ import {
   Target,
   Trophy,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Clock
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
+import { useAuthStore } from '@/store/authStore';
 
 export function GymOwnerDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const { data, isLoading } = useQuery({
     queryKey: ['gym-owner-dashboard'],
     queryFn: gymOwnerService.getDashboard,
   });
+
+  // Live clock effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format date with ordinal suffix
+  const formatLiveDateTime = (date: Date) => {
+    const day = date.getDate();
+    const ordinal = (d: number) => {
+      if (d > 3 && d < 21) return 'th';
+      switch (d % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    const time = date.toLocaleString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    return `${day}${ordinal(day)} ${month} ${year} | ${time}`;
+  };
 
   if (isLoading) {
     return (
@@ -66,20 +101,18 @@ export function GymOwnerDashboard() {
             <div className="flex flex-col items-end gap-2">
               <Badge
                 className={`text-sm px-4 py-2 ${subscriptionDaysLeft > 30
-                    ? 'bg-green-500/20 text-green-100 border-green-400/50'
-                    : subscriptionDaysLeft > 0
-                      ? 'bg-yellow-500/20 text-yellow-100 border-yellow-400/50'
-                      : 'bg-red-500/20 text-red-100 border-red-400/50'
+                  ? 'bg-green-500/20 text-green-100 border-green-400/50'
+                  : subscriptionDaysLeft > 0
+                    ? 'bg-yellow-500/20 text-yellow-100 border-yellow-400/50'
+                    : 'bg-red-500/20 text-red-100 border-red-400/50'
                   }`}
               >
-                {data.gym?.subscriptionPlan?.name || 'No Plan'}
+                {user?.subscriptionName || data.gym?.subscriptionPlan?.name || 'No Plan'}
               </Badge>
               <div className="flex items-center gap-2 text-sm text-purple-200">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  {subscriptionDaysLeft > 0
-                    ? `${subscriptionDaysLeft} days remaining`
-                    : 'Subscription expired'}
+                <Clock className="h-4 w-4" />
+                <span className="font-mono">
+                  {formatLiveDateTime(currentTime)}
                 </span>
               </div>
             </div>

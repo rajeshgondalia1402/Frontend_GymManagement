@@ -76,17 +76,54 @@ export const gymOwnerService = {
   },
 
   // Members
-  async getMembers(page = 1, limit = 10, status?: string): Promise<PaginatedResponse<Member>> {
-    const response = await api.get('/gym-owner/members', {
-      params: { page, limit, status },
+  async getMembers(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: 'createdAt' | 'name' | 'firstName' | 'email' | 'memberId' | 'phone' | 'membershipStart' | 'membershipEnd';
+    sortOrder?: 'asc' | 'desc';
+    status?: 'Active' | 'InActive' | 'Expired';
+    isActive?: boolean;
+    memberType?: 'REGULAR' | 'PT';
+    gender?: string;
+    bloodGroup?: string;
+    maritalStatus?: string;
+    smsFacility?: boolean;
+    membershipStartFrom?: string;
+    membershipStartTo?: string;
+    membershipEndFrom?: string;
+    membershipEndTo?: string;
+    coursePackageId?: string;
+  } = {}): Promise<PaginatedResponse<Member>> {
+    const { page = 1, limit = 10, ...filters } = params;
+
+    // Build query params, only including defined values
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
     });
-    // Handle both response formats: { data: [...], pagination: {...} } or { success, data: { data: [...], pagination: {...} } }
+
+    const response = await api.get('/gym-owner/members', { params: queryParams });
     const responseData = response.data;
     console.debug('getMembers raw response:', responseData);
 
-    // If the response is wrapped in success/data structure
-    if (responseData.success !== undefined && responseData.data?.data) {
-      return responseData.data;
+    // Handle response format: { success, message, data: { items: [...], pagination: {...} } }
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      // Transform to PaginatedResponse format (items -> data)
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
     }
     // If the response directly contains data array and pagination
     if (Array.isArray(responseData.data)) {
@@ -101,27 +138,67 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
-  async createMember(data: {
+  async createMember(data: FormData | {
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    name: string;
-    phone?: string;
-    dateOfBirth?: string;
-    gender?: string;
+    phone: string;
+    altContactNo?: string;
     address?: string;
-    membershipEnd: string;
+    gender?: string;
+    occupation?: string;
+    maritalStatus?: string;
+    bloodGroup?: string;
+    dateOfBirth?: string;
+    anniversaryDate?: string;
+    emergencyContact?: string;
+    healthNotes?: string;
+    idProofType?: string;
+    smsFacility?: boolean;
+    membershipStartDate?: string;
+    membershipEndDate?: string;
+    coursePackageId?: string;
+    packageFees?: number;
+    maxDiscount?: number;
+    afterDiscount?: number;
+    extraDiscount?: number;
+    finalFees?: number;
   }): Promise<Member> {
+    // Check if data is FormData (multipart upload)
+    if (data instanceof FormData) {
+      const response = await api.post<ApiResponse<Member>>('/gym-owner/members', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    }
     const response = await api.post<ApiResponse<Member>>('/gym-owner/members', data);
     return response.data.data;
   },
 
-  async updateMember(id: string, data: Partial<Member>): Promise<Member> {
+  async updateMember(id: string, data: FormData | Partial<Member>): Promise<Member> {
+    // Check if data is FormData (multipart upload)
+    if (data instanceof FormData) {
+      const response = await api.put<ApiResponse<Member>>(`/gym-owner/members/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    }
     const response = await api.put<ApiResponse<Member>>(`/gym-owner/members/${id}`, data);
     return response.data.data;
   },
 
   async deleteMember(id: string): Promise<void> {
     await api.delete(`/gym-owner/members/${id}`);
+  },
+
+  async toggleMemberStatus(id: string): Promise<Member> {
+    const response = await api.patch<ApiResponse<Member>>(`/gym-owner/members/${id}/toggle-status`);
+    return response.data.data;
   },
 
   // Diet Plans
@@ -526,5 +603,27 @@ export const gymOwnerService = {
   async toggleCoursePackageStatus(id: string): Promise<CoursePackage> {
     const response = await api.patch<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}/toggle-status`);
     return response.data.data;
+  },
+
+  // Get Active Course Packages (for dropdowns)
+  async getActiveCoursePackages(): Promise<CoursePackage[]> {
+    const response = await api.get('/gym-owner/course-packages/active');
+    const responseData = response.data;
+    console.debug('getActiveCoursePackages raw response:', responseData);
+
+    // Handle wrapped response: { success, data: [...] }
+    if (responseData.success !== undefined && Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    // Handle double-wrapped: { success, data: { data: [...] } }
+    if (responseData.data?.data && Array.isArray(responseData.data.data)) {
+      return responseData.data.data;
+    }
+    // Direct array
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    // Fallback to empty array
+    return [];
   },
 };
