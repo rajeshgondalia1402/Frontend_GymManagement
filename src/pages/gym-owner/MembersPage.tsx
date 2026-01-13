@@ -6,7 +6,7 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Phone, Calendar,
   UserPlus, ChevronLeft, ChevronRight, CheckCircle, XCircle, User,
   MapPin, Heart, Droplets, Briefcase, FileText, MessageSquare,
-  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown,
+  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Pencil, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,12 +22,14 @@ import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import type { Member, CoursePackage } from '@/types';
+import { ExportButton } from '@/components/ui/export-button';
+import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MARITAL_STATUS = ['Single', 'Married', 'Divorced', 'Widowed'];
 const GENDERS = ['Male', 'Female', 'Other'];
 const ITEMS_PER_PAGE = 10;
+const PAY_MODES = ['Cash', 'Card', 'UPI', 'Online', 'Cheque', 'Other'];
 
 export function MembersPage() {
   const navigate = useNavigate();
@@ -63,6 +65,19 @@ export function MembersPage() {
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
+
+  // Balance Payment State
+  const [balancePaymentDialogOpen, setBalancePaymentDialogOpen] = useState(false);
+  const [selectedMemberForPayment, setSelectedMemberForPayment] = useState<Member | null>(null);
+  const [editingPayment, setEditingPayment] = useState<BalancePayment | null>(null);
+  const [paymentForm, setPaymentForm] = useState<CreateBalancePayment>({
+    paymentDate: new Date().toISOString().split('T')[0],
+    paidFees: 0,
+    payMode: 'Cash',
+    contactNo: '',
+    nextPaymentDate: '',
+    notes: '',
+  });
 
   // Debounce search input
   useEffect(() => {
@@ -113,6 +128,187 @@ export function MembersPage() {
     },
     onError: (err: any) => toast({ title: 'Failed to update status', description: err?.response?.data?.message, variant: 'destructive' }),
   });
+
+  // Balance Payment Query & Mutations
+  const { data: balancePayments = [], isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['balancePayments', selectedMemberForPayment?.id],
+    queryFn: () => selectedMemberForPayment ? gymOwnerService.getMemberBalancePayments(selectedMemberForPayment.id) : Promise.resolve([]),
+    enabled: !!selectedMemberForPayment && balancePaymentDialogOpen,
+  });
+
+  const createPaymentMutation = useMutation({
+    mutationFn: (data: CreateBalancePayment) => gymOwnerService.createBalancePayment(selectedMemberForPayment!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['balancePayments', selectedMemberForPayment?.id] });
+      resetPaymentForm();
+      toast({ title: 'Payment added successfully' });
+    },
+    onError: (err: any) => toast({ title: 'Failed to add payment', description: err?.response?.data?.message, variant: 'destructive' }),
+  });
+
+  const updatePaymentMutation = useMutation({
+    mutationFn: (data: { id: string; payload: CreateBalancePayment }) => gymOwnerService.updateBalancePayment(data.id, data.payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['balancePayments', selectedMemberForPayment?.id] });
+      resetPaymentForm();
+      setEditingPayment(null);
+      toast({ title: 'Payment updated successfully' });
+    },
+    onError: (err: any) => toast({ title: 'Failed to update payment', description: err?.response?.data?.message, variant: 'destructive' }),
+  });
+
+  const resetPaymentForm = () => {
+    setPaymentForm({
+      paymentDate: new Date().toISOString().split('T')[0],
+      paidFees: 0,
+      payMode: 'Cash',
+      contactNo: '',
+      nextPaymentDate: '',
+      notes: '',
+    });
+    setEditingPayment(null);
+  };
+
+  const openBalancePaymentDialog = (member: Member) => {
+    setSelectedMemberForPayment(member);
+    setPaymentForm({
+      ...paymentForm,
+      paymentDate: new Date().toISOString().split('T')[0],
+      contactNo: member.phone || '',
+    });
+    setBalancePaymentDialogOpen(true);
+  };
+
+  const handlePaymentSubmit = () => {
+    if (!paymentForm.paidFees || paymentForm.paidFees <= 0) {
+      toast({ title: 'Invalid Amount', description: 'Please enter a valid paid fees amount', variant: 'destructive' });
+      return;
+    }
+
+    // Validate payment doesn't exceed remaining balance
+    const finalFees = selectedMemberForPayment?.finalFees || 0;
+    const currentPaid = editingPayment
+      ? totalPaidFees - editingPayment.paidFees // Exclude current payment when editing
+      : totalPaidFees;
+    const newTotalPaid = currentPaid + paymentForm.paidFees;
+
+    if (newTotalPaid > finalFees) {
+      const remainingBalance = finalFees - currentPaid;
+      toast({
+        title: 'Amount Exceeds Balance',
+        description: `Payment amount (\u20b9${paymentForm.paidFees.toLocaleString('en-IN')}) exceeds remaining balance (\u20b9${remainingBalance.toLocaleString('en-IN')}). Maximum allowed: \u20b9${remainingBalance.toLocaleString('en-IN')}`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const payload = {
+      ...paymentForm,
+      paymentDate: new Date(paymentForm.paymentDate).toISOString(),
+      nextPaymentDate: paymentForm.nextPaymentDate ? new Date(paymentForm.nextPaymentDate).toISOString() : undefined,
+    };
+    if (editingPayment) {
+      updatePaymentMutation.mutate({ id: editingPayment.id, payload });
+    } else {
+      createPaymentMutation.mutate(payload);
+    }
+  };
+
+  const handleEditPayment = (payment: BalancePayment) => {
+    setEditingPayment(payment);
+    setPaymentForm({
+      paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      paidFees: payment.paidFees,
+      payMode: payment.payMode,
+      contactNo: payment.contactNo || '',
+      nextPaymentDate: payment.nextPaymentDate ? payment.nextPaymentDate.split('T')[0] : '',
+      notes: payment.notes || '',
+    });
+  };
+
+  // Calculate totals for balance payment dialog
+  const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
+  const balanceFees = useMemo(() => (selectedMemberForPayment?.finalFees || 0) - totalPaidFees, [selectedMemberForPayment, totalPaidFees]);
+
+  // Export Balance Payment to Excel with styled headers
+  const exportBalancePaymentCsv = () => {
+    if (!selectedMemberForPayment) return;
+
+    const memberName = selectedMemberForPayment.firstName && selectedMemberForPayment.lastName
+      ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}`
+      : selectedMemberForPayment.user?.name || 'Member';
+
+    // Build styled HTML table for Excel
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8"><style>';
+    html += 'table { border-collapse: collapse; width: 100%; }';
+    html += 'td, th { border: 1px solid #ccc; padding: 8px; }';
+    html += '.section-header { background-color: #4F46E5; color: white; font-weight: bold; font-size: 14px; }';
+    html += '.field-label { background-color: #E0E7FF; font-weight: bold; width: 150px; }';
+    html += '.field-value { background-color: #F9FAFB; }';
+    html += '.table-header { background-color: #6366F1; color: white; font-weight: bold; }';
+    html += '.amount { color: #059669; font-weight: bold; }';
+    html += '.balance-due { color: #DC2626; font-weight: bold; }';
+    html += '.balance-paid { color: #059669; font-weight: bold; }';
+    html += '</style></head><body>';
+
+    // Member Details Section
+    html += '<table>';
+    html += '<tr><td colspan="2" class="section-header">MEMBER DETAILS</td></tr>';
+    html += `<tr><td class="field-label">Member Name</td><td class="field-value">${memberName}</td></tr>`;
+    html += `<tr><td class="field-label">Member ID</td><td class="field-value">${selectedMemberForPayment.memberId || 'N/A'}</td></tr>`;
+    html += `<tr><td class="field-label">Phone</td><td class="field-value">${selectedMemberForPayment.phone || 'N/A'}</td></tr>`;
+    html += `<tr><td class="field-label">Email</td><td class="field-value">${selectedMemberForPayment.email || 'N/A'}</td></tr>`;
+    html += '</table><br/>';
+
+    // Fee Summary Section
+    html += '<table>';
+    html += '<tr><td colspan="2" class="section-header">FEE SUMMARY</td></tr>';
+    html += `<tr><td class="field-label">Total Fees</td><td class="field-value amount">\u20b9${(selectedMemberForPayment.finalFees || 0).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr><td class="field-label">Paid Fees</td><td class="field-value amount">\u20b9${totalPaidFees.toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr><td class="field-label">Balance</td><td class="field-value ${balanceFees > 0 ? 'balance-due' : 'balance-paid'}">\u20b9${balanceFees.toLocaleString('en-IN')}</td></tr>`;
+    html += '</table><br/>';
+
+    // Payment History Section
+    html += '<table>';
+    html += '<tr><td colspan="7" class="section-header">PAYMENT HISTORY</td></tr>';
+    html += '<tr>';
+    html += '<th class="table-header">Receipt No</th>';
+    html += '<th class="table-header">Payment Date</th>';
+    html += '<th class="table-header">Amount</th>';
+    html += '<th class="table-header">Pay Mode</th>';
+    html += '<th class="table-header">Contact No</th>';
+    html += '<th class="table-header">Next Payment Date</th>';
+    html += '<th class="table-header">Notes</th>';
+    html += '</tr>';
+
+    balancePayments.forEach((payment) => {
+      html += '<tr>';
+      html += `<td>${payment.receiptNo || '-'}</td>`;
+      html += `<td>${payment.paymentDate ? format(new Date(payment.paymentDate), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td class="amount">\u20b9${payment.paidFees.toLocaleString('en-IN')}</td>`;
+      html += `<td>${payment.payMode}</td>`;
+      html += `<td>${payment.contactNo || '-'}</td>`;
+      html += `<td>${payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td>${payment.notes || '-'}</td>`;
+      html += '</tr>';
+    });
+
+    // Summary row
+    html += `<tr><td colspan="2" class="field-label">Total Payments: ${balancePayments.length}</td><td class="amount">\u20b9${totalPaidFees.toLocaleString('en-IN')}</td><td colspan="4"></td></tr>`;
+    html += '</table>';
+    html += '</body></html>';
+
+    // Download XLS
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `balance_payment_${memberName.replace(/\\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Payment report exported successfully' });
+  };
 
   const handleView = (member: Member) => { setViewingMember(member); setViewDialogOpen(true); };
 
@@ -198,9 +394,26 @@ export function MembersPage() {
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-muted-foreground">Manage gym members and their profiles</p>
         </div>
-        <Button onClick={() => navigate('/gym-owner/members/new')}>
-          <Plus className="mr-2 h-4 w-4" /> Add New Member
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={members}
+            filename="members"
+            columns={[
+              { key: 'memberId', label: 'Member ID' },
+              { key: 'firstName', label: 'First Name' },
+              { key: 'lastName', label: 'Last Name' },
+              { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'gender', label: 'Gender' },
+              { key: 'finalFees', label: 'Final Fees', format: (v) => v ? `₹${v}` : '' },
+              { key: 'membershipEnd', label: 'Membership End', format: (v) => v ? format(new Date(v), 'dd/MM/yyyy') : '' },
+              { key: 'isActive', label: 'Status', format: (v) => v === false ? 'Inactive' : 'Active' },
+            ]}
+          />
+          <Button onClick={() => navigate('/gym-owner/members/new')}>
+            <Plus className="mr-2 h-4 w-4" /> Add New Member
+          </Button>
+        </div>
       </div>
 
       {/* Filters & Table Card */}
@@ -430,7 +643,9 @@ export function MembersPage() {
                                 <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(member.id)}>
                                   {member.isActive !== false ? <><XCircle className="mr-2 h-4 w-4" />Deactivate</> : <><CheckCircle className="mr-2 h-4 w-4" />Activate</>}
                                 </DropdownMenuItem>
-
+                                <DropdownMenuItem onClick={() => openBalancePaymentDialog(member)} className="text-blue-600">
+                                  <Wallet className="mr-2 h-4 w-4" />Balance Payment
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -504,7 +719,21 @@ export function MembersPage() {
                 <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-purple-500" /><span>Occupation: {viewingMember.occupation || '-'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-purple-500" /><span>Anniversary: {viewingMember.anniversaryDate ? format(new Date(viewingMember.anniversaryDate), 'MMM dd, yyyy') : '-'}</span></div>
                 <div className="flex items-center gap-2 col-span-2"><MapPin className="h-4 w-4 text-purple-500" /><span>Address: {viewingMember.address || '-'}</span></div>
-                <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-purple-500" /><span>ID Proof: {viewingMember.idProofType || '-'}</span></div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-purple-500" />
+                  <span>ID Proof: {viewingMember.idProofType || '-'}</span>
+                  {viewingMember.idProofDocument && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() => window.open(`${BACKEND_BASE_URL}${viewingMember.idProofDocument}`, '_blank')}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Download
+                    </Button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-purple-500" /><span>SMS: {viewingMember.smsFacility ? 'Enabled' : 'Disabled'}</span></div>
               </div>
               {/* Fee Details */}
@@ -543,6 +772,231 @@ export function MembersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Balance Payment Dialog */}
+      <Dialog open={balancePaymentDialogOpen} onOpenChange={(open) => { setBalancePaymentDialogOpen(open); if (!open) resetPaymentForm(); }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                <Wallet className="h-5 w-5 text-white" />
+              </div>
+              Balance Payment
+            </DialogTitle>
+            <Button
+              size="sm"
+              onClick={exportBalancePaymentCsv}
+              disabled={balancePayments.length === 0}
+              className="gap-1.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
+            >
+              <Download className="h-4 w-4" />
+              Export Excel
+            </Button>
+          </DialogHeader>
+
+          {selectedMemberForPayment && (
+            <div className="space-y-4">
+              {/* Member Info Header */}
+              <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl">
+                <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
+                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${selectedMemberForPayment.memberPhoto}`} /> : null}
+                  <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                    {getInitials(selectedMemberForPayment.firstName && selectedMemberForPayment.lastName ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}` : selectedMemberForPayment.user?.name || '')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold">{selectedMemberForPayment.firstName && selectedMemberForPayment.lastName ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}` : selectedMemberForPayment.user?.name}</h3>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>ID: {selectedMemberForPayment.memberId || 'N/A'}</span>
+                    <span>•</span>
+                    <span>{selectedMemberForPayment.phone || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fee Summary Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-600 font-medium mb-1">Total Fees</p>
+                  <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
+                    <IndianRupee className="h-4 w-4" />{(selectedMemberForPayment.finalFees || 0).toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
+                  <p className="text-xs text-green-600 font-medium mb-1">Paid Fees</p>
+                  <p className="text-lg font-bold text-green-700 flex items-center justify-center">
+                    <IndianRupee className="h-4 w-4" />{totalPaidFees.toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className={`${balanceFees > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-3 rounded-xl text-center border`}>
+                  <p className={`text-xs font-medium mb-1 ${balanceFees > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending Fees</p>
+                  <p className={`text-lg font-bold flex items-center justify-center ${balanceFees > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                    <IndianRupee className="h-4 w-4" />{balanceFees.toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Form */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  {editingPayment ? <Pencil className="h-4 w-4 text-orange-500" /> : <Plus className="h-4 w-4 text-blue-500" />}
+                  {editingPayment ? 'Edit Payment' : 'Add New Payment'}
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Payment Date *</Label>
+                    <Input
+                      type="date"
+                      value={paymentForm.paymentDate}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Paid Fees *</Label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={paymentForm.paidFees || ''}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, paidFees: parseFloat(e.target.value) || 0 })}
+                        className="h-8 pl-7"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Pay Mode *</Label>
+                    <Select value={paymentForm.payMode} onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}>
+                      <SelectTrigger className="h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAY_MODES.map((mode) => (
+                          <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Contact No</Label>
+                    <Input
+                      placeholder="Phone"
+                      value={paymentForm.contactNo || ''}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, contactNo: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Next Payment Date</Label>
+                    <Input
+                      type="date"
+                      value={paymentForm.nextPaymentDate || ''}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, nextPaymentDate: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Notes</Label>
+                    <Input
+                      placeholder="Notes..."
+                      value={paymentForm.notes || ''}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  {editingPayment && (
+                    <Button variant="outline" size="sm" onClick={resetPaymentForm}>Cancel</Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={handlePaymentSubmit}
+                    disabled={createPaymentMutation.isPending || updatePaymentMutation.isPending}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
+                      <><Spinner className="h-4 w-4 mr-1" />{editingPayment ? 'Updating...' : 'Adding...'}</>
+                    ) : (
+                      <>{editingPayment ? 'Update' : 'Add Payment'}</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Payment History - ONLY THIS SCROLLS */}
+              <div>
+                <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
+                  <Calendar className="h-4 w-4 text-purple-500" />
+                  Payment History ({balancePayments.length})
+                </h4>
+                {isLoadingPayments ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Spinner className="h-6 w-6" />
+                  </div>
+                ) : balancePayments.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground border rounded-lg">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No payment records</p>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg">
+                    <div className="max-h-[180px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs">Receipt</TableHead>
+                            <TableHead className="text-xs">Date</TableHead>
+                            <TableHead className="text-xs">Amount</TableHead>
+                            <TableHead className="text-xs">Mode</TableHead>
+                            <TableHead className="text-xs">Next Due</TableHead>
+                            <TableHead className="text-xs w-[50px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {balancePayments.map((payment) => (
+                            <TableRow key={payment.id} className="hover:bg-muted/30">
+                              <TableCell className="text-xs">
+                                <Badge variant="secondary" className="text-[10px] font-mono">{payment.receiptNo || '-'}</Badge>
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yy') : '-'}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                <span className="flex items-center text-green-600 font-semibold">
+                                  <IndianRupee className="h-3 w-3" />{payment.paidFees.toLocaleString('en-IN')}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={`text-[10px] ${payment.payMode === 'Cash' ? 'border-green-500 text-green-600' : payment.payMode === 'Card' ? 'border-blue-500 text-blue-600' : payment.payMode === 'UPI' ? 'border-purple-500 text-purple-600' : 'border-gray-500'}`}>
+                                  {payment.payMode}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd MMM yy') : '-'}
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setBalancePaymentDialogOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

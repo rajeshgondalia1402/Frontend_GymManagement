@@ -50,3 +50,74 @@ export function downloadPdfTable(_columns: string[], _rows: Array<Array<string |
   // });
   // doc.save(filename);
 }
+
+/**
+ * Export data to XLS format (Excel-compatible HTML table)
+ * Uses native browser capabilities without external dependencies
+ */
+export function downloadXls(rows: Array<Record<string, any>>, filename = 'export.xls') {
+  if (!rows || !rows.length) {
+    console.warn('No data to export');
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+
+  // Create HTML table that Excel can read
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html += '<head><meta charset="utf-8"><style>td,th{border:1px solid #ccc;padding:4px 8px;}th{background:#f0f0f0;font-weight:bold;}</style></head>';
+  html += '<body><table>';
+
+  // Header row
+  html += '<tr>';
+  headers.forEach((h) => {
+    html += `<th>${escapeHtml(formatHeader(h))}</th>`;
+  });
+  html += '</tr>';
+
+  // Data rows
+  rows.forEach((row) => {
+    html += '<tr>';
+    headers.forEach((h) => {
+      const val = row[h];
+      html += `<td>${escapeHtml(formatValue(val))}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</table></body></html>';
+
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Helper to escape HTML special characters
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Helper to format header names (camelCase to Title Case)
+function formatHeader(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
+// Helper to format values for display
+function formatValue(val: any): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+  if (val instanceof Date) return val.toLocaleDateString();
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+}
