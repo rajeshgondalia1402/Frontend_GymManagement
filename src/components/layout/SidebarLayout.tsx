@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { MemberSearchDropdown } from './MemberSearchDropdown';
 import {
   LayoutDashboard,
   Building2,
@@ -416,6 +417,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           </Button>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
+            {user?.role === 'GYM_OWNER' && <MemberSearchDropdown />}
             <span className="text-sm text-muted-foreground hidden sm:block">
               {user?.email || ''}
             </span>

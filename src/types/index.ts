@@ -375,6 +375,34 @@ export interface UpdateMemberInquiry extends CreateMemberInquiry {
   isActive?: boolean;
 }
 
+// Balance Payment Types
+export interface BalancePayment {
+  id: string;
+  receiptNo?: string;
+  memberId: string;
+  paymentDate: string;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: string;
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  member?: Member;
+}
+
+export interface CreateBalancePayment {
+  paymentDate: string;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: string;
+  notes?: string;
+}
+
+export interface UpdateBalancePayment extends Partial<CreateBalancePayment> { }
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;

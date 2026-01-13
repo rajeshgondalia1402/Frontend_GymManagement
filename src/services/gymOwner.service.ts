@@ -17,7 +17,10 @@ import type {
   MemberInquiry,
   CreateMemberInquiry,
   UpdateMemberInquiry,
-  CoursePackage
+  CoursePackage,
+  BalancePayment,
+  CreateBalancePayment,
+  UpdateBalancePayment
 } from '@/types';
 
 export const gymOwnerService = {
@@ -625,5 +628,44 @@ export const gymOwnerService = {
     }
     // Fallback to empty array
     return [];
+  },
+
+  // Balance Payments
+  async getMemberBalancePayments(memberId: string): Promise<BalancePayment[]> {
+    const response = await api.get(`/gym-owner/members/${memberId}/balance-payments`);
+    const responseData = response.data;
+    console.debug('getMemberBalancePayments raw response:', responseData);
+
+    // Handle response format: { success, data: { summary, payments: [...] } }
+    if (responseData.success !== undefined && responseData.data) {
+      // Check for payments array inside data
+      if (Array.isArray(responseData.data.payments)) {
+        return responseData.data.payments;
+      }
+      // Check if data is directly an array
+      if (Array.isArray(responseData.data)) {
+        return responseData.data;
+      }
+    }
+    // Direct array
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  async getBalancePayment(id: string): Promise<BalancePayment> {
+    const response = await api.get<ApiResponse<BalancePayment>>(`/gym-owner/member-balance-payments/${id}`);
+    return response.data.data;
+  },
+
+  async createBalancePayment(memberId: string, data: CreateBalancePayment): Promise<BalancePayment> {
+    const response = await api.post<ApiResponse<BalancePayment>>(`/gym-owner/members/${memberId}/balance-payments`, data);
+    return response.data.data;
+  },
+
+  async updateBalancePayment(id: string, data: UpdateBalancePayment): Promise<BalancePayment> {
+    const response = await api.put<ApiResponse<BalancePayment>>(`/gym-owner/member-balance-payments/${id}`, data);
+    return response.data.data;
   },
 };
