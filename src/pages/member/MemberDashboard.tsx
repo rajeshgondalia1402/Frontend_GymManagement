@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { 
-  Calendar, 
-  Dumbbell, 
-  UtensilsCrossed, 
-  ClipboardList, 
+import {
+  Calendar,
+  Dumbbell,
+  UtensilsCrossed,
+  ClipboardList,
   Building2,
   AlertTriangle,
   CheckCircle
@@ -105,7 +105,7 @@ export function MemberDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold">
-              {format(new Date(data.member?.membershipEnd), 'MMM dd, yyyy')}
+              {data.member?.membershipEnd ? format(new Date(data.member.membershipEnd), 'MMM dd, yyyy') : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -215,11 +215,10 @@ export function MemberDashboard() {
                 const dayPlan = data.exercisePlans?.find(p => p.dayOfWeek === index);
                 const isToday = index === todayIndex;
                 return (
-                  <div 
-                    key={day} 
-                    className={`p-3 rounded-lg text-center ${
-                      isToday ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}
+                  <div
+                    key={day}
+                    className={`p-3 rounded-lg text-center ${isToday ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}
                   >
                     <p className="text-xs font-medium">{day.slice(0, 3)}</p>
                     <p className="text-xs mt-1 truncate">

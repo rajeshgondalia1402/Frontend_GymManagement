@@ -25,10 +25,13 @@ import { TrainersPage } from '@/pages/gym-owner/TrainersPage';
 import { DietPlansPage } from '@/pages/gym-owner/DietPlansPage';
 import { ExercisePlansPage } from '@/pages/gym-owner/ExercisePlansPage';
 import { MemberDetailPage } from '@/pages/gym-owner/MemberDetailPage';
+import { MemberFormPage } from '@/pages/gym-owner/MemberFormPage';
 import { ExpenseGroupMasterPage } from '@/pages/gym-owner/ExpenseGroupMasterPage';
 import { DesignationMasterPage } from '@/pages/gym-owner/DesignationMasterPage';
 import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
 import { BodyPartMasterPage } from '@/pages/gym-owner/BodyPartMasterPage';
+import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
+import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -94,9 +97,9 @@ function App() {
     <>
       <Routes>
         {/* ==================== PUBLIC ROUTES ==================== */}
-        <Route 
-          path="/login" 
-          element={isAuthenticated ? <RoleBasedRedirect /> : <LoginPage />} 
+        <Route
+          path="/login"
+          element={isAuthenticated ? <RoleBasedRedirect /> : <LoginPage />}
         />
 
         {/* Role-based redirect */}
@@ -199,6 +202,26 @@ function App() {
           }
         />
         <Route
+          path="/gym-owner/members/new"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberFormPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/members/:id/edit"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberFormPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
           path="/gym-owner/members/:id"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
@@ -274,6 +297,26 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <SidebarLayout>
                 <BodyPartMasterPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/member-inquiries"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <MemberInquiriesPage />
+              </SidebarLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/course-packages"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <SidebarLayout>
+                <CoursePackagesPage />
               </SidebarLayout>
             </RoleGuard>
           }
