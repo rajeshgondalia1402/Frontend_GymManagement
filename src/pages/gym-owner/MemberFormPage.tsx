@@ -67,7 +67,7 @@ export function MemberFormPage() {
     const [docPreview, setDocPreview] = useState<string>('');
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
 
-    const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<MemberFormData>({
+    const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<MemberFormData>({
         resolver: zodResolver(memberSchema),
         defaultValues: {
             smsFacility: true,
@@ -85,11 +85,21 @@ export function MemberFormPage() {
         queryFn: () => gymOwnerService.getActiveCoursePackages(),
     });
 
-    // Fetch member if editing
-    const { data: member, isLoading: memberLoading } = useQuery({
+    // Invalidate member query when id changes to ensure fresh data
+    useEffect(() => {
+        if (id) {
+            queryClient.invalidateQueries({ queryKey: ['member', id] });
+        }
+    }, [id, queryClient]);
+
+    // Fetch member if editing - always refetch fresh data
+    const { data: member, isLoading: memberLoading, isFetching, dataUpdatedAt } = useQuery({
         queryKey: ['member', id],
         queryFn: () => gymOwnerService.getMember(id!),
         enabled: isEditMode,
+        staleTime: 0, // Always consider data stale
+        gcTime: 0, // Don't cache (previously called cacheTime)
+        refetchOnMount: 'always', // Always refetch when component mounts
     });
 
     // Calculate fees
@@ -107,40 +117,54 @@ export function MemberFormPage() {
         return { packageFees, maxDiscountAmount, afterDiscount, finalFees };
     }, [selectedPackage, extraDiscount]);
 
+    // Bind member data to form when editing - use reset for reliable form population
     useEffect(() => {
-        if (member) {
+        if (member && dataUpdatedAt) {
+            // Reset file states
+            setPhotoFile(null);
+            setDocFile(null);
+
             // Handle name - try to split if backend returns full name
             const fullName = member.user?.name || '';
             const nameParts = fullName.split(' ');
-            setValue('firstName', member.firstName || nameParts[0] || '');
-            setValue('lastName', member.lastName || nameParts.slice(1).join(' ') || '');
-            setValue('email', member.user?.email || member.email || '');
-            setValue('phone', member.phone || '');
-            setValue('altContactNo', member.altContactNo || '');
-            setValue('dateOfBirth', member.dateOfBirth ? format(new Date(member.dateOfBirth), 'yyyy-MM-dd') : '');
-            setValue('gender', member.gender as any);
-            setValue('address', member.address || '');
-            setValue('occupation', member.occupation || '');
-            setValue('maritalStatus', member.maritalStatus as any);
-            setValue('bloodGroup', member.bloodGroup as any);
-            setValue('anniversaryDate', member.anniversaryDate ? format(new Date(member.anniversaryDate), 'yyyy-MM-dd') : '');
-            setValue('emergencyContact', member.emergencyContact || '');
-            setValue('healthNotes', member.healthNotes || '');
-            setValue('idProofType', member.idProofType || '');
-            setValue('smsFacility', member.smsFacility ?? true);
-            setValue('membershipStartDate', member.membershipStartDate ? format(new Date(member.membershipStartDate), 'yyyy-MM-dd') : (member.membershipStart ? format(new Date(member.membershipStart), 'yyyy-MM-dd') : ''));
-            setValue('membershipEndDate', member.membershipEndDate ? format(new Date(member.membershipEndDate), 'yyyy-MM-dd') : (member.membershipEnd ? format(new Date(member.membershipEnd), 'yyyy-MM-dd') : ''));
-            setValue('coursePackageId', member.coursePackageId || '');
-            setValue('extraDiscount', member.extraDiscount || 0);
-            if (member.memberPhoto) setPhotoPreview(`${BACKEND_BASE_URL}${member.memberPhoto}`);
-            if (member.idProofDocument) setDocPreview(`${BACKEND_BASE_URL}${member.idProofDocument}`);
+            
+            // Use reset to reliably populate all form fields
+            reset({
+                firstName: member.firstName || nameParts[0] || '',
+                lastName: member.lastName || nameParts.slice(1).join(' ') || '',
+                email: member.user?.email || member.email || '',
+                phone: member.phone || '',
+                altContactNo: member.altContactNo || '',
+                dateOfBirth: member.dateOfBirth ? format(new Date(member.dateOfBirth), 'yyyy-MM-dd') : '',
+                gender: member.gender as any,
+                address: member.address || '',
+                occupation: member.occupation || '',
+                maritalStatus: member.maritalStatus as any,
+                bloodGroup: member.bloodGroup as any,
+                anniversaryDate: member.anniversaryDate ? format(new Date(member.anniversaryDate), 'yyyy-MM-dd') : '',
+                emergencyContact: member.emergencyContact || '',
+                healthNotes: member.healthNotes || '',
+                idProofType: member.idProofType || '',
+                smsFacility: member.smsFacility ?? true,
+                membershipStartDate: member.membershipStartDate ? format(new Date(member.membershipStartDate), 'yyyy-MM-dd') : (member.membershipStart ? format(new Date(member.membershipStart), 'yyyy-MM-dd') : ''),
+                membershipEndDate: member.membershipEndDate ? format(new Date(member.membershipEndDate), 'yyyy-MM-dd') : (member.membershipEnd ? format(new Date(member.membershipEnd), 'yyyy-MM-dd') : ''),
+                coursePackageId: member.coursePackageId || '',
+                extraDiscount: member.extraDiscount || 0,
+            });
+
+            // Set photo and document previews
+            setPhotoPreview(member.memberPhoto ? `${BACKEND_BASE_URL}${member.memberPhoto}` : '');
+            setDocPreview(member.idProofDocument ? `${BACKEND_BASE_URL}${member.idProofDocument}` : '');
+
             // Set selected package if member has one
             if (member.coursePackageId && coursePackages.length > 0) {
                 const pkg = coursePackages.find((p: CoursePackage) => p.id === member.coursePackageId);
                 setSelectedPackage(pkg || null);
+            } else {
+                setSelectedPackage(null);
             }
         }
-    }, [member, setValue, coursePackages]);
+    }, [member, dataUpdatedAt, reset, coursePackages]);
 
     const createMutation = useMutation({
         mutationFn: gymOwnerService.createMember,
@@ -229,7 +253,7 @@ export function MemberFormPage() {
 
     const isPending = createMutation.isPending || updateMutation.isPending;
 
-    if (isEditMode && memberLoading) {
+    if (isEditMode && (memberLoading || isFetching)) {
         return <div className="flex items-center justify-center h-full"><Spinner className="h-8 w-8" /></div>;
     }
 
