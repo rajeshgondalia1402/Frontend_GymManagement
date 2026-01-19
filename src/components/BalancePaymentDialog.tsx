@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
     Wallet, Calendar, IndianRupee, Plus, Pencil, Download, Phone, User,
-    MapPin, FileText, MessageSquare, Edit, XCircle, CheckCircle,
+    MapPin, FileText, MessageSquare, Edit, XCircle, CheckCircle, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,14 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         nextPaymentDate: '',
         notes: '',
     });
+
+    // Check if member's membership is expired
+    const isExpired = useMemo(() => {
+        if (!member) return false;
+        const endDate = member.membershipEnd || member.membershipEndDate;
+        if (!endDate) return true;
+        return new Date(endDate) < new Date();
+    }, [member]);
 
     // Sync memberIsActive when member prop changes (e.g., when opening dialog for different member)
     useEffect(() => {
@@ -300,6 +308,11 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     >
                                         {memberIsActive ? 'Active' : 'Inactive'}
                                     </Badge>
+                                    {isExpired && (
+                                        <Badge variant="destructive" className="gap-1">
+                                            <AlertTriangle className="h-3 w-3" /> Expired
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -375,11 +388,23 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                     </div>
 
                     {/* Payment Form */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3">
+                    <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isExpired ? 'opacity-60' : ''}`}>
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                             {editingPayment ? <Pencil className="h-4 w-4 text-orange-500" /> : <Plus className="h-4 w-4 text-blue-500" />}
                             {editingPayment ? 'Edit Payment' : 'Add New Payment'}
                         </h4>
+
+                        {/* Expired Warning Banner */}
+                        {isExpired && (
+                            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
+                                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-medium text-sm">Membership Expired</p>
+                                    <p className="text-xs">Payment cannot be added for expired memberships. Please renew the membership first.</p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs">Payment Date *</Label>
@@ -388,6 +413,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.paymentDate}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                                     className="h-8"
+                                    disabled={isExpired}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -400,12 +426,17 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                         value={paymentForm.paidFees || ''}
                                         onChange={(e) => setPaymentForm({ ...paymentForm, paidFees: parseFloat(e.target.value) || 0 })}
                                         className="h-8 pl-7"
+                                        disabled={isExpired}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs">Pay Mode *</Label>
-                                <Select value={paymentForm.payMode} onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}>
+                                <Select
+                                    value={paymentForm.payMode}
+                                    onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}
+                                    disabled={isExpired}
+                                >
                                     <SelectTrigger className="h-8">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -423,6 +454,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.contactNo || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, contactNo: e.target.value })}
                                     className="h-8"
+                                    disabled={isExpired}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -432,6 +464,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.nextPaymentDate || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, nextPaymentDate: e.target.value })}
                                     className="h-8"
+                                    disabled={isExpired}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -441,17 +474,18 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.notes || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
                                     className="h-8"
+                                    disabled={isExpired}
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
-                            {editingPayment && (
+                            {editingPayment && !isExpired && (
                                 <Button variant="outline" size="sm" onClick={resetPaymentForm}>Cancel</Button>
                             )}
                             <Button
                                 size="sm"
                                 onClick={handlePaymentSubmit}
-                                disabled={createPaymentMutation.isPending || updatePaymentMutation.isPending}
+                                disabled={isExpired || createPaymentMutation.isPending || updatePaymentMutation.isPending}
                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                             >
                                 {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
@@ -489,7 +523,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                                 <TableHead className="text-xs">Amount</TableHead>
                                                 <TableHead className="text-xs">Mode</TableHead>
                                                 <TableHead className="text-xs">Next Due</TableHead>
-                                                <TableHead className="text-xs w-[50px]"></TableHead>
+                                                {!isExpired && <TableHead className="text-xs w-[50px]"></TableHead>}
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -514,11 +548,13 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                                     <TableCell className="text-xs text-muted-foreground">
                                                         {payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd MMM yy') : '-'}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
-                                                            <Pencil className="h-3 w-3" />
-                                                        </Button>
-                                                    </TableCell>
+                                                    {!isExpired && (
+                                                        <TableCell>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
+                                                                <Pencil className="h-3 w-3" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    )}
                                                 </TableRow>
                                             ))}
                                         </TableBody>

@@ -20,7 +20,9 @@ import type {
   CoursePackage,
   BalancePayment,
   CreateBalancePayment,
-  UpdateBalancePayment
+  UpdateBalancePayment,
+  MembershipRenewal,
+  CreateMembershipRenewal
 } from '@/types';
 
 export const gymOwnerService = {
@@ -668,4 +670,66 @@ export const gymOwnerService = {
     const response = await api.put<ApiResponse<BalancePayment>>(`/gym-owner/member-balance-payments/${id}`, data);
     return response.data.data;
   },
+
+  // Membership Renewals
+  async createMembershipRenewal(data: CreateMembershipRenewal): Promise<MembershipRenewal> {
+    const response = await api.post<ApiResponse<MembershipRenewal>>('/gym-owner/membership-renewals', data);
+    return response.data.data;
+  },
+
+  async getMemberRenewalHistory(memberId: string): Promise<MembershipRenewal[]> {
+    const response = await api.get(`/gym-owner/members/${memberId}/renewal-history`);
+    const responseData = response.data;
+    console.debug('getMemberRenewalHistory raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      if (Array.isArray(responseData.data)) {
+        return responseData.data;
+      }
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  async getMembershipRenewals(params: {
+    page?: number;
+    limit?: number;
+    memberId?: string;
+    paymentStatus?: 'PAID' | 'PENDING' | 'PARTIAL';
+    renewalType?: 'STANDARD' | 'EARLY' | 'LATE' | 'UPGRADE' | 'DOWNGRADE';
+  } = {}): Promise<PaginatedResponse<MembershipRenewal>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/membership-renewals', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getMembershipRenewals raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<MembershipRenewal>;
+    }
+    return responseData;
+  },
 };
+

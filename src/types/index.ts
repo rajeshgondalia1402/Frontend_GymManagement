@@ -325,6 +325,8 @@ export interface CoursePackage {
   fees: number;
   maxDiscount: number;
   discountType: 'PERCENTAGE' | 'AMOUNT';
+  durationInDays?: number;
+  durationInMonths?: number;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -403,6 +405,51 @@ export interface CreateBalancePayment {
 
 export interface UpdateBalancePayment extends Partial<CreateBalancePayment> { }
 
+// Membership Renewal Types
+export type RenewalType = 'STANDARD' | 'EARLY' | 'LATE' | 'UPGRADE' | 'DOWNGRADE';
+export type PaymentStatus = 'PAID' | 'PENDING' | 'PARTIAL';
+
+export interface MembershipRenewal {
+  id: string;
+  renewalNumber?: string;
+  memberId: string;
+  previousMembershipStart?: string;
+  previousMembershipEnd?: string;
+  newMembershipStart: string;
+  newMembershipEnd: string;
+  renewalType: RenewalType;
+  coursePackageId?: string;
+  coursePackage?: CoursePackage;
+  packageFees?: number;
+  maxDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+  paymentStatus: PaymentStatus;
+  paymentMode?: string;
+  paidAmount?: number;
+  pendingAmount?: number;
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  member?: Member;
+}
+
+export interface CreateMembershipRenewal {
+  memberId: string;
+  newMembershipStart: string;
+  newMembershipEnd: string;
+  renewalType?: RenewalType;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+  paymentMode?: string;
+  paidAmount?: number;
+  notes?: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -420,3 +467,4 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+

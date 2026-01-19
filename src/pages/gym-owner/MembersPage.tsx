@@ -6,7 +6,7 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Phone, Calendar,
   UserPlus, ChevronLeft, ChevronRight, CheckCircle, XCircle, User,
   MapPin, Heart, Droplets, Briefcase, FileText, MessageSquare,
-  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Pencil, Download,
+  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Pencil, Download, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { ExportButton } from '@/components/ui/export-button';
+import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -78,6 +79,10 @@ export function MembersPage() {
     nextPaymentDate: '',
     notes: '',
   });
+
+  // Membership Renewal State
+  const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
+  const [selectedMemberForRenewal, setSelectedMemberForRenewal] = useState<Member | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -229,6 +234,14 @@ export function MembersPage() {
   // Calculate totals for balance payment dialog
   const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
   const balanceFees = useMemo(() => (selectedMemberForPayment?.finalFees || 0) - totalPaidFees, [selectedMemberForPayment, totalPaidFees]);
+
+  // Check if selected member's membership is expired (for Balance Payment dialog)
+  const isSelectedMemberExpired = useMemo(() => {
+    if (!selectedMemberForPayment) return false;
+    const endDate = selectedMemberForPayment.membershipEnd || selectedMemberForPayment.membershipEndDate;
+    if (!endDate) return true;
+    return new Date(endDate) < new Date();
+  }, [selectedMemberForPayment]);
 
   // Export Balance Payment to Excel with styled headers
   const exportBalancePaymentCsv = () => {
@@ -643,8 +656,19 @@ export function MembersPage() {
                                 <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(member.id)}>
                                   {member.isActive !== false ? <><XCircle className="mr-2 h-4 w-4" />Deactivate</> : <><CheckCircle className="mr-2 h-4 w-4" />Activate</>}
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openBalancePaymentDialog(member)} className="text-blue-600">
+                                <DropdownMenuItem
+                                  onClick={() => openBalancePaymentDialog(member)}
+                                  className="text-blue-600"
+                                  disabled={member.isActive === false}
+                                >
                                   <Wallet className="mr-2 h-4 w-4" />Balance Payment
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => { setSelectedMemberForRenewal(member); setRenewalDialogOpen(true); }}
+                                  className="text-green-600"
+                                  disabled={member.isActive === false}
+                                >
+                                  <RefreshCw className="mr-2 h-4 w-4" />Renew Membership
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -836,11 +860,23 @@ export function MembersPage() {
               </div>
 
               {/* Payment Form */}
-              <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3">
+              <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isSelectedMemberExpired ? 'opacity-60' : ''}`}>
                 <h4 className="font-semibold text-sm flex items-center gap-2">
                   {editingPayment ? <Pencil className="h-4 w-4 text-orange-500" /> : <Plus className="h-4 w-4 text-blue-500" />}
                   {editingPayment ? 'Edit Payment' : 'Add New Payment'}
                 </h4>
+
+                {/* Expired Warning Banner */}
+                {isSelectedMemberExpired && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Membership Expired</p>
+                      <p className="text-xs">Payment cannot be added for expired memberships. Please renew the membership first.</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Payment Date *</Label>
@@ -849,6 +885,7 @@ export function MembersPage() {
                       value={paymentForm.paymentDate}
                       onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                       className="h-8"
+                      disabled={isSelectedMemberExpired}
                     />
                   </div>
                   <div className="space-y-1">
@@ -861,12 +898,17 @@ export function MembersPage() {
                         value={paymentForm.paidFees || ''}
                         onChange={(e) => setPaymentForm({ ...paymentForm, paidFees: parseFloat(e.target.value) || 0 })}
                         className="h-8 pl-7"
+                        disabled={isSelectedMemberExpired}
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Pay Mode *</Label>
-                    <Select value={paymentForm.payMode} onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}>
+                    <Select
+                      value={paymentForm.payMode}
+                      onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}
+                      disabled={isSelectedMemberExpired}
+                    >
                       <SelectTrigger className="h-8">
                         <SelectValue />
                       </SelectTrigger>
@@ -884,6 +926,7 @@ export function MembersPage() {
                       value={paymentForm.contactNo || ''}
                       onChange={(e) => setPaymentForm({ ...paymentForm, contactNo: e.target.value })}
                       className="h-8"
+                      disabled={isSelectedMemberExpired}
                     />
                   </div>
                   <div className="space-y-1">
@@ -893,6 +936,7 @@ export function MembersPage() {
                       value={paymentForm.nextPaymentDate || ''}
                       onChange={(e) => setPaymentForm({ ...paymentForm, nextPaymentDate: e.target.value })}
                       className="h-8"
+                      disabled={isSelectedMemberExpired}
                     />
                   </div>
                   <div className="space-y-1">
@@ -902,17 +946,18 @@ export function MembersPage() {
                       value={paymentForm.notes || ''}
                       onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
                       className="h-8"
+                      disabled={isSelectedMemberExpired}
                     />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  {editingPayment && (
+                  {editingPayment && !isSelectedMemberExpired && (
                     <Button variant="outline" size="sm" onClick={resetPaymentForm}>Cancel</Button>
                   )}
                   <Button
                     size="sm"
                     onClick={handlePaymentSubmit}
-                    disabled={createPaymentMutation.isPending || updatePaymentMutation.isPending}
+                    disabled={isSelectedMemberExpired || createPaymentMutation.isPending || updatePaymentMutation.isPending}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
                     {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
@@ -950,7 +995,7 @@ export function MembersPage() {
                             <TableHead className="text-xs">Amount</TableHead>
                             <TableHead className="text-xs">Mode</TableHead>
                             <TableHead className="text-xs">Next Due</TableHead>
-                            <TableHead className="text-xs w-[50px]"></TableHead>
+                            {!isSelectedMemberExpired && <TableHead className="text-xs w-[50px]"></TableHead>}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -975,11 +1020,13 @@ export function MembersPage() {
                               <TableCell className="text-xs text-muted-foreground">
                                 {payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd MMM yy') : '-'}
                               </TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                              </TableCell>
+                              {!isSelectedMemberExpired && (
+                                <TableCell>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </TableCell>
+                              )}
                             </TableRow>
                           ))}
                         </TableBody>
@@ -997,6 +1044,15 @@ export function MembersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Membership Renewal Dialog */}
+      <MembershipRenewalDialog
+        open={renewalDialogOpen}
+        onOpenChange={setRenewalDialogOpen}
+        member={selectedMemberForRenewal}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
+      />
     </div>
   );
 }
+
