@@ -73,6 +73,7 @@ const coursePackageSchema = z.object({
         z.number({ required_error: 'Max discount is required', invalid_type_error: 'Max discount is required' }).min(0, 'Max discount must be a positive number')
     ),
     discountType: z.enum(['PERCENTAGE', 'AMOUNT'], { required_error: 'Discount type is required' }),
+    coursePackageType: z.enum(['REGULAR', 'PT'], { required_error: 'Package type is required' }),
 });
 
 type CoursePackageFormData = z.infer<typeof coursePackageSchema>;
@@ -88,6 +89,7 @@ export function CoursePackagesPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [packageTypeFilter, setPackageTypeFilter] = useState<string>('all');
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -106,14 +108,15 @@ export function CoursePackagesPage() {
     }, [search]);
 
     const { data: packagesData, isLoading, error } = useQuery({
-        queryKey: ['coursePackages', page, debouncedSearch, statusFilter, sortBy, sortOrder],
+        queryKey: ['coursePackages', page, debouncedSearch, statusFilter, packageTypeFilter, sortBy, sortOrder],
         queryFn: () => gymOwnerService.getCoursePackages(
             page,
             ITEMS_PER_PAGE,
             debouncedSearch || undefined,
             statusFilter === 'all' ? undefined : statusFilter === 'active',
             sortBy,
-            sortOrder
+            sortOrder,
+            packageTypeFilter === 'all' ? undefined : packageTypeFilter as 'REGULAR' | 'PT'
         ),
     });
 
@@ -121,6 +124,7 @@ export function CoursePackagesPage() {
         resolver: zodResolver(coursePackageSchema),
         defaultValues: {
             discountType: 'PERCENTAGE',
+            coursePackageType: 'REGULAR',
         },
     });
 
@@ -208,6 +212,7 @@ export function CoursePackagesPage() {
         setValueEdit('fees', pkg.fees);
         setValueEdit('maxDiscount', pkg.maxDiscount);
         setValueEdit('discountType', pkg.discountType);
+        setValueEdit('coursePackageType', pkg.coursePackageType || 'REGULAR');
         setValueEdit('isActive', pkg.isActive);
         setEditDialogOpen(true);
     };
@@ -327,6 +332,27 @@ export function CoursePackagesPage() {
                                 )}
                             </div>
                             <div className="space-y-2">
+                                <Label htmlFor="coursePackageType">Package Type *</Label>
+                                <Controller
+                                    name="coursePackageType"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select package type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
+                                                <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.coursePackageType && (
+                                    <p className="text-sm text-red-500">{errors.coursePackageType.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="maxDiscount">Max Discount *</Label>
                                 <Input
                                     id="maxDiscount"
@@ -419,6 +445,16 @@ export function CoursePackagesPage() {
                                 <SelectItem value="all">All Status</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={packageTypeFilter} onValueChange={(val) => { setPackageTypeFilter(val); setPage(1); }}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Package Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="REGULAR">💪 Regular</SelectItem>
+                                <SelectItem value="PT">🏋️ PT</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -553,6 +589,27 @@ export function CoursePackagesPage() {
                                             <TableHead
                                                 className="cursor-pointer hover:bg-muted/50"
                                                 onClick={() => {
+                                                    if (sortBy === 'coursePackageType') {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy('coursePackageType');
+                                                        setSortOrder('asc');
+                                                    }
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Package Type
+                                                    {sortBy === 'coursePackageType' ? (
+                                                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                            </TableHead>
+                                            <TableHead
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => {
                                                     if (sortBy === 'isActive') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                                                     } else {
@@ -632,6 +689,11 @@ export function CoursePackagesPage() {
                                                 <TableCell>
                                                     <Badge variant="outline">
                                                         {pkg.discountType === 'PERCENTAGE' ? 'Percentage' : 'Amount'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={pkg.coursePackageType === 'PT' ? 'bg-purple-500 text-white' : 'bg-blue-500 text-white'}>
+                                                        {pkg.coursePackageType === 'PT' ? '🏋️ PT' : '💪 Regular'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
@@ -774,6 +836,27 @@ export function CoursePackagesPage() {
                             />
                             {errorsEdit.discountType && (
                                 <p className="text-sm text-red-500">{errorsEdit.discountType.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="editCoursePackageType">Package Type *</Label>
+                            <Controller
+                                name="coursePackageType"
+                                control={controlEdit}
+                                render={({ field }) => (
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select package type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
+                                            <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {errorsEdit.coursePackageType && (
+                                <p className="text-sm text-red-500">{errorsEdit.coursePackageType.message}</p>
                             )}
                         </div>
                         <div className="space-y-2">

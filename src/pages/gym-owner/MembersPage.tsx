@@ -6,7 +6,8 @@ import {
   Plus, Search, MoreVertical, Eye, Edit, Phone, Calendar,
   UserPlus, ChevronLeft, ChevronRight, CheckCircle, XCircle, User,
   MapPin, Heart, Droplets, Briefcase, FileText, MessageSquare,
-  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Pencil, Download, RefreshCw, AlertTriangle,
+  Filter, X, IndianRupee, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Pencil, Download, RefreshCw, AlertTriangle, Dumbbell,
+  PauseCircle, PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,9 @@ import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { ExportButton } from '@/components/ui/export-button';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
+import { AddPTMembershipDialog } from '@/components/AddPTMembershipDialog';
+import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
+import { EditPTMembershipDialog } from '@/components/EditPTMembershipDialog';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -72,6 +76,7 @@ export function MembersPage() {
   const [selectedMemberForPayment, setSelectedMemberForPayment] = useState<Member | null>(null);
   const [editingPayment, setEditingPayment] = useState<BalancePayment | null>(null);
   const [paymentForm, setPaymentForm] = useState<CreateBalancePayment>({
+    paymentFor: 'REGULAR',
     paymentDate: new Date().toISOString().split('T')[0],
     paidFees: 0,
     payMode: 'Cash',
@@ -83,6 +88,18 @@ export function MembersPage() {
   // Membership Renewal State
   const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
   const [selectedMemberForRenewal, setSelectedMemberForRenewal] = useState<Member | null>(null);
+
+  // PT Membership State
+  const [ptDialogOpen, setPtDialogOpen] = useState(false);
+  const [selectedMemberForPT, setSelectedMemberForPT] = useState<Member | null>(null);
+
+  // Pause PT Membership State
+  const [pausePtDialogOpen, setPausePtDialogOpen] = useState(false);
+  const [selectedMemberForPausePT, setSelectedMemberForPausePT] = useState<Member | null>(null);
+
+  // Edit PT Membership State
+  const [editPtDialogOpen, setEditPtDialogOpen] = useState(false);
+  const [selectedMemberForEditPT, setSelectedMemberForEditPT] = useState<Member | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -164,6 +181,7 @@ export function MembersPage() {
 
   const resetPaymentForm = () => {
     setPaymentForm({
+      paymentFor: selectedMemberForPayment?.memberType === 'PT' ? 'PT' : 'REGULAR',
       paymentDate: new Date().toISOString().split('T')[0],
       paidFees: 0,
       payMode: 'Cash',
@@ -177,9 +195,13 @@ export function MembersPage() {
   const openBalancePaymentDialog = (member: Member) => {
     setSelectedMemberForPayment(member);
     setPaymentForm({
-      ...paymentForm,
+      paymentFor: member.memberType === 'PT' ? 'PT' : 'REGULAR',
       paymentDate: new Date().toISOString().split('T')[0],
+      paidFees: 0,
+      payMode: 'Cash',
       contactNo: member.phone || '',
+      nextPaymentDate: '',
+      notes: '',
     });
     setBalancePaymentDialogOpen(true);
   };
@@ -231,9 +253,19 @@ export function MembersPage() {
     });
   };
 
-  // Calculate totals for balance payment dialog
+  // Calculate totals for balance payment dialog - now with separate Regular/PT tracking
+  const regularPayments = useMemo(() => balancePayments.filter(p => p.paymentFor === 'REGULAR' || !p.paymentFor), [balancePayments]);
+  const ptPayments = useMemo(() => balancePayments.filter(p => p.paymentFor === 'PT'), [balancePayments]);
+
+  const regularPaidFees = useMemo(() => regularPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [regularPayments]);
+  const ptPaidFees = useMemo(() => ptPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [ptPayments]);
   const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
-  const balanceFees = useMemo(() => (selectedMemberForPayment?.finalFees || 0) - totalPaidFees, [selectedMemberForPayment, totalPaidFees]);
+
+  const regularBalance = useMemo(() => (selectedMemberForPayment?.finalFees || 0) - regularPaidFees, [selectedMemberForPayment, regularPaidFees]);
+  const ptBalance = useMemo(() => (selectedMemberForPayment?.ptFinalFees || 0) - ptPaidFees, [selectedMemberForPayment, ptPaidFees]);
+  const balanceFees = useMemo(() => regularBalance + ptBalance, [regularBalance, ptBalance]);
+
+  const hasPTMembership = useMemo(() => selectedMemberForPayment?.memberType === 'PT' || selectedMemberForPayment?.memberType === 'REGULAR_PT', [selectedMemberForPayment]);
 
   // Check if selected member's membership is expired (for Balance Payment dialog)
   const isSelectedMemberExpired = useMemo(() => {
@@ -491,9 +523,10 @@ export function MembersPage() {
                   <Select value={memberTypeFilter} onValueChange={(v) => { setMemberTypeFilter(v); setPage(1); }}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="REGULAR">Regular</SelectItem>
-                      <SelectItem value="PT">PT Member</SelectItem>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="REGULAR">Regular Only</SelectItem>
+                      <SelectItem value="PT">PT Only</SelectItem>
+                      <SelectItem value="REGULAR_PT">Regular + PT</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -595,9 +628,9 @@ export function MembersPage() {
                       <TableHead className="w-[50px]">#</TableHead>
                       <SortableHeader column="firstName" label="Member" />
                       <SortableHeader column="memberId" label="Member ID" />
+                      <TableHead>Type</TableHead>
                       <SortableHeader column="phone" label="Phone" />
-                      <SortableHeader column="gender" label="Gender" />
-                      <SortableHeader column="finalFees" label="Final Fees" />
+                      <SortableHeader column="finalFees" label="Fees" />
                       <SortableHeader column="membershipEnd" label="Membership End" />
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[80px]">Actions</TableHead>
@@ -628,10 +661,40 @@ export function MembersPage() {
                             </div>
                           </TableCell>
                           <TableCell><Badge variant="outline" className="font-mono text-xs">{member.memberId || '-'}</Badge></TableCell>
-                          <TableCell className="text-sm">{member.phone || '-'}</TableCell>
-                          <TableCell className="text-sm">{member.gender || '-'}</TableCell>
                           <TableCell>
-                            {member.finalFees !== undefined ? (
+                            {member.memberType === 'REGULAR_PT' ? (
+                              <div className="flex items-center gap-1">
+                                <Badge className="bg-blue-500 text-white text-[10px] px-1.5">REG</Badge>
+                                <Badge className="bg-purple-600 text-white text-[10px] px-1.5">
+                                  <Dumbbell className="h-2.5 w-2.5 mr-0.5" />PT
+                                </Badge>
+                              </div>
+                            ) : member.memberType === 'PT' ? (
+                              <Badge className="bg-purple-600 text-white text-xs">
+                                <Dumbbell className="h-3 w-3 mr-1" />PT Member
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">
+                                Regular
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{member.phone || '-'}</TableCell>
+                          <TableCell>
+                            {member.memberType === 'REGULAR_PT' ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="flex items-center text-blue-600 text-xs">
+                                  <IndianRupee className="h-2.5 w-2.5" />{(member.finalFees || 0).toLocaleString('en-IN')}
+                                </span>
+                                <span className="flex items-center text-purple-600 text-xs">
+                                  <IndianRupee className="h-2.5 w-2.5" />{(member.ptFinalFees || 0).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            ) : member.memberType === 'PT' ? (
+                              <span className="flex items-center text-purple-600 font-medium text-sm">
+                                <IndianRupee className="h-3 w-3" />{(member.ptFinalFees || member.finalFees || 0).toLocaleString('en-IN')}
+                              </span>
+                            ) : member.finalFees !== undefined ? (
                               <span className="flex items-center text-green-600 font-medium text-sm">
                                 <IndianRupee className="h-3 w-3" />{member.finalFees.toLocaleString('en-IN')}
                               </span>
@@ -670,6 +733,47 @@ export function MembersPage() {
                                 >
                                   <RefreshCw className="mr-2 h-4 w-4" />Renew Membership
                                 </DropdownMenuItem>
+                                {/* PT Membership Actions */}
+                                {member.memberType === 'REGULAR' && (
+                                  <DropdownMenuItem
+                                    onClick={() => { setSelectedMemberForPT(member); setPtDialogOpen(true); }}
+                                    className="text-purple-600"
+                                    disabled={member.isActive === false}
+                                  >
+                                    <Dumbbell className="mr-2 h-4 w-4" />Add PT Membership
+                                  </DropdownMenuItem>
+                                )}
+                                {(member.memberType === 'PT' || member.memberType === 'REGULAR_PT') && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleView(member)}
+                                    className="text-purple-600"
+                                    disabled={member.isActive === false}
+                                  >
+                                    <Dumbbell className="mr-2 h-4 w-4" />View PT Details
+                                  </DropdownMenuItem>
+                                )}
+                                {member.memberType === 'REGULAR_PT' && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => { setSelectedMemberForEditPT(member); setEditPtDialogOpen(true); }}
+                                      className="text-blue-600"
+                                      disabled={member.isActive === false}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />Edit PT Membership
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => { setSelectedMemberForPausePT(member); setPausePtDialogOpen(true); }}
+                                      className={member.ptInfo?.isPaused ? 'text-green-600' : 'text-amber-600'}
+                                      disabled={member.isActive === false}
+                                    >
+                                      {member.ptInfo?.isPaused ? (
+                                        <><PlayCircle className="mr-2 h-4 w-4" />Resume PT Membership</>
+                                      ) : (
+                                        <><PauseCircle className="mr-2 h-4 w-4" />Pause PT Membership</>
+                                      )}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -728,7 +832,23 @@ export function MembersPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-xl font-bold">{viewingMember.firstName && viewingMember.lastName ? `${viewingMember.firstName} ${viewingMember.lastName}` : viewingMember.user?.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold">{viewingMember.firstName && viewingMember.lastName ? `${viewingMember.firstName} ${viewingMember.lastName}` : viewingMember.user?.name}</h3>
+                    {viewingMember.memberType === 'REGULAR_PT' ? (
+                      <div className="flex items-center gap-1">
+                        <Badge className="bg-blue-500 text-white text-[10px] px-1.5">REG</Badge>
+                        <Badge className="bg-purple-600 text-white text-[10px] px-1.5">
+                          <Dumbbell className="h-2.5 w-2.5 mr-0.5" />PT
+                        </Badge>
+                      </div>
+                    ) : viewingMember.memberType === 'PT' ? (
+                      <Badge className="bg-purple-600 text-white text-xs">
+                        <Dumbbell className="h-3 w-3 mr-1" />PT Member
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">Regular</Badge>
+                    )}
+                  </div>
                   <p className="text-muted-foreground">{viewingMember.email || viewingMember.user?.email}</p>
                   <Badge variant="outline" className="mt-1 font-mono">ID: {viewingMember.memberId || 'N/A'}</Badge>
                 </div>
@@ -760,30 +880,102 @@ export function MembersPage() {
                 </div>
                 <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-purple-500" /><span>SMS: {viewingMember.smsFacility ? 'Enabled' : 'Disabled'}</span></div>
               </div>
-              {/* Fee Details */}
-              {(viewingMember.packageFees !== undefined || viewingMember.finalFees !== undefined) && (
-                <div className="grid grid-cols-4 gap-2 pt-2 border-t">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-center">
-                    <p className="text-[10px] text-blue-600">Package Fees</p>
-                    <p className="text-sm font-bold text-blue-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.packageFees?.toLocaleString('en-IN') || '-'}</p>
+              {/* Regular Membership Fee Details */}
+              {(viewingMember.memberType === 'REGULAR' || viewingMember.memberType === 'REGULAR_PT') && (viewingMember.packageFees !== undefined || viewingMember.finalFees !== undefined) && (
+                <div className="pt-2 border-t">
+                  <h4 className="text-sm font-semibold text-blue-600 mb-2 flex items-center gap-1">
+                    💪 Regular Membership Fees
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-blue-600">Package Fees</p>
+                      <p className="text-sm font-bold text-blue-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.packageFees?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-orange-600">Max Discount</p>
+                      <p className="text-sm font-bold text-orange-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.maxDiscount?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-purple-600">Extra Discount</p>
+                      <p className="text-sm font-bold text-purple-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.extraDiscount?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-green-600">Final Fees</p>
+                      <p className="text-sm font-bold text-green-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.finalFees?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
                   </div>
-                  <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
-                    <p className="text-[10px] text-orange-600">Max Discount</p>
-                    <p className="text-sm font-bold text-orange-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.maxDiscount?.toLocaleString('en-IN') || '-'}</p>
+                </div>
+              )}
+              {/* PT Membership Fee Details */}
+              {(viewingMember.memberType === 'PT' || viewingMember.memberType === 'REGULAR_PT') && (viewingMember.ptPackageFees !== undefined || viewingMember.ptFinalFees !== undefined) && (
+                <div className="pt-2 border-t">
+                  <h4 className="text-sm font-semibold text-purple-600 mb-2 flex items-center gap-1">
+                    <Dumbbell className="h-4 w-4" /> PT Membership Fees
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-purple-600">PT Package</p>
+                      <p className="text-xs font-semibold text-purple-700">{viewingMember.ptPackageName || '-'}</p>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-purple-600">PT Fees</p>
+                      <p className="text-sm font-bold text-purple-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.ptPackageFees?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-orange-600">PT Discount</p>
+                      <p className="text-sm font-bold text-orange-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{((viewingMember.ptMaxDiscount || 0) + (viewingMember.ptExtraDiscount || 0)).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
+                      <p className="text-[10px] text-green-600">PT Final</p>
+                      <p className="text-sm font-bold text-green-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.ptFinalFees?.toLocaleString('en-IN') || '-'}</p>
+                    </div>
                   </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
-                    <p className="text-[10px] text-purple-600">Extra Discount</p>
-                    <p className="text-sm font-bold text-purple-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.extraDiscount?.toLocaleString('en-IN') || '-'}</p>
-                  </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
-                    <p className="text-[10px] text-green-600">Final Fees</p>
-                    <p className="text-sm font-bold text-green-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.finalFees?.toLocaleString('en-IN') || '-'}</p>
-                  </div>
+                  {/* PT Session Info */}
+                  {viewingMember.ptInfo && (
+                    <div className="mt-2 space-y-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                          <p className="text-[10px] text-gray-500">Trainer</p>
+                          <p className="text-xs font-semibold">{viewingMember.ptInfo.trainerName || '-'}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                          <p className="text-[10px] text-gray-500">Sessions Used</p>
+                          <p className="text-xs font-semibold">{viewingMember.ptInfo.sessionsUsed} / {viewingMember.ptInfo.sessionsTotal}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                          <p className="text-[10px] text-gray-500">Remaining</p>
+                          <p className="text-xs font-semibold text-green-600">{viewingMember.ptInfo.sessionsRemaining} sessions</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+                          <p className="text-[10px] text-gray-500">Duration</p>
+                          <p className="text-xs font-semibold">{viewingMember.ptInfo.sessionDuration} min</p>
+                        </div>
+                      </div>
+                      {/* Session Progress Bar */}
+                      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-muted-foreground">Session Progress</span>
+                          <span className="text-[10px] font-semibold text-purple-600">
+                            {Math.round((viewingMember.ptInfo.sessionsUsed / viewingMember.ptInfo.sessionsTotal) * 100)}% Complete
+                          </span>
+                        </div>
+                        <div className="h-2 bg-purple-200 dark:bg-purple-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all"
+                            style={{ width: `${Math.min(100, (viewingMember.ptInfo.sessionsUsed / viewingMember.ptInfo.sessionsTotal) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="pt-2 border-t">
                 <p className="text-sm"><strong>Health Notes:</strong> {viewingMember.healthNotes || 'None'}</p>
                 <p className="text-sm mt-2"><strong>Membership:</strong> {(viewingMember.membershipStart || viewingMember.membershipStartDate) ? format(new Date(viewingMember.membershipStart || viewingMember.membershipStartDate!), 'MMM dd, yyyy') : '-'} to {(viewingMember.membershipEnd || viewingMember.membershipEndDate) ? format(new Date(viewingMember.membershipEnd || viewingMember.membershipEndDate!), 'MMM dd, yyyy') : '-'}</p>
+                {viewingMember.ptInfo && (
+                  <p className="text-sm mt-1"><strong>PT Period:</strong> {viewingMember.ptInfo.startDate ? format(new Date(viewingMember.ptInfo.startDate), 'MMM dd, yyyy') : '-'} to {viewingMember.ptInfo.endDate ? format(new Date(viewingMember.ptInfo.endDate), 'MMM dd, yyyy') : 'Ongoing'}</p>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
@@ -842,7 +1034,7 @@ export function MembersPage() {
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
                   <p className="text-xs text-blue-600 font-medium mb-1">Total Fees</p>
                   <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
-                    <IndianRupee className="h-4 w-4" />{(selectedMemberForPayment.finalFees || 0).toLocaleString('en-IN')}
+                    <IndianRupee className="h-4 w-4" />{((selectedMemberForPayment.finalFees || 0) + (selectedMemberForPayment.ptFinalFees || 0)).toLocaleString('en-IN')}
                   </p>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
@@ -873,6 +1065,46 @@ export function MembersPage() {
                     <div>
                       <p className="font-medium text-sm">Membership Expired</p>
                       <p className="text-xs">Payment cannot be added for expired memberships. Please renew the membership first.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Type Selector - Show for PT and REGULAR_PT members */}
+                {(selectedMemberForPayment.memberType === 'PT' || selectedMemberForPayment.memberType === 'REGULAR_PT') && (
+                  <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border">
+                    <Label className="text-sm font-medium">Payment For:</Label>
+                    <div className="flex items-center gap-4">
+                      {(selectedMemberForPayment.memberType === 'REGULAR_PT') && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentFor"
+                            value="REGULAR"
+                            checked={paymentForm.paymentFor === 'REGULAR'}
+                            onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'REGULAR' })}
+                            className="w-4 h-4 text-blue-600"
+                            disabled={isSelectedMemberExpired}
+                          />
+                          <span className="text-sm flex items-center gap-1">
+                            💪 <span className="text-blue-600 font-medium">Regular Membership</span>
+                          </span>
+                        </label>
+                      )}
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="paymentFor"
+                          value="PT"
+                          checked={paymentForm.paymentFor === 'PT'}
+                          onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'PT' })}
+                          className="w-4 h-4 text-purple-600"
+                          disabled={isSelectedMemberExpired}
+                        />
+                        <span className="text-sm flex items-center gap-1">
+                          <Dumbbell className="h-3.5 w-3.5 text-purple-600" />
+                          <span className="text-purple-600 font-medium">PT Membership</span>
+                        </span>
+                      </label>
                     </div>
                   </div>
                 )}
@@ -991,6 +1223,7 @@ export function MembersPage() {
                         <TableHeader>
                           <TableRow className="bg-muted/50">
                             <TableHead className="text-xs">Receipt</TableHead>
+                            {hasPTMembership && <TableHead className="text-xs">Type</TableHead>}
                             <TableHead className="text-xs">Date</TableHead>
                             <TableHead className="text-xs">Amount</TableHead>
                             <TableHead className="text-xs">Mode</TableHead>
@@ -1004,6 +1237,13 @@ export function MembersPage() {
                               <TableCell className="text-xs">
                                 <Badge variant="secondary" className="text-[10px] font-mono">{payment.receiptNo || '-'}</Badge>
                               </TableCell>
+                              {hasPTMembership && (
+                                <TableCell className="text-xs">
+                                  <Badge className={`text-[10px] ${payment.paymentFor === 'PT' ? 'bg-purple-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                    {payment.paymentFor === 'PT' ? '🏋️ PT' : '💪 REG'}
+                                  </Badge>
+                                </TableCell>
+                              )}
                               <TableCell className="text-xs">
                                 {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yy') : '-'}
                               </TableCell>
@@ -1052,7 +1292,30 @@ export function MembersPage() {
         member={selectedMemberForRenewal}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
       />
+
+      {/* Add PT Membership Dialog */}
+      <AddPTMembershipDialog
+        open={ptDialogOpen}
+        onOpenChange={setPtDialogOpen}
+        member={selectedMemberForPT}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
+      />
+
+      {/* Pause/Resume PT Membership Dialog */}
+      <PausePTMembershipDialog
+        open={pausePtDialogOpen}
+        onOpenChange={setPausePtDialogOpen}
+        member={selectedMemberForPausePT}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
+      />
+
+      {/* Edit PT Membership Dialog */}
+      <EditPTMembershipDialog
+        open={editPtDialogOpen}
+        onOpenChange={setEditPtDialogOpen}
+        member={selectedMemberForEditPT}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
+      />
     </div>
   );
 }
-
