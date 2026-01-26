@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format, addYears } from 'date-fns';
+import { format, addYears, addMonths } from 'date-fns';
 import {
-    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee,
+    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { BMICalculator } from '@/components/BMICalculator';
 import type { CoursePackage } from '@/types';
 
 const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
@@ -66,6 +67,7 @@ export function MemberFormPage() {
     const [photoPreview, setPhotoPreview] = useState<string>('');
     const [docPreview, setDocPreview] = useState<string>('');
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
+    const [showBMICalculator, setShowBMICalculator] = useState(false);
 
     const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<MemberFormData>({
         resolver: zodResolver(memberSchema),
@@ -78,12 +80,24 @@ export function MemberFormPage() {
     });
 
     const extraDiscount = watch('extraDiscount') || 0;
+    const membershipStartDate = watch('membershipStartDate');
 
     // Fetch active course packages
     const { data: coursePackages = [] } = useQuery({
         queryKey: ['activeCoursePackages'],
         queryFn: () => gymOwnerService.getActiveCoursePackages(),
     });
+
+    // Auto-calculate end date when start date changes and package with months is selected
+    useEffect(() => {
+        if (selectedPackage && membershipStartDate) {
+            const months = selectedPackage.Months || selectedPackage.months || 0;
+            if (months > 0) {
+                const endDate = addMonths(new Date(membershipStartDate), months);
+                setValue('membershipEndDate', format(endDate, 'yyyy-MM-dd'));
+            }
+        }
+    }, [membershipStartDate, selectedPackage, setValue]);
 
     // Invalidate member query when id changes to ensure fresh data
     useEffect(() => {
@@ -249,6 +263,18 @@ export function MemberFormPage() {
         setValue('coursePackageId', packageId);
         const pkg = coursePackages.find((p: CoursePackage) => p.id === packageId);
         setSelectedPackage(pkg || null);
+
+        // Auto-calculate end date based on package months
+        if (pkg) {
+            const months = pkg.Months || pkg.months || 0;
+            if (months > 0) {
+                const startDate = watch('membershipStartDate');
+                if (startDate) {
+                    const endDate = addMonths(new Date(startDate), months);
+                    setValue('membershipEndDate', format(endDate, 'yyyy-MM-dd'));
+                }
+            }
+        }
     };
 
     const isPending = createMutation.isPending || updateMutation.isPending;
@@ -261,246 +287,466 @@ export function MemberFormPage() {
 
     return (
         <div className="h-full flex flex-col">
-            {/* Compact Header */}
-            <div className="flex items-center justify-between py-2 px-1 border-b bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/gym-owner/members')} className="h-7 w-7 p-0">
+            {/* Header - Same style as AddPTMembershipPage */}
+            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/gym-owner/members')} className="h-8 w-8">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <h1 className="text-base font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                        {isEditMode ? 'Edit Member' : 'Add New Member'}
-                    </h1>
+                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg">
+                        <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            {isEditMode ? 'Edit Member' : 'Add New Member'}
+                        </h1>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => navigate('/gym-owner/members')} className="h-7 text-xs">Cancel</Button>
-                    <Button size="sm" onClick={handleSubmit(onSubmit)} disabled={isPending} className="h-7 text-xs bg-gradient-to-r from-purple-600 to-blue-600">
-                        {isPending ? <Spinner className="h-3 w-3" /> : <><Save className="h-3 w-3 mr-1" />{isEditMode ? 'Update' : 'Create'}</>}
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => navigate('/gym-owner/members')} className="hidden sm:flex">
+                        Cancel
+                    </Button>
+                    <Button 
+                        size="sm" 
+                        onClick={handleSubmit(onSubmit)} 
+                        disabled={isPending} 
+                        className="bg-gradient-to-r from-purple-600 to-blue-600"
+                    >
+                        {isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4 mr-1" />{isEditMode ? 'Update' : 'Create'}</>}
                     </Button>
                 </div>
             </div>
 
-            {/* Form Content */}
-            <form onSubmit={handleSubmit(onSubmit)} className="flex-1 p-3 grid grid-cols-12 gap-3">
-                {/* Left Column - Photo & ID Document */}
-                <div className="col-span-2 flex flex-col items-center gap-3">
-                    {/* Photo Upload */}
-                    <div className="w-full flex flex-col items-center">
-                        <Label className="text-[10px] mb-1">Photo</Label>
-                        <div className="relative w-full aspect-[3/4] max-w-[100px] border-2 border-dashed border-purple-300 rounded-lg overflow-hidden bg-purple-50 flex items-center justify-center">
-                            {photoPreview ? (
-                                <>
-                                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                                    <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(''); }}
-                                        className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full"><X className="h-2.5 w-2.5" /></button>
-                                </>
-                            ) : (
-                                <div className="text-center"><Camera className="h-6 w-6 mx-auto text-purple-400" /><span className="text-[10px] text-purple-400">Photo</span></div>
-                            )}
-                        </div>
-                        <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} className="hidden" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} className="mt-1 text-[10px] h-6 w-full max-w-[100px]">
-                            <Upload className="h-2.5 w-2.5 mr-1" />{photoPreview ? 'Change' : 'Upload'}
-                        </Button>
-                    </div>
+            {/* Main Content - Full Page Responsive */}
+            <div className="flex-1 overflow-auto p-3 md:p-4 lg:p-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="h-full max-w-7xl mx-auto">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 md:p-6">
+                        
+                        {/* Top Section: Photo/Document + Membership & Fees side by side */}
+                        <div className="flex flex-col lg:flex-row gap-4 mb-6 pb-6 border-b">
+                            {/* Left: Photo & Document */}
+                            <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                                {/* Photo Upload */}
+                                <div className="flex flex-col items-center">
+                                    <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                        <Camera className="h-4 w-4 text-purple-600" /> Photo
+                                    </Label>
+                                    <div className="relative w-24 h-32 border-2 border-dashed border-purple-300 rounded-xl overflow-hidden bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                                        {photoPreview ? (
+                                            <>
+                                                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(''); }}
+                                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="text-center">
+                                                <Camera className="h-6 w-6 mx-auto text-purple-400" />
+                                                <span className="text-[10px] text-purple-400 mt-1 block">Photo</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} className="hidden" />
+                                    <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} className="mt-2 h-8 text-xs">
+                                        <Upload className="h-3 w-3 mr-1" />{photoPreview ? 'Change' : 'Upload'}
+                                    </Button>
+                                </div>
 
-                    {/* ID Document Upload */}
-                    <div className="w-full flex flex-col items-center">
-                        <Label className="text-[10px] mb-1">ID Document</Label>
-                        <div className="relative w-full aspect-[4/3] max-w-[130px] border-2 border-dashed border-blue-300 rounded-lg overflow-hidden bg-blue-50 flex items-center justify-center">
-                            {docPreview ? (
-                                docPreview.startsWith('data:image') || docPreview.startsWith('http') ? (
-                                    <>
-                                        <img src={docPreview} alt="ID Preview" className="w-full h-full object-cover" />
-                                        <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
-                                            className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full"><X className="h-2.5 w-2.5" /></button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="text-center p-1">
-                                            <CheckCircle className="h-6 w-6 mx-auto text-green-500" />
-                                            <span className="text-[8px] text-blue-600 break-all">{docPreview.length > 15 ? docPreview.substring(0, 15) + '...' : docPreview}</span>
+                                {/* ID Document Upload */}
+                                <div className="flex flex-col items-center">
+                                    <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                        <FileText className="h-4 w-4 text-blue-600" /> ID Doc
+                                    </Label>
+                                    <div className="relative w-32 h-24 border-2 border-dashed border-blue-300 rounded-xl overflow-hidden bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                                        {docPreview ? (
+                                            docPreview.startsWith('data:image') || docPreview.startsWith('http') ? (
+                                                <>
+                                                    <img src={docPreview} alt="ID Preview" className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="text-center p-1">
+                                                        <CheckCircle className="h-6 w-6 mx-auto text-green-500" />
+                                                        <span className="text-[10px] text-blue-600 break-all">{docPreview.length > 12 ? docPreview.substring(0, 12) + '...' : docPreview}</span>
+                                                    </div>
+                                                    <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
+                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </>
+                                            )
+                                        ) : (
+                                            <div className="text-center">
+                                                <Upload className="h-6 w-6 mx-auto text-blue-400" />
+                                                <span className="text-[10px] text-blue-400 mt-1 block">ID Doc</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'doc')} className="hidden" />
+                                    <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="mt-2 h-8 text-xs">
+                                        <Upload className="h-3 w-3 mr-1" />{docPreview ? 'Change' : 'Upload'}
+                                    </Button>
+                                    {/* ID Proof Type */}
+                                    <Select onValueChange={(v) => setValue('idProofType', v)} value={watch('idProofType')}>
+                                        <SelectTrigger className="h-8 text-xs mt-2 w-full"><SelectValue placeholder="ID Type" /></SelectTrigger>
+                                        <SelectContent>{ID_PROOF_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Right: Membership & Fees Section */}
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-bold text-green-700 mb-3 flex items-center gap-2 pb-2 border-b border-green-200">
+                                    <IndianRupee className="h-4 w-4" /> Membership & Fees
+                                </h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {/* Course Package */}
+                                    <div>
+                                        <Label className="text-xs font-semibold text-green-700 mb-1 block">Course Package</Label>
+                                        <Select onValueChange={handlePackageChange} value={watch('coursePackageId')}>
+                                            <SelectTrigger className="h-10"><SelectValue placeholder="Select Package" /></SelectTrigger>
+                                            <SelectContent>
+                                                {coursePackages.map((pkg: CoursePackage) => {
+                                                    const months = pkg.Months || pkg.months || 0;
+                                                    return (
+                                                        <SelectItem key={pkg.id} value={pkg.id}>
+                                                            {pkg.packageName} - ₹{pkg.fees.toLocaleString()} - {months} {months === 1 ? 'Month' : 'Months'}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Membership Start */}
+                                    <div>
+                                        <Label className="text-xs font-semibold mb-1 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3 text-blue-600" /> Start <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input 
+                                            {...register('membershipStartDate')} 
+                                            type="date" 
+                                            className={`h-10 ${errors.membershipStartDate ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                        />
+                                        {errors.membershipStartDate && (
+                                            <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1">
+                                                <AlertTriangle className="h-2.5 w-2.5" />{errors.membershipStartDate.message}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Membership End */}
+                                    <div>
+                                        <Label className="text-xs font-semibold mb-1 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3 text-blue-600" /> End <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input 
+                                            {...register('membershipEndDate')} 
+                                            type="date" 
+                                            className={`h-10 ${errors.membershipEndDate ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                        />
+                                        {errors.membershipEndDate && (
+                                            <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1">
+                                                <AlertTriangle className="h-2.5 w-2.5" />{errors.membershipEndDate.message}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Extra Discount */}
+                                    <div>
+                                        <Label className="text-xs font-semibold mb-1 block">Extra Discount</Label>
+                                        <div className="relative">
+                                            <IndianRupee className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                {...register('extraDiscount', { valueAsNumber: true })}
+                                                placeholder="0"
+                                                className="h-10 pl-7"
+                                            />
                                         </div>
-                                        <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
-                                            className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full"><X className="h-2.5 w-2.5" /></button>
-                                    </>
-                                )
-                            ) : (
-                                <div className="text-center"><Upload className="h-6 w-6 mx-auto text-blue-400" /><span className="text-[10px] text-blue-400">ID Doc</span></div>
-                            )}
-                        </div>
-                        <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'doc')} className="hidden" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="mt-1 text-[10px] h-6 w-full max-w-[130px]">
-                            <Upload className="h-2.5 w-2.5 mr-1" />{docPreview ? 'Change' : 'Upload'}
-                        </Button>
-                        {/* ID Proof Type Dropdown */}
-                        <div className="w-full max-w-[130px] mt-2">
-                            <Label className="text-[10px]">ID Proof Type</Label>
-                            <Select onValueChange={(v) => setValue('idProofType', v)} value={watch('idProofType')}>
-                                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent>{ID_PROOF_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                </div>
+                                    </div>
 
-                {/* Right Content - All Fields */}
-                <div className="col-span-10 grid grid-cols-6 gap-x-3 gap-y-2">
-                    {/* Row 1: Basic Info */}
-                    <div>
-                        <Label className="text-[10px]">First Name <span className="text-red-500">*</span></Label>
-                        <Input {...register('firstName')} placeholder="First Name" className={`h-7 text-xs ${errors.firstName ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Last Name <span className="text-red-500">*</span></Label>
-                        <Input {...register('lastName')} placeholder="Last Name" className={`h-7 text-xs ${errors.lastName ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Email <span className="text-red-500">*</span></Label>
-                        <Input {...register('email')} type="email" placeholder="Email" className={`h-7 text-xs ${errors.email ? 'border-red-500' : ''}`} />
-                    </div>
-                    {!isEditMode && (
-                        <div>
-                            <Label className="text-[10px]">Password <span className="text-red-500">*</span></Label>
-                            <Input {...register('password')} type="password" placeholder="Password" className={`h-7 text-xs ${errors.password ? 'border-red-500' : ''}`} />
-                        </div>
-                    )}
-                    <div>
-                        <Label className="text-[10px]">Contact No. <span className="text-red-500">*</span></Label>
-                        <Input {...register('phone')} placeholder="Phone" className={`h-7 text-xs ${errors.phone ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Alt Contact</Label>
-                        <Input {...register('altContactNo')} placeholder="Alt Phone" className="h-7 text-xs" />
-                    </div>
-                    {isEditMode && <div />}
-
-                    {/* Row 2: Personal Info */}
-                    <div>
-                        <Label className="text-[10px]">Date of Birth <span className="text-red-500">*</span></Label>
-                        <Input {...register('dateOfBirth')} type="date" className={`h-7 text-xs ${errors.dateOfBirth ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Gender <span className="text-red-500">*</span></Label>
-                        <Select onValueChange={(v) => setValue('gender', v as any)} value={watch('gender')}>
-                            <SelectTrigger className={`h-7 text-xs ${errors.gender ? 'border-red-500' : ''}`}><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Male">Male</SelectItem>
-                                <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Marital Status</Label>
-                        <Select onValueChange={(v) => setValue('maritalStatus', v as any)} value={watch('maritalStatus')}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>{MARITAL_STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Blood Group</Label>
-                        <Select onValueChange={(v) => setValue('bloodGroup', v as any)} value={watch('bloodGroup')}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>{BLOOD_GROUPS.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Anniversary</Label>
-                        <Input {...register('anniversaryDate')} type="date" className="h-7 text-xs" />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Occupation</Label>
-                        <Input {...register('occupation')} placeholder="Occupation" className="h-7 text-xs" />
-                    </div>
-
-                    {/* Row 3: Address + Emergency Contact + SMS */}
-                    <div className="col-span-3">
-                        <Label className="text-[10px]">Address</Label>
-                        <Input {...register('address')} placeholder="Full Address" className="h-7 text-xs" />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Emergency Contact</Label>
-                        <Input {...register('emergencyContact')} placeholder="Emergency Phone" className="h-7 text-xs" />
-                    </div>
-                    <div className="flex items-end">
-                        <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded h-7">
-                            <Label className="text-[10px]">SMS</Label>
-                            <Switch checked={watch('smsFacility')} onCheckedChange={(c) => setValue('smsFacility', c)} className="scale-75" />
-                        </div>
-                    </div>
-                    <div />
-
-                    {/* Row 4: Course Package & Membership */}
-                    <div>
-                        <Label className="text-[10px]">Course Package</Label>
-                        <Select onValueChange={handlePackageChange} value={watch('coursePackageId')}>
-                            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select Package" /></SelectTrigger>
-                            <SelectContent>
-                                {coursePackages.map((pkg: CoursePackage) => (
-                                    <SelectItem key={pkg.id} value={pkg.id}>{pkg.packageName}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Membership Start <span className="text-red-500">*</span></Label>
-                        <Input {...register('membershipStartDate')} type="date" className={`h-7 text-xs ${errors.membershipStartDate ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Membership End <span className="text-red-500">*</span></Label>
-                        <Input {...register('membershipEndDate')} type="date" className={`h-7 text-xs ${errors.membershipEndDate ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div>
-                        <Label className="text-[10px]">Extra Discount</Label>
-                        <Input
-                            type="number"
-                            min="0"
-                            {...register('extraDiscount', { valueAsNumber: true })}
-                            placeholder="0"
-                            className="h-7 text-xs"
-                        />
-                    </div>
-                    <div className="col-span-2" />
-
-                    {/* Row 5: Fee Details - Attractive Readonly Display */}
-                    {selectedPackage && feeDetails && (
-                        <div className="col-span-6 mt-1">
-                            <div className="grid grid-cols-4 gap-2">
-                                <div className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 p-2 rounded-lg border border-blue-200 dark:border-blue-800">
-                                    <p className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">Package Fees</p>
-                                    <p className="text-sm font-bold text-blue-700 dark:text-blue-300 flex items-center">
-                                        <IndianRupee className="h-3 w-3" />{feeDetails.packageFees.toLocaleString('en-IN')}
-                                    </p>
+                                    {/* Fee Details Cards - Inline */}
+                                    {selectedPackage && feeDetails && (
+                                        <>
+                                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 p-2 rounded-lg border border-blue-200">
+                                                <p className="text-[10px] text-blue-600 font-medium">Package Fees</p>
+                                                <p className="text-sm font-bold text-blue-700 flex items-center">
+                                                    <IndianRupee className="h-3 w-3" />{feeDetails.packageFees.toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 p-2 rounded-lg border border-orange-200">
+                                                <p className="text-[10px] text-orange-600 font-medium">Max Discount</p>
+                                                <p className="text-sm font-bold text-orange-700 flex items-center">
+                                                    <IndianRupee className="h-3 w-3" />{feeDetails.maxDiscountAmount.toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 p-2 rounded-lg border border-purple-200">
+                                                <p className="text-[10px] text-purple-600 font-medium">After Discount</p>
+                                                <p className="text-sm font-bold text-purple-700 flex items-center">
+                                                    <IndianRupee className="h-3 w-3" />{feeDetails.afterDiscount.toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 p-2 rounded-lg border-2 border-green-300">
+                                                <p className="text-[10px] text-green-600 font-semibold">Final Fees</p>
+                                                <p className="text-base font-bold text-green-700 flex items-center">
+                                                    <IndianRupee className="h-4 w-4" />{feeDetails.finalFees.toLocaleString('en-IN')}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                                <div className="bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 p-2 rounded-lg border border-orange-200 dark:border-orange-800">
-                                    <p className="text-[9px] text-orange-600 dark:text-orange-400 font-medium">Max Discount</p>
-                                    <p className="text-sm font-bold text-orange-700 dark:text-orange-300 flex items-center">
-                                        <IndianRupee className="h-3 w-3" />{feeDetails.maxDiscountAmount.toLocaleString('en-IN')}
-                                    </p>
-                                </div>
-                                <div className="bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 p-2 rounded-lg border border-purple-200 dark:border-purple-800">
-                                    <p className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">After Discount</p>
-                                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300 flex items-center">
-                                        <IndianRupee className="h-3 w-3" />{feeDetails.afterDiscount.toLocaleString('en-IN')}
-                                    </p>
-                                </div>
-                                <div className="bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 p-2 rounded-lg border border-green-200 dark:border-green-800">
-                                    <p className="text-[9px] text-green-600 dark:text-green-400 font-medium">Final Fees</p>
-                                    <p className="text-lg font-bold text-green-700 dark:text-green-300 flex items-center">
-                                        <IndianRupee className="h-4 w-4" />{feeDetails.finalFees.toLocaleString('en-IN')}
-                                    </p>
+                            </div>
+
+                            {/* SMS Facility Toggle - Desktop */}
+                            <div className="hidden lg:flex flex-col items-center justify-start shrink-0">
+                                <div className="bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-3 rounded-xl border">
+                                    <Label className="text-xs font-semibold mb-2 block text-center">SMS</Label>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <Switch checked={watch('smsFacility')} onCheckedChange={(c) => setValue('smsFacility', c)} />
+                                        <span className="text-xs font-medium">{watch('smsFacility') ? 'ON' : 'OFF'}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {/* Row 6: Health Notes */}
-                    <div className="col-span-6">
-                        <Label className="text-[10px]">Health Notes</Label>
-                        <Textarea {...register('healthNotes')} placeholder="Health conditions, allergies, medical history..." className="text-xs resize-none h-12" rows={2} />
+                        {/* Form Grid - Personal Information */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+                            
+                            {/* Personal Information Section */}
+                            <div className="col-span-full">
+                                <div className="flex items-center justify-between pb-2 border-b border-purple-200 mb-3">
+                                    <h3 className="text-sm font-bold text-purple-700 flex items-center gap-2">
+                                        <User className="h-4 w-4" /> Personal Information
+                                    </h3>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowBMICalculator(true)}
+                                        className="h-8 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-300 text-purple-700"
+                                    >
+                                        <Calculator className="h-3.5 w-3.5 mr-1.5" />
+                                        Calculate BMI
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* First Name */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">First Name <span className="text-red-500">*</span></Label>
+                                <Input 
+                                    {...register('firstName')} 
+                                    placeholder="First Name" 
+                                    className={`h-11 ${errors.firstName ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                />
+                                {errors.firstName && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.firstName.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Last Name */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Last Name <span className="text-red-500">*</span></Label>
+                                <Input 
+                                    {...register('lastName')} 
+                                    placeholder="Last Name" 
+                                    className={`h-11 ${errors.lastName ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                />
+                                {errors.lastName && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.lastName.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Email */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                    <Mail className="h-4 w-4 text-blue-600" /> Email <span className="text-red-500">*</span>
+                                </Label>
+                                <Input 
+                                    {...register('email')} 
+                                    type="email" 
+                                    placeholder="email@example.com" 
+                                    className={`h-11 ${errors.email ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                />
+                                {errors.email && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.email.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Password - Only for new member */}
+                            {!isEditMode && (
+                                <div>
+                                    <Label className="text-sm font-semibold mb-2 block">Password <span className="text-red-500">*</span></Label>
+                                    <Input 
+                                        {...register('password')} 
+                                        type="password" 
+                                        placeholder="Min 6 characters" 
+                                        className={`h-11 ${errors.password ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                    />
+                                    {errors.password && (
+                                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                            <AlertTriangle className="h-3 w-3" />{errors.password.message}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Contact No */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                    <Phone className="h-4 w-4 text-green-600" /> Contact No. <span className="text-red-500">*</span>
+                                </Label>
+                                <Input 
+                                    {...register('phone')} 
+                                    placeholder="Phone Number" 
+                                    className={`h-11 ${errors.phone ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                />
+                                {errors.phone && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.phone.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Alt Contact */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Alt Contact</Label>
+                                <Input {...register('altContactNo')} placeholder="Alternative Phone" className="h-11" />
+                            </div>
+
+                            {/* Date of Birth */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                    <Calendar className="h-4 w-4 text-orange-600" /> Date of Birth <span className="text-red-500">*</span>
+                                </Label>
+                                <Input 
+                                    {...register('dateOfBirth')} 
+                                    type="date" 
+                                    className={`h-11 ${errors.dateOfBirth ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                />
+                                {errors.dateOfBirth && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.dateOfBirth.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Gender */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Gender <span className="text-red-500">*</span></Label>
+                                <Select onValueChange={(v) => setValue('gender', v as any)} value={watch('gender')}>
+                                    <SelectTrigger className={`h-11 ${errors.gender ? 'border-red-500 ring-1 ring-red-500' : ''}`}>
+                                        <SelectValue placeholder="Select Gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.gender && (
+                                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3" />{errors.gender.message}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Marital Status */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Marital Status</Label>
+                                <Select onValueChange={(v) => setValue('maritalStatus', v as any)} value={watch('maritalStatus')}>
+                                    <SelectTrigger className="h-11"><SelectValue placeholder="Select Status" /></SelectTrigger>
+                                    <SelectContent>{MARITAL_STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Blood Group */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                    <Heart className="h-4 w-4 text-red-600" /> Blood Group
+                                </Label>
+                                <Select onValueChange={(v) => setValue('bloodGroup', v as any)} value={watch('bloodGroup')}>
+                                    <SelectTrigger className="h-11"><SelectValue placeholder="Select Group" /></SelectTrigger>
+                                    <SelectContent>{BLOOD_GROUPS.map(bg => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Anniversary */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Anniversary</Label>
+                                <Input {...register('anniversaryDate')} type="date" className="h-11" />
+                            </div>
+
+                            {/* Occupation */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Occupation</Label>
+                                <Input {...register('occupation')} placeholder="Occupation" className="h-11" />
+                            </div>
+
+                            {/* Address */}
+                            <div className="sm:col-span-2">
+                                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+                                    <MapPin className="h-4 w-4 text-teal-600" /> Address
+                                </Label>
+                                <Input {...register('address')} placeholder="Full Address" className="h-11" />
+                            </div>
+
+                            {/* Emergency Contact */}
+                            <div>
+                                <Label className="text-sm font-semibold mb-2 block">Emergency Contact</Label>
+                                <Input {...register('emergencyContact')} placeholder="Emergency Phone" className="h-11" />
+                            </div>
+
+                            {/* SMS Facility - Mobile/Tablet */}
+                            <div className="lg:hidden">
+                                <Label className="text-sm font-semibold mb-2 block">SMS Facility</Label>
+                                <div className="flex items-center gap-3 h-11 px-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border">
+                                    <Switch checked={watch('smsFacility')} onCheckedChange={(c) => setValue('smsFacility', c)} />
+                                    <span className="text-sm font-medium">{watch('smsFacility') ? 'Enabled' : 'Disabled'}</span>
+                                </div>
+                            </div>
+
+                            {/* Health Notes - Full Width */}
+                            <div className="col-span-full">
+                                <Label className="text-sm font-semibold mb-2 block">Health Notes</Label>
+                                <Textarea 
+                                    {...register('healthNotes')} 
+                                    placeholder="Health conditions, allergies, medical history..." 
+                                    className="resize-none h-16" 
+                                    rows={2} 
+                                />
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
+
+            {/* Mobile Save Button */}
+            <div className="sm:hidden shrink-0 p-3 border-t bg-white dark:bg-gray-800">
+                <Button
+                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-base font-semibold"
+                    onClick={handleSubmit(onSubmit)}
+                    disabled={isPending}
+                >
+                    {isPending ? <Spinner className="h-5 w-5" /> : <><Save className="h-5 w-5 mr-2" />{isEditMode ? 'Update Member' : 'Create Member'}</>}
+                </Button>
+            </div>
+
+            {/* BMI Calculator Modal */}
+            <BMICalculator open={showBMICalculator} onOpenChange={setShowBMICalculator} />
         </div>
     );
 }

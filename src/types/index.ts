@@ -84,15 +84,56 @@ export interface Gym {
 
 export interface Trainer {
   id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
   specialization?: string;
   experience?: number;
-  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  salary?: number;
+  idProofType?: string;
+  idProofDocument?: string;
+  trainerPhoto?: string;
   isActive: boolean;
   userId: string;
   gymId: string;
   user: { id: string; name: string; email: string; isActive?: boolean };
   _count?: { members: number };
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateTrainer {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  phone: string;
+  specialization?: string;
+  experience?: number;
+  gender?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  salary?: number;
+  idProofType?: string;
+}
+
+export interface UpdateTrainer {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  specialization?: string;
+  experience?: number;
+  gender?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  salary?: number;
+  idProofType?: string;
 }
 
 export interface MemberProfile {
@@ -108,6 +149,25 @@ export interface MemberProfile {
   membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
   gymId: string;
   gym?: { id: string; name: string };
+}
+
+// Member type enum
+export type MemberType = 'REGULAR' | 'PT' | 'REGULAR_PT';
+
+// PT Info structure
+export interface PTInfo {
+  trainerId: string;
+  trainerName: string;
+  sessionsTotal: number;
+  sessionsUsed: number;
+  sessionsRemaining: number;
+  sessionDuration: number;
+  startDate: string;
+  endDate?: string;
+  goals?: string;
+  isPaused?: boolean;        // Whether PT membership is paused
+  pausedAt?: string;         // When PT was paused
+  pausedNotes?: string;      // Notes about why PT was paused
 }
 
 export interface Member {
@@ -132,14 +192,14 @@ export interface Member {
   memberPhoto?: string;                 // Path to member photo
   smsFacility?: boolean;                // SMS facility enabled
   isActive?: boolean;                   // For soft delete
-  memberType?: 'REGULAR' | 'PT_MEMBER'; // Member type
+  memberType?: MemberType;              // Member type: REGULAR, PT, or REGULAR_PT
   // Membership dates (support both old and new field names)
   membershipStart?: string;
   membershipEnd?: string;
   membershipStartDate?: string;         // New API field name
   membershipEndDate?: string;           // New API field name
   membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
-  // Course package and fee details
+  // Course package and fee details (Regular membership)
   coursePackageId?: string;             // Course package ID
   coursePackage?: CoursePackage;        // Course package object
   packageFees?: number;                 // Original package fees
@@ -147,6 +207,15 @@ export interface Member {
   afterDiscount?: number;               // Amount after applying max discount
   extraDiscount?: number;               // Additional extra discount
   finalFees?: number;                   // Final fees after all discounts
+  // PT Addon Fields
+  hasPTAddon?: boolean;                 // Whether member has PT addon
+  ptPackageName?: string;               // PT package name
+  ptPackageFees?: number;               // PT package fees
+  ptMaxDiscount?: number;               // PT max discount
+  ptAfterDiscount?: number;             // PT amount after discount
+  ptExtraDiscount?: number;             // PT extra discount
+  ptFinalFees?: number;                 // PT final fees
+  ptInfo?: PTInfo;                      // PT session and trainer info
   userId: string;
   gymId: string;
   user: { id: string; name: string; email: string; isActive?: boolean };
@@ -318,6 +387,9 @@ export interface WorkoutExercise {
   bodyPart?: BodyPart;
 }
 
+// Course Package Types
+export type CoursePackageType = 'REGULAR' | 'PT';
+
 export interface CoursePackage {
   id: string;
   packageName: string;
@@ -325,6 +397,9 @@ export interface CoursePackage {
   fees: number;
   maxDiscount: number;
   discountType: 'PERCENTAGE' | 'AMOUNT';
+  coursePackageType: CoursePackageType; // REGULAR or PT package
+  Months?: number;             // Duration in months (from API - capital M)
+  months?: number;             // Alias for Months
   durationInDays?: number;
   durationInMonths?: number;
   isActive: boolean;
@@ -378,10 +453,13 @@ export interface UpdateMemberInquiry extends CreateMemberInquiry {
 }
 
 // Balance Payment Types
+export type PaymentFor = 'REGULAR' | 'PT';
+
 export interface BalancePayment {
   id: string;
   receiptNo?: string;
   memberId: string;
+  paymentFor: PaymentFor;              // REGULAR or PT payment
   paymentDate: string;
   contactNo?: string;
   paidFees: number;
@@ -395,6 +473,7 @@ export interface BalancePayment {
 }
 
 export interface CreateBalancePayment {
+  paymentFor?: PaymentFor;             // REGULAR or PT - defaults to REGULAR
   paymentDate: string;
   contactNo?: string;
   paidFees: number;
@@ -435,6 +514,24 @@ export interface MembershipRenewal {
   member?: Member;
 }
 
+// PT Addon Types
+export interface CreatePTAddon {
+  ptPackageName: string;
+  trainerId: string;
+  sessionsTotal: number;
+  sessionDuration?: number;
+  ptPackageFees: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees: number;
+  initialPayment?: number;
+  paymentMode?: string;
+  startDate?: string;
+  endDate?: string;
+  goals?: string;
+  notes?: string;
+}
+
 export interface CreateMembershipRenewal {
   memberId: string;
   newMembershipStart: string;
@@ -448,6 +545,47 @@ export interface CreateMembershipRenewal {
   paymentMode?: string;
   paidAmount?: number;
   notes?: string;
+}
+
+// Member Membership Details (for View Dialog)
+export interface MembershipDetails {
+  hasRegularMembership: boolean;
+  hasPTMembership: boolean;
+  regularMembershipDetails?: {
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+    totalPaidFees?: number;
+    totalPendingFees?: number;
+    coursePackageId?: string;
+    membershipStart: string;
+    membershipEnd: string;
+    membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  };
+  ptMembershipDetails?: {
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+    totalPaidFees?: number;
+    totalPendingFees?: number;
+    packageName: string;
+    trainerId: string;
+    trainerName: string;
+    sessionsTotal: number;
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    sessionDuration: number;
+    startDate: string;
+    endDate?: string;
+    goals?: string;
+    isPaused?: boolean;
+    pausedAt?: string;
+    pausedNotes?: string;
+  };
 }
 
 export interface ApiResponse<T> {

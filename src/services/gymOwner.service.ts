@@ -22,7 +22,9 @@ import type {
   CreateBalancePayment,
   UpdateBalancePayment,
   MembershipRenewal,
-  CreateMembershipRenewal
+  CreateMembershipRenewal,
+  CreatePTAddon,
+  MembershipDetails
 } from '@/types';
 
 export const gymOwnerService = {
@@ -38,13 +40,21 @@ export const gymOwnerService = {
     const responseData = response.data;
     console.debug('getTrainers raw response:', responseData);
 
-    // Handle wrapped response: { success, data: [...] }
-    if (responseData.success !== undefined && Array.isArray(responseData.data)) {
-      return responseData.data;
-    }
-    // Handle double-wrapped: { success, data: { data: [...] } }
-    if (responseData.data?.data && Array.isArray(responseData.data.data)) {
-      return responseData.data.data;
+    // Handle response format: { success, data: { items: [...], pagination: {...} } }
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      // Check for items array (paginated response)
+      if (Array.isArray(innerData.items)) {
+        return innerData.items;
+      }
+      // Check if data is directly an array
+      if (Array.isArray(innerData)) {
+        return innerData;
+      }
+      // Check for nested data array
+      if (innerData.data && Array.isArray(innerData.data)) {
+        return innerData.data;
+      }
     }
     // Direct array
     if (Array.isArray(responseData)) {
@@ -59,25 +69,54 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
-  async createTrainer(data: {
+  async createTrainer(data: FormData | {
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    name: string;
-    phone?: string;
+    phone: string;
     specialization?: string;
     experience?: number;
+    gender?: string;
+    dateOfBirth?: string;
+    joiningDate?: string;
+    salary?: number;
+    idProofType?: string;
   }): Promise<Trainer> {
+    // Check if data is FormData (multipart upload)
+    if (data instanceof FormData) {
+      const response = await api.post<ApiResponse<Trainer>>('/gym-owner/trainers', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    }
     const response = await api.post<ApiResponse<Trainer>>('/gym-owner/trainers', data);
     return response.data.data;
   },
 
-  async updateTrainer(id: string, data: Partial<Trainer>): Promise<Trainer> {
+  async updateTrainer(id: string, data: FormData | Partial<Trainer>): Promise<Trainer> {
+    // Check if data is FormData (multipart upload)
+    if (data instanceof FormData) {
+      const response = await api.put<ApiResponse<Trainer>>(`/gym-owner/trainers/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    }
     const response = await api.put<ApiResponse<Trainer>>(`/gym-owner/trainers/${id}`, data);
     return response.data.data;
   },
 
   async deleteTrainer(id: string): Promise<void> {
     await api.delete(`/gym-owner/trainers/${id}`);
+  },
+
+  async toggleTrainerStatus(id: string): Promise<Trainer> {
+    const response = await api.patch<ApiResponse<Trainer>>(`/gym-owner/trainers/${id}/toggle-status`);
+    return response.data.data;
   },
 
   // Members
@@ -89,7 +128,7 @@ export const gymOwnerService = {
     sortOrder?: 'asc' | 'desc';
     status?: 'Active' | 'InActive' | 'Expired';
     isActive?: boolean;
-    memberType?: 'REGULAR' | 'PT';
+    memberType?: 'REGULAR' | 'PT' | 'REGULAR_PT';
     gender?: string;
     bloodGroup?: string;
     maritalStatus?: string;
@@ -140,6 +179,11 @@ export const gymOwnerService = {
 
   async getMember(id: string): Promise<Member> {
     const response = await api.get<ApiResponse<Member>>(`/gym-owner/members/${id}`);
+    return response.data.data;
+  },
+
+  async getMemberMembershipDetails(id: string): Promise<MembershipDetails> {
+    const response = await api.get<ApiResponse<MembershipDetails>>(`/gym-owner/members/${id}/membership-details`);
     return response.data.data;
   },
 
@@ -542,11 +586,13 @@ export const gymOwnerService = {
     search?: string,
     isActive?: boolean,
     sortBy = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc'
+    sortOrder: 'asc' | 'desc' = 'desc',
+    coursePackageType?: 'REGULAR' | 'PT'
   ): Promise<PaginatedResponse<CoursePackage>> {
     const params: Record<string, any> = { page, limit, sortBy, sortOrder };
     if (search) params.search = search;
     if (isActive !== undefined) params.isActive = isActive;
+    if (coursePackageType) params.coursePackageType = coursePackageType;
 
     const response = await api.get('/gym-owner/course-packages', { params });
     const responseData = response.data;
@@ -584,6 +630,7 @@ export const gymOwnerService = {
     fees: number;
     maxDiscount: number;
     discountType: 'PERCENTAGE' | 'AMOUNT';
+    coursePackageType?: 'REGULAR' | 'PT';
   }): Promise<CoursePackage> {
     const response = await api.post<ApiResponse<CoursePackage>>('/gym-owner/course-packages', data);
     return response.data.data;
@@ -595,6 +642,7 @@ export const gymOwnerService = {
     fees?: number;
     maxDiscount?: number;
     discountType?: 'PERCENTAGE' | 'AMOUNT';
+    coursePackageType?: 'REGULAR' | 'PT';
     isActive?: boolean;
   }): Promise<CoursePackage> {
     const response = await api.put<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}`, data);
@@ -731,5 +779,59 @@ export const gymOwnerService = {
     }
     return responseData;
   },
-};
 
+  // PT Membership Addon
+  async addPTAddon(memberId: string, data: CreatePTAddon): Promise<Member> {
+    const response = await api.post<ApiResponse<Member>>(`/gym-owner/members/${memberId}/add-pt`, data);
+    return response.data.data;
+  },
+
+  async removePTAddon(memberId: string, action: 'COMPLETE' | 'FORFEIT' | 'CARRY_FORWARD', notes?: string): Promise<Member> {
+    const response = await api.delete<ApiResponse<Member>>(`/gym-owner/members/${memberId}/remove-pt`, {
+      data: { action, notes }
+    });
+    return response.data.data;
+  },
+
+  async pausePTMembership(memberId: string, notes?: string): Promise<Member> {
+    const response = await api.patch<ApiResponse<Member>>(`/gym-owner/members/${memberId}/pause-pt`, { notes });
+    return response.data.data;
+  },
+
+  async resumePTMembership(memberId: string, notes?: string): Promise<Member> {
+    const response = await api.patch<ApiResponse<Member>>(`/gym-owner/members/${memberId}/resume-pt`, { notes });
+    return response.data.data;
+  },
+
+  async updatePTAddon(memberId: string, data: Partial<CreatePTAddon>): Promise<Member> {
+    const response = await api.put<ApiResponse<Member>>(`/gym-owner/members/${memberId}/update-pt`, data);
+    return response.data.data;
+  },
+
+  // PT Session Credits
+  async getMemberSessionCredits(memberId: string): Promise<any[]> {
+    const response = await api.get(`/gym-owner/members/${memberId}/session-credits`);
+    const responseData = response.data;
+    console.debug('getMemberSessionCredits raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      if (Array.isArray(responseData.data)) {
+        return responseData.data;
+      }
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  // Payment Summary (Regular vs PT breakdown)
+  async getMemberPaymentSummary(memberId: string): Promise<{
+    regular: { totalFees: number; paidAmount: number; pendingAmount: number };
+    pt: { totalFees: number; paidAmount: number; pendingAmount: number };
+    combined: { totalFees: number; paidAmount: number; pendingAmount: number };
+  }> {
+    const response = await api.get(`/gym-owner/members/${memberId}/payment-summary`);
+    return response.data.data;
+  },
+};

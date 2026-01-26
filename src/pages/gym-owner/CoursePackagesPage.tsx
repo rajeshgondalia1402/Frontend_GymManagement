@@ -73,6 +73,11 @@ const coursePackageSchema = z.object({
         z.number({ required_error: 'Max discount is required', invalid_type_error: 'Max discount is required' }).min(0, 'Max discount must be a positive number')
     ),
     discountType: z.enum(['PERCENTAGE', 'AMOUNT'], { required_error: 'Discount type is required' }),
+    coursePackageType: z.enum(['REGULAR', 'PT'], { required_error: 'Package type is required' }),
+    months: z.preprocess(
+        (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
+        z.number({ required_error: 'Months is required', invalid_type_error: 'Months is required' }).min(1, 'Months must be greater than 0')
+    ),
 });
 
 type CoursePackageFormData = z.infer<typeof coursePackageSchema>;
@@ -88,6 +93,7 @@ export function CoursePackagesPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [packageTypeFilter, setPackageTypeFilter] = useState<string>('all');
     const [sortBy, setSortBy] = useState('createdAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -106,14 +112,15 @@ export function CoursePackagesPage() {
     }, [search]);
 
     const { data: packagesData, isLoading, error } = useQuery({
-        queryKey: ['coursePackages', page, debouncedSearch, statusFilter, sortBy, sortOrder],
+        queryKey: ['coursePackages', page, debouncedSearch, statusFilter, packageTypeFilter, sortBy, sortOrder],
         queryFn: () => gymOwnerService.getCoursePackages(
             page,
             ITEMS_PER_PAGE,
             debouncedSearch || undefined,
             statusFilter === 'all' ? undefined : statusFilter === 'active',
             sortBy,
-            sortOrder
+            sortOrder,
+            packageTypeFilter === 'all' ? undefined : packageTypeFilter as 'REGULAR' | 'PT'
         ),
     });
 
@@ -121,6 +128,7 @@ export function CoursePackagesPage() {
         resolver: zodResolver(coursePackageSchema),
         defaultValues: {
             discountType: 'PERCENTAGE',
+            coursePackageType: 'REGULAR',
         },
     });
 
@@ -208,6 +216,8 @@ export function CoursePackagesPage() {
         setValueEdit('fees', pkg.fees);
         setValueEdit('maxDiscount', pkg.maxDiscount);
         setValueEdit('discountType', pkg.discountType);
+        setValueEdit('coursePackageType', pkg.coursePackageType || 'REGULAR');
+        setValueEdit('months', pkg.Months || pkg.months || pkg.durationInMonths || 1);
         setValueEdit('isActive', pkg.isActive);
         setEditDialogOpen(true);
     };
@@ -228,6 +238,8 @@ export function CoursePackagesPage() {
     };
 
     const packages = packagesData?.data || [];
+    // Debug: Log packages to check months field
+    console.log('Course packages data:', packages);
     const pagination = packagesData?.pagination;
     const totalPages = pagination?.totalPages || 1;
     const totalItems = pagination?.total || packages.length;
@@ -275,85 +287,122 @@ export function CoursePackagesPage() {
                             Add Course Package
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md sm:max-w-lg">
                         <DialogHeader>
                             <DialogTitle>Create New Course Package</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="packageName">Package Name *</Label>
-                                <Input
-                                    id="packageName"
-                                    placeholder="Enter package name"
-                                    {...register('packageName')}
-                                />
-                                {errors.packageName && (
-                                    <p className="text-sm text-red-500">{errors.packageName.message}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="fees">Fees *</Label>
-                                <Input
-                                    id="fees"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="Enter fees"
-                                    {...register('fees')}
-                                />
-                                {errors.fees && (
-                                    <p className="text-sm text-red-500">{errors.fees.message}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="discountType">Discount Type *</Label>
-                                <Controller
-                                    name="discountType"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select discount type" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                                                <SelectItem value="AMOUNT">Amount</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2 sm:col-span-2">
+                                    <Label htmlFor="packageName">Package Name *</Label>
+                                    <Input
+                                        id="packageName"
+                                        placeholder="Enter package name"
+                                        {...register('packageName')}
+                                    />
+                                    {errors.packageName && (
+                                        <p className="text-sm text-red-500">{errors.packageName.message}</p>
                                     )}
-                                />
-                                {errors.discountType && (
-                                    <p className="text-sm text-red-500">{errors.discountType.message}</p>
-                                )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="fees">Fees *</Label>
+                                    <Input
+                                        id="fees"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Enter fees"
+                                        {...register('fees')}
+                                    />
+                                    {errors.fees && (
+                                        <p className="text-sm text-red-500">{errors.fees.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="months">Months *</Label>
+                                    <Input
+                                        id="months"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        placeholder="Enter months"
+                                        {...register('months')}
+                                    />
+                                    {errors.months && (
+                                        <p className="text-sm text-red-500">{errors.months.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="discountType">Discount Type *</Label>
+                                    <Controller
+                                        name="discountType"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select discount type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                                                    <SelectItem value="AMOUNT">Amount</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    {errors.discountType && (
+                                        <p className="text-sm text-red-500">{errors.discountType.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="maxDiscount">Max Discount *</Label>
+                                    <Input
+                                        id="maxDiscount"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Enter max discount"
+                                        {...register('maxDiscount')}
+                                    />
+                                    {errors.maxDiscount && (
+                                        <p className="text-sm text-red-500">{errors.maxDiscount.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <Label htmlFor="coursePackageType">Package Type *</Label>
+                                    <Controller
+                                        name="coursePackageType"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select package type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
+                                                    <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    {errors.coursePackageType && (
+                                        <p className="text-sm text-red-500">{errors.coursePackageType.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2 sm:col-span-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Textarea
+                                        id="description"
+                                        placeholder="Enter description (optional)"
+                                        {...register('description')}
+                                        rows={3}
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="maxDiscount">Max Discount *</Label>
-                                <Input
-                                    id="maxDiscount"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="Enter max discount"
-                                    {...register('maxDiscount')}
-                                />
-                                {errors.maxDiscount && (
-                                    <p className="text-sm text-red-500">{errors.maxDiscount.message}</p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Textarea
-                                    id="description"
-                                    placeholder="Enter description (optional)"
-                                    {...register('description')}
-                                    rows={3}
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={createMutation.isPending}>
+                                <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto">
                                     {createMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                                     Create
                                 </Button>
@@ -419,6 +468,16 @@ export function CoursePackagesPage() {
                                 <SelectItem value="all">All Status</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={packageTypeFilter} onValueChange={(val) => { setPackageTypeFilter(val); setPage(1); }}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Package Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="REGULAR">💪 Regular</SelectItem>
+                                <SelectItem value="PT">🏋️ PT</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -553,6 +612,48 @@ export function CoursePackagesPage() {
                                             <TableHead
                                                 className="cursor-pointer hover:bg-muted/50"
                                                 onClick={() => {
+                                                    if (sortBy === 'coursePackageType') {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy('coursePackageType');
+                                                        setSortOrder('asc');
+                                                    }
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Package Type
+                                                    {sortBy === 'coursePackageType' ? (
+                                                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                            </TableHead>
+                                            <TableHead
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => {
+                                                    if (sortBy === 'months') {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy('months');
+                                                        setSortOrder('asc');
+                                                    }
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Months
+                                                    {sortBy === 'months' ? (
+                                                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                            </TableHead>
+                                            <TableHead
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => {
                                                     if (sortBy === 'isActive') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                                                     } else {
@@ -633,6 +734,17 @@ export function CoursePackagesPage() {
                                                     <Badge variant="outline">
                                                         {pkg.discountType === 'PERCENTAGE' ? 'Percentage' : 'Amount'}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={pkg.coursePackageType === 'PT' ? 'bg-purple-500 text-white' : 'bg-blue-500 text-white'}>
+                                                        {pkg.coursePackageType === 'PT' ? '🏋️ PT' : '💪 Regular'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-medium">{pkg.Months || pkg.months || pkg.durationInMonths || '-'}</span>
+                                                        <span className="text-xs text-muted-foreground">month{(pkg.Months || pkg.months || pkg.durationInMonths || 0) !== 1 ? 's' : ''}</span>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
@@ -725,85 +837,122 @@ export function CoursePackagesPage() {
 
             {/* Edit Dialog */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Edit Course Package</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmitEdit(onEditSubmit)} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editPackageName">Package Name *</Label>
-                            <Input
-                                id="editPackageName"
-                                placeholder="Enter package name"
-                                {...registerEdit('packageName')}
-                            />
-                            {errorsEdit.packageName && (
-                                <p className="text-sm text-red-500">{errorsEdit.packageName.message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editFees">Fees *</Label>
-                            <Input
-                                id="editFees"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Enter fees"
-                                {...registerEdit('fees')}
-                            />
-                            {errorsEdit.fees && (
-                                <p className="text-sm text-red-500">{errorsEdit.fees.message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editDiscountType">Discount Type *</Label>
-                            <Controller
-                                name="discountType"
-                                control={controlEdit}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select discount type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                                            <SelectItem value="AMOUNT">Amount</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2 sm:col-span-2">
+                                <Label htmlFor="editPackageName">Package Name *</Label>
+                                <Input
+                                    id="editPackageName"
+                                    placeholder="Enter package name"
+                                    {...registerEdit('packageName')}
+                                />
+                                {errorsEdit.packageName && (
+                                    <p className="text-sm text-red-500">{errorsEdit.packageName.message}</p>
                                 )}
-                            />
-                            {errorsEdit.discountType && (
-                                <p className="text-sm text-red-500">{errorsEdit.discountType.message}</p>
-                            )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editFees">Fees *</Label>
+                                <Input
+                                    id="editFees"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Enter fees"
+                                    {...registerEdit('fees')}
+                                />
+                                {errorsEdit.fees && (
+                                    <p className="text-sm text-red-500">{errorsEdit.fees.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editMonths">Months *</Label>
+                                <Input
+                                    id="editMonths"
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="Enter months"
+                                    {...registerEdit('months')}
+                                />
+                                {errorsEdit.months && (
+                                    <p className="text-sm text-red-500">{errorsEdit.months.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editDiscountType">Discount Type *</Label>
+                                <Controller
+                                    name="discountType"
+                                    control={controlEdit}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select discount type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                                                <SelectItem value="AMOUNT">Amount</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errorsEdit.discountType && (
+                                    <p className="text-sm text-red-500">{errorsEdit.discountType.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editMaxDiscount">Max Discount *</Label>
+                                <Input
+                                    id="editMaxDiscount"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Enter max discount"
+                                    {...registerEdit('maxDiscount')}
+                                />
+                                {errorsEdit.maxDiscount && (
+                                    <p className="text-sm text-red-500">{errorsEdit.maxDiscount.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                                <Label htmlFor="editCoursePackageType">Package Type *</Label>
+                                <Controller
+                                    name="coursePackageType"
+                                    control={controlEdit}
+                                    render={({ field }) => (
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select package type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
+                                                <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errorsEdit.coursePackageType && (
+                                    <p className="text-sm text-red-500">{errorsEdit.coursePackageType.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                                <Label htmlFor="editDescription">Description</Label>
+                                <Textarea
+                                    id="editDescription"
+                                    placeholder="Enter description (optional)"
+                                    {...registerEdit('description')}
+                                    rows={3}
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editMaxDiscount">Max Discount *</Label>
-                            <Input
-                                id="editMaxDiscount"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="Enter max discount"
-                                {...registerEdit('maxDiscount')}
-                            />
-                            {errorsEdit.maxDiscount && (
-                                <p className="text-sm text-red-500">{errorsEdit.maxDiscount.message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editDescription">Description</Label>
-                            <Textarea
-                                id="editDescription"
-                                placeholder="Enter description (optional)"
-                                {...registerEdit('description')}
-                                rows={3}
-                            />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="w-full sm:w-auto">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={updateMutation.isPending}>
+                            <Button type="submit" disabled={updateMutation.isPending} className="w-full sm:w-auto">
                                 {updateMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                                 Update
                             </Button>
