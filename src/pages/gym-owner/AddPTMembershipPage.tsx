@@ -43,8 +43,8 @@ export function AddPTMembershipPage() {
   const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
   const [ptPackageName, setPtPackageName] = useState('');
   const [selectedTrainerId, setSelectedTrainerId] = useState('');
-  const [sessionsTotal, setSessionsTotal] = useState(12);
-  const [sessionDuration, setSessionDuration] = useState(60);
+  const [sessionsTotal] = useState(12);
+  const [sessionDuration] = useState(60);
   const [ptPackageFees, setPtPackageFees] = useState(0);
   const [ptMaxDiscount, setPtMaxDiscount] = useState(0);
   const [ptExtraDiscount, setPtExtraDiscount] = useState(0);
