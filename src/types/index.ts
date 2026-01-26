@@ -398,6 +398,8 @@ export interface CoursePackage {
   maxDiscount: number;
   discountType: 'PERCENTAGE' | 'AMOUNT';
   coursePackageType: CoursePackageType; // REGULAR or PT package
+  Months?: number;             // Duration in months (from API - capital M)
+  months?: number;             // Alias for Months
   durationInDays?: number;
   durationInMonths?: number;
   isActive: boolean;
@@ -543,6 +545,47 @@ export interface CreateMembershipRenewal {
   paymentMode?: string;
   paidAmount?: number;
   notes?: string;
+}
+
+// Member Membership Details (for View Dialog)
+export interface MembershipDetails {
+  hasRegularMembership: boolean;
+  hasPTMembership: boolean;
+  regularMembershipDetails?: {
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+    totalPaidFees?: number;
+    totalPendingFees?: number;
+    coursePackageId?: string;
+    membershipStart: string;
+    membershipEnd: string;
+    membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  };
+  ptMembershipDetails?: {
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+    totalPaidFees?: number;
+    totalPendingFees?: number;
+    packageName: string;
+    trainerId: string;
+    trainerName: string;
+    sessionsTotal: number;
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    sessionDuration: number;
+    startDate: string;
+    endDate?: string;
+    goals?: string;
+    isPaused?: boolean;
+    pausedAt?: string;
+    pausedNotes?: string;
+  };
 }
 
 export interface ApiResponse<T> {

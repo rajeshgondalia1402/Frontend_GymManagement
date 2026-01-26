@@ -23,7 +23,8 @@ import type {
   UpdateBalancePayment,
   MembershipRenewal,
   CreateMembershipRenewal,
-  CreatePTAddon
+  CreatePTAddon,
+  MembershipDetails
 } from '@/types';
 
 export const gymOwnerService = {
@@ -178,6 +179,11 @@ export const gymOwnerService = {
 
   async getMember(id: string): Promise<Member> {
     const response = await api.get<ApiResponse<Member>>(`/gym-owner/members/${id}`);
+    return response.data.data;
+  },
+
+  async getMemberMembershipDetails(id: string): Promise<MembershipDetails> {
+    const response = await api.get<ApiResponse<MembershipDetails>>(`/gym-owner/members/${id}/membership-details`);
     return response.data.data;
   },
 

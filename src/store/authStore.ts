@@ -75,6 +75,12 @@ export const useAuthStore = create<AuthStore>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // After rehydration from localStorage, set loading to false
+        if (state) {
+          state.setLoading(false);
+        }
+      },
     }
   )
 );

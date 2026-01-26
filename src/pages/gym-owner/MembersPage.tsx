@@ -25,10 +25,8 @@ import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { ExportButton } from '@/components/ui/export-button';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
-import { AddPTMembershipDialog } from '@/components/AddPTMembershipDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
-import { EditPTMembershipDialog } from '@/components/EditPTMembershipDialog';
-import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
+import type { Member, CoursePackage, BalancePayment, CreateBalancePayment, MembershipDetails } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MARITAL_STATUS = ['Single', 'Married', 'Divorced', 'Widowed'];
@@ -70,6 +68,7 @@ export function MembersPage() {
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
+  const [activeTab, setActiveTab] = useState<'regular' | 'pt'>('regular');
 
   // Balance Payment State
   const [balancePaymentDialogOpen, setBalancePaymentDialogOpen] = useState(false);
@@ -89,17 +88,9 @@ export function MembersPage() {
   const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
   const [selectedMemberForRenewal, setSelectedMemberForRenewal] = useState<Member | null>(null);
 
-  // PT Membership State
-  const [ptDialogOpen, setPtDialogOpen] = useState(false);
-  const [selectedMemberForPT, setSelectedMemberForPT] = useState<Member | null>(null);
-
   // Pause PT Membership State
   const [pausePtDialogOpen, setPausePtDialogOpen] = useState(false);
   const [selectedMemberForPausePT, setSelectedMemberForPausePT] = useState<Member | null>(null);
-
-  // Edit PT Membership State
-  const [editPtDialogOpen, setEditPtDialogOpen] = useState(false);
-  const [selectedMemberForEditPT, setSelectedMemberForEditPT] = useState<Member | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -140,6 +131,20 @@ export function MembersPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['members', queryParams],
     queryFn: () => gymOwnerService.getMembers(queryParams),
+  });
+
+  // Fetch membership details when viewing a member
+  const { data: membershipDetails, isLoading: isLoadingMembershipDetails } = useQuery({
+    queryKey: ['membershipDetails', viewingMember?.id],
+    queryFn: () => viewingMember ? gymOwnerService.getMemberMembershipDetails(viewingMember.id) : Promise.resolve(null),
+    enabled: !!viewingMember && viewDialogOpen,
+  });
+
+  // Fetch membership details for balance payment dialog
+  const { data: paymentMembershipDetails, isLoading: isLoadingPaymentMembershipDetails } = useQuery({
+    queryKey: ['paymentMembershipDetails', selectedMemberForPayment?.id],
+    queryFn: () => selectedMemberForPayment ? gymOwnerService.getMemberMembershipDetails(selectedMemberForPayment.id) : Promise.resolve(null),
+    enabled: !!selectedMemberForPayment && balancePaymentDialogOpen,
   });
 
   const toggleStatusMutation = useMutation({
@@ -212,18 +217,21 @@ export function MembersPage() {
       return;
     }
 
-    // Validate payment doesn't exceed remaining balance
-    const finalFees = selectedMemberForPayment?.finalFees || 0;
-    const currentPaid = editingPayment
-      ? totalPaidFees - editingPayment.paidFees // Exclude current payment when editing
-      : totalPaidFees;
+    // Validate payment doesn't exceed remaining balance for the specific payment type
+    const isRegularPayment = paymentForm.paymentFor === 'REGULAR';
+    const applicableFinalFees = isRegularPayment ? regularFinalFees : ptFinalFees;
+    const applicablePaidFees = isRegularPayment ? regularPaidFees : ptPaidFees;
+
+    const currentPaid = editingPayment && editingPayment.paymentFor === paymentForm.paymentFor
+      ? applicablePaidFees - editingPayment.paidFees // Exclude current payment when editing same type
+      : applicablePaidFees;
     const newTotalPaid = currentPaid + paymentForm.paidFees;
 
-    if (newTotalPaid > finalFees) {
-      const remainingBalance = finalFees - currentPaid;
+    if (newTotalPaid > applicableFinalFees) {
+      const remainingBalance = applicableFinalFees - currentPaid;
       toast({
         title: 'Amount Exceeds Balance',
-        description: `Payment amount (\u20b9${paymentForm.paidFees.toLocaleString('en-IN')}) exceeds remaining balance (\u20b9${remainingBalance.toLocaleString('en-IN')}). Maximum allowed: \u20b9${remainingBalance.toLocaleString('en-IN')}`,
+        description: `Payment amount (\u20b9${paymentForm.paidFees.toLocaleString('en-IN')}) exceeds remaining ${isRegularPayment ? 'Regular' : 'PT'} balance (\u20b9${remainingBalance.toLocaleString('en-IN')}). Maximum allowed: \u20b9${remainingBalance.toLocaleString('en-IN')}`,
         variant: 'destructive'
       });
       return;
@@ -259,13 +267,34 @@ export function MembersPage() {
 
   const regularPaidFees = useMemo(() => regularPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [regularPayments]);
   const ptPaidFees = useMemo(() => ptPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [ptPayments]);
-  const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
+  const totalPaidFees = useMemo(() => regularPaidFees + ptPaidFees, [regularPaidFees, ptPaidFees]);
 
-  const regularBalance = useMemo(() => (selectedMemberForPayment?.finalFees || 0) - regularPaidFees, [selectedMemberForPayment, regularPaidFees]);
-  const ptBalance = useMemo(() => (selectedMemberForPayment?.ptFinalFees || 0) - ptPaidFees, [selectedMemberForPayment, ptPaidFees]);
-  const balanceFees = useMemo(() => regularBalance + ptBalance, [regularBalance, ptBalance]);
+  // Calculate total fees from membership details (after discount)
+  const totalFeesAmount = useMemo(() => {
+    if (!paymentMembershipDetails) return 0;
+    let total = 0;
+    if (paymentMembershipDetails.hasRegularMembership && paymentMembershipDetails.regularMembershipDetails) {
+      total += paymentMembershipDetails.regularMembershipDetails.finalFees || 0;
+    }
+    if (paymentMembershipDetails.hasPTMembership && paymentMembershipDetails.ptMembershipDetails) {
+      total += paymentMembershipDetails.ptMembershipDetails.finalFees || 0;
+    }
+    return total;
+  }, [paymentMembershipDetails]);
 
-  const hasPTMembership = useMemo(() => selectedMemberForPayment?.memberType === 'PT' || selectedMemberForPayment?.memberType === 'REGULAR_PT', [selectedMemberForPayment]);
+  const regularFinalFees = useMemo(() => {
+    return paymentMembershipDetails?.regularMembershipDetails?.finalFees || 0;
+  }, [paymentMembershipDetails]);
+
+  const ptFinalFees = useMemo(() => {
+    return paymentMembershipDetails?.ptMembershipDetails?.finalFees || 0;
+  }, [paymentMembershipDetails]);
+
+  const regularBalance = useMemo(() => regularFinalFees - regularPaidFees, [regularFinalFees, regularPaidFees]);
+  const ptBalance = useMemo(() => ptFinalFees - ptPaidFees, [ptFinalFees, ptPaidFees]);
+  const balanceFees = useMemo(() => totalFeesAmount - totalPaidFees, [totalFeesAmount, totalPaidFees]);
+
+  const hasPTMembership = useMemo(() => paymentMembershipDetails?.hasPTMembership || false, [paymentMembershipDetails]);
 
   // Check if selected member's membership is expired (for Balance Payment dialog)
   const isSelectedMemberExpired = useMemo(() => {
@@ -309,7 +338,7 @@ export function MembersPage() {
     // Fee Summary Section
     html += '<table>';
     html += '<tr><td colspan="2" class="section-header">FEE SUMMARY</td></tr>';
-    html += `<tr><td class="field-label">Total Fees</td><td class="field-value amount">\u20b9${(selectedMemberForPayment.finalFees || 0).toLocaleString('en-IN')}</td></tr>`;
+    html += `<tr><td class="field-label">Total Fees</td><td class="field-value amount">\u20b9${totalFeesAmount.toLocaleString('en-IN')}</td></tr>`;
     html += `<tr><td class="field-label">Paid Fees</td><td class="field-value amount">\u20b9${totalPaidFees.toLocaleString('en-IN')}</td></tr>`;
     html += `<tr><td class="field-label">Balance</td><td class="field-value ${balanceFees > 0 ? 'balance-due' : 'balance-paid'}">\u20b9${balanceFees.toLocaleString('en-IN')}</td></tr>`;
     html += '</table><br/>';
@@ -355,7 +384,11 @@ export function MembersPage() {
     toast({ title: 'Payment report exported successfully' });
   };
 
-  const handleView = (member: Member) => { setViewingMember(member); setViewDialogOpen(true); };
+  const handleView = (member: Member) => {
+    setViewingMember(member);
+    setActiveTab('regular'); // Reset to regular tab when opening
+    setViewDialogOpen(true);
+  };
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -736,26 +769,17 @@ export function MembersPage() {
                                 {/* PT Membership Actions */}
                                 {member.memberType === 'REGULAR' && (
                                   <DropdownMenuItem
-                                    onClick={() => { setSelectedMemberForPT(member); setPtDialogOpen(true); }}
+                                    onClick={() => navigate(`/gym-owner/members/${member.id}/add-pt`)}
                                     className="text-purple-600"
                                     disabled={member.isActive === false}
                                   >
                                     <Dumbbell className="mr-2 h-4 w-4" />Add PT Membership
                                   </DropdownMenuItem>
                                 )}
-                                {(member.memberType === 'PT' || member.memberType === 'REGULAR_PT') && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleView(member)}
-                                    className="text-purple-600"
-                                    disabled={member.isActive === false}
-                                  >
-                                    <Dumbbell className="mr-2 h-4 w-4" />View PT Details
-                                  </DropdownMenuItem>
-                                )}
                                 {member.memberType === 'REGULAR_PT' && (
                                   <>
                                     <DropdownMenuItem
-                                      onClick={() => { setSelectedMemberForEditPT(member); setEditPtDialogOpen(true); }}
+                                      onClick={() => navigate(`/gym-owner/members/${member.id}/edit-pt`)}
                                       className="text-blue-600"
                                       disabled={member.isActive === false}
                                     >
@@ -820,10 +844,11 @@ export function MembersPage() {
 
       {/* View Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-xl">Member Details</DialogTitle></DialogHeader>
           {viewingMember && (
             <div className="space-y-4">
+              {/* Member Header - Always Visible */}
               <div className="flex gap-4">
                 <Avatar className="h-20 w-20 border-4 border-purple-200">
                   {viewingMember.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${viewingMember.memberPhoto}`} /> : null}
@@ -853,6 +878,8 @@ export function MembersPage() {
                   <Badge variant="outline" className="mt-1 font-mono">ID: {viewingMember.memberId || 'N/A'}</Badge>
                 </div>
               </div>
+
+              {/* Basic Info - Always Visible */}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-purple-500" /><span>Phone: {viewingMember.phone || '-'}</span></div>
                 <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-purple-500" /><span>Alt: {viewingMember.altContactNo || '-'}</span></div>
@@ -880,104 +907,261 @@ export function MembersPage() {
                 </div>
                 <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-purple-500" /><span>SMS: {viewingMember.smsFacility ? 'Enabled' : 'Disabled'}</span></div>
               </div>
-              {/* Regular Membership Fee Details */}
-              {(viewingMember.memberType === 'REGULAR' || viewingMember.memberType === 'REGULAR_PT') && (viewingMember.packageFees !== undefined || viewingMember.finalFees !== undefined) && (
-                <div className="pt-2 border-t">
-                  <h4 className="text-sm font-semibold text-blue-600 mb-2 flex items-center gap-1">
-                    💪 Regular Membership Fees
-                  </h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-blue-600">Package Fees</p>
-                      <p className="text-sm font-bold text-blue-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.packageFees?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-orange-600">Max Discount</p>
-                      <p className="text-sm font-bold text-orange-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.maxDiscount?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
-                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-purple-600">Extra Discount</p>
-                      <p className="text-sm font-bold text-purple-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.extraDiscount?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-green-600">Final Fees</p>
-                      <p className="text-sm font-bold text-green-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.finalFees?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
+
+              {/* Tab Navigation - Only for members with both memberships */}
+              {isLoadingMembershipDetails ? (
+                <div className="flex items-center justify-center py-4">
+                  <Spinner className="h-6 w-6" />
+                </div>
+              ) : membershipDetails && membershipDetails.hasRegularMembership && membershipDetails.hasPTMembership && (
+                <div className="border-b">
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setActiveTab('regular')}
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+                        activeTab === 'regular'
+                          ? 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      💪 Regular Membership
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('pt')}
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 flex items-center gap-1 ${
+                        activeTab === 'pt'
+                          ? 'border-purple-600 text-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Dumbbell className="h-3.5 w-3.5" />
+                      PT Membership
+                    </button>
                   </div>
                 </div>
               )}
-              {/* PT Membership Fee Details */}
-              {(viewingMember.memberType === 'PT' || viewingMember.memberType === 'REGULAR_PT') && (viewingMember.ptPackageFees !== undefined || viewingMember.ptFinalFees !== undefined) && (
-                <div className="pt-2 border-t">
-                  <h4 className="text-sm font-semibold text-purple-600 mb-2 flex items-center gap-1">
-                    <Dumbbell className="h-4 w-4" /> PT Membership Fees
-                  </h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-purple-600">PT Package</p>
-                      <p className="text-xs font-semibold text-purple-700">{viewingMember.ptPackageName || '-'}</p>
-                    </div>
-                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-purple-600">PT Fees</p>
-                      <p className="text-sm font-bold text-purple-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.ptPackageFees?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-orange-600">PT Discount</p>
-                      <p className="text-sm font-bold text-orange-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{((viewingMember.ptMaxDiscount || 0) + (viewingMember.ptExtraDiscount || 0)).toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
-                      <p className="text-[10px] text-green-600">PT Final</p>
-                      <p className="text-sm font-bold text-green-700 flex items-center justify-center"><IndianRupee className="h-3 w-3" />{viewingMember.ptFinalFees?.toLocaleString('en-IN') || '-'}</p>
-                    </div>
-                  </div>
-                  {/* PT Session Info */}
-                  {viewingMember.ptInfo && (
-                    <div className="mt-2 space-y-2">
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
-                          <p className="text-[10px] text-gray-500">Trainer</p>
-                          <p className="text-xs font-semibold">{viewingMember.ptInfo.trainerName || '-'}</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
-                          <p className="text-[10px] text-gray-500">Sessions Used</p>
-                          <p className="text-xs font-semibold">{viewingMember.ptInfo.sessionsUsed} / {viewingMember.ptInfo.sessionsTotal}</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
-                          <p className="text-[10px] text-gray-500">Remaining</p>
-                          <p className="text-xs font-semibold text-green-600">{viewingMember.ptInfo.sessionsRemaining} sessions</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
-                          <p className="text-[10px] text-gray-500">Duration</p>
-                          <p className="text-xs font-semibold">{viewingMember.ptInfo.sessionDuration} min</p>
-                        </div>
-                      </div>
-                      {/* Session Progress Bar */}
-                      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-muted-foreground">Session Progress</span>
-                          <span className="text-[10px] font-semibold text-purple-600">
-                            {Math.round((viewingMember.ptInfo.sessionsUsed / viewingMember.ptInfo.sessionsTotal) * 100)}% Complete
-                          </span>
-                        </div>
-                        <div className="h-2 bg-purple-200 dark:bg-purple-900 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all"
-                            style={{ width: `${Math.min(100, (viewingMember.ptInfo.sessionsUsed / viewingMember.ptInfo.sessionsTotal) * 100)}%` }}
-                          />
+
+              {/* Membership Content */}
+              {!isLoadingMembershipDetails && membershipDetails && (
+                <div className="space-y-4">
+                  {/* Regular Membership Content */}
+                  {membershipDetails.hasRegularMembership &&
+                   (!membershipDetails.hasPTMembership || activeTab === 'regular') &&
+                   membershipDetails.regularMembershipDetails && (
+                    <>
+                      {/* Regular Membership Fee Details */}
+                      <div className="pt-2 border-t">
+                        <h4 className="text-sm font-semibold text-blue-600 mb-2 flex items-center gap-1">
+                          💪 Regular Membership Fees
+                        </h4>
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-blue-600">Package Fees</p>
+                            <p className="text-sm font-bold text-blue-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.regularMembershipDetails.packageFees?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-orange-600">Max Discount</p>
+                            <p className="text-sm font-bold text-orange-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.regularMembershipDetails.maxDiscount?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-purple-600">Extra Discount</p>
+                            <p className="text-sm font-bold text-purple-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.regularMembershipDetails.extraDiscount?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-green-600">Final Fees</p>
+                            <p className="text-sm font-bold text-green-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.regularMembershipDetails.finalFees?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+
+                      {/* Regular Membership Dates and Status */}
+                      <div className="pt-2 border-t">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Start Date</p>
+                            <p className="font-medium">
+                              {membershipDetails.regularMembershipDetails.membershipStart
+                                ? format(new Date(membershipDetails.regularMembershipDetails.membershipStart), 'MMM dd, yyyy')
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">End Date</p>
+                            <p className="font-medium">
+                              {membershipDetails.regularMembershipDetails.membershipEnd
+                                ? format(new Date(membershipDetails.regularMembershipDetails.membershipEnd), 'MMM dd, yyyy')
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Status</p>
+                            <Badge
+                              variant={membershipDetails.regularMembershipDetails.membershipStatus === 'ACTIVE' ? 'default' : 'destructive'}
+                              className={membershipDetails.regularMembershipDetails.membershipStatus === 'ACTIVE' ? 'bg-green-500' : ''}
+                            >
+                              {membershipDetails.regularMembershipDetails.membershipStatus}
+                            </Badge>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Remaining Days</p>
+                            <p className="font-medium text-blue-600">
+                              {(() => {
+                                const endDate = membershipDetails.regularMembershipDetails?.membershipEnd;
+                                if (!endDate) return '-';
+                                const end = new Date(endDate);
+                                const now = new Date();
+                                const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? `${daysLeft} days` : 'Expired';
+                              })()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Total Paid Fees</p>
+                            <p className="font-medium text-green-600 flex items-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {(membershipDetails.regularMembershipDetails.totalPaidFees || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Total Pending Fees</p>
+                            <p className="font-medium text-red-600 flex items-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {(membershipDetails.regularMembershipDetails.totalPendingFees || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* PT Membership Content */}
+                  {membershipDetails.hasPTMembership &&
+                   (!membershipDetails.hasRegularMembership || activeTab === 'pt') &&
+                   membershipDetails.ptMembershipDetails && (
+                    <>
+                      {/* PT Membership Fee Details */}
+                      <div className="pt-2 border-t">
+                        <h4 className="text-sm font-semibold text-purple-600 mb-2 flex items-center gap-1">
+                          <Dumbbell className="h-4 w-4" /> PT Membership Fees
+                        </h4>
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-purple-600">Package Fees</p>
+                            <p className="text-sm font-bold text-purple-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.ptMembershipDetails.packageFees?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-orange-600">Max Discount</p>
+                            <p className="text-sm font-bold text-orange-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.ptMembershipDetails.maxDiscount?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-purple-600">Extra Discount</p>
+                            <p className="text-sm font-bold text-purple-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.ptMembershipDetails.extraDiscount?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
+                            <p className="text-[10px] text-green-600">Final Fees</p>
+                            <p className="text-sm font-bold text-green-700 flex items-center justify-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {membershipDetails.ptMembershipDetails.finalFees?.toLocaleString('en-IN') || '-'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PT Membership Details */}
+                      <div className="pt-2 border-t">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Trainer</p>
+                            <p className="font-medium">{membershipDetails.ptMembershipDetails.trainerName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">PT Plan</p>
+                            <p className="font-medium">{membershipDetails.ptMembershipDetails.packageName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Start Date</p>
+                            <p className="font-medium">
+                              {membershipDetails.ptMembershipDetails.startDate
+                                ? format(new Date(membershipDetails.ptMembershipDetails.startDate), 'MMM dd, yyyy')
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">End Date</p>
+                            <p className="font-medium">
+                              {membershipDetails.ptMembershipDetails.endDate
+                                ? format(new Date(membershipDetails.ptMembershipDetails.endDate), 'MMM dd, yyyy')
+                                : 'Ongoing'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Status</p>
+                            <Badge variant="default" className="bg-green-500">
+                              Active
+                            </Badge>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Remaining Days</p>
+                            <p className="font-medium text-purple-600">
+                              {(() => {
+                                const endDate = membershipDetails.ptMembershipDetails?.endDate;
+                                if (!endDate) return 'Ongoing';
+                                const end = new Date(endDate);
+                                const now = new Date();
+                                const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? `${daysLeft} days` : 'Expired';
+                              })()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Total Paid Fees</p>
+                            <p className="font-medium text-green-600 flex items-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {(membershipDetails.ptMembershipDetails.totalPaidFees || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs mb-1">Total Pending Fees</p>
+                            <p className="font-medium text-red-600 flex items-center">
+                              <IndianRupee className="h-3 w-3" />
+                              {(membershipDetails.ptMembershipDetails.totalPendingFees || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
+
+              {/* Health Notes - Always Visible */}
               <div className="pt-2 border-t">
                 <p className="text-sm"><strong>Health Notes:</strong> {viewingMember.healthNotes || 'None'}</p>
-                <p className="text-sm mt-2"><strong>Membership:</strong> {(viewingMember.membershipStart || viewingMember.membershipStartDate) ? format(new Date(viewingMember.membershipStart || viewingMember.membershipStartDate!), 'MMM dd, yyyy') : '-'} to {(viewingMember.membershipEnd || viewingMember.membershipEndDate) ? format(new Date(viewingMember.membershipEnd || viewingMember.membershipEndDate!), 'MMM dd, yyyy') : '-'}</p>
-                {viewingMember.ptInfo && (
-                  <p className="text-sm mt-1"><strong>PT Period:</strong> {viewingMember.ptInfo.startDate ? format(new Date(viewingMember.ptInfo.startDate), 'MMM dd, yyyy') : '-'} to {viewingMember.ptInfo.endDate ? format(new Date(viewingMember.ptInfo.endDate), 'MMM dd, yyyy') : 'Ongoing'}</p>
-                )}
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
                 <Button onClick={() => { setViewDialogOpen(false); navigate(`/gym-owner/members/${viewingMember.id}/edit`); }}>
                   <Edit className="mr-2 h-4 w-4" />Edit Member
@@ -1030,26 +1214,32 @@ export function MembersPage() {
               </div>
 
               {/* Fee Summary Cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Total Fees</p>
-                  <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
-                    <IndianRupee className="h-4 w-4" />{((selectedMemberForPayment.finalFees || 0) + (selectedMemberForPayment.ptFinalFees || 0)).toLocaleString('en-IN')}
-                  </p>
+              {isLoadingPaymentMembershipDetails ? (
+                <div className="flex items-center justify-center py-4">
+                  <Spinner className="h-6 w-6" />
                 </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
-                  <p className="text-xs text-green-600 font-medium mb-1">Paid Fees</p>
-                  <p className="text-lg font-bold text-green-700 flex items-center justify-center">
-                    <IndianRupee className="h-4 w-4" />{totalPaidFees.toLocaleString('en-IN')}
-                  </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-600 font-medium mb-1">Total Fees</p>
+                    <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
+                      <IndianRupee className="h-4 w-4" />{totalFeesAmount.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
+                    <p className="text-xs text-green-600 font-medium mb-1">Paid Fees</p>
+                    <p className="text-lg font-bold text-green-700 flex items-center justify-center">
+                      <IndianRupee className="h-4 w-4" />{totalPaidFees.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                  <div className={`${balanceFees > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-3 rounded-xl text-center border`}>
+                    <p className={`text-xs font-medium mb-1 ${balanceFees > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending Fees</p>
+                    <p className={`text-lg font-bold flex items-center justify-center ${balanceFees > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                      <IndianRupee className="h-4 w-4" />{balanceFees.toLocaleString('en-IN')}
+                    </p>
+                  </div>
                 </div>
-                <div className={`${balanceFees > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-3 rounded-xl text-center border`}>
-                  <p className={`text-xs font-medium mb-1 ${balanceFees > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending Fees</p>
-                  <p className={`text-lg font-bold flex items-center justify-center ${balanceFees > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                    <IndianRupee className="h-4 w-4" />{balanceFees.toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
+              )}
 
               {/* Payment Form */}
               <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isSelectedMemberExpired ? 'opacity-60' : ''}`}>
@@ -1069,27 +1259,26 @@ export function MembersPage() {
                   </div>
                 )}
 
-                {/* Payment Type Selector - Show for PT and REGULAR_PT members */}
-                {(selectedMemberForPayment.memberType === 'PT' || selectedMemberForPayment.memberType === 'REGULAR_PT') && (
+                {/* Payment Type Selector - Show when member has both memberships */}
+                {!isLoadingPaymentMembershipDetails && paymentMembershipDetails &&
+                 paymentMembershipDetails.hasRegularMembership && paymentMembershipDetails.hasPTMembership && (
                   <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border">
                     <Label className="text-sm font-medium">Payment For:</Label>
                     <div className="flex items-center gap-4">
-                      {(selectedMemberForPayment.memberType === 'REGULAR_PT') && (
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="paymentFor"
-                            value="REGULAR"
-                            checked={paymentForm.paymentFor === 'REGULAR'}
-                            onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'REGULAR' })}
-                            className="w-4 h-4 text-blue-600"
-                            disabled={isSelectedMemberExpired}
-                          />
-                          <span className="text-sm flex items-center gap-1">
-                            💪 <span className="text-blue-600 font-medium">Regular Membership</span>
-                          </span>
-                        </label>
-                      )}
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="paymentFor"
+                          value="REGULAR"
+                          checked={paymentForm.paymentFor === 'REGULAR'}
+                          onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'REGULAR' })}
+                          className="w-4 h-4 text-blue-600"
+                          disabled={isSelectedMemberExpired}
+                        />
+                        <span className="text-sm flex items-center gap-1">
+                          💪 <span className="text-blue-600 font-medium">Regular Membership</span>
+                        </span>
+                      </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
@@ -1293,27 +1482,11 @@ export function MembersPage() {
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
       />
 
-      {/* Add PT Membership Dialog */}
-      <AddPTMembershipDialog
-        open={ptDialogOpen}
-        onOpenChange={setPtDialogOpen}
-        member={selectedMemberForPT}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
-      />
-
       {/* Pause/Resume PT Membership Dialog */}
       <PausePTMembershipDialog
         open={pausePtDialogOpen}
         onOpenChange={setPausePtDialogOpen}
         member={selectedMemberForPausePT}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
-      />
-
-      {/* Edit PT Membership Dialog */}
-      <EditPTMembershipDialog
-        open={editPtDialogOpen}
-        onOpenChange={setEditPtDialogOpen}
-        member={selectedMemberForEditPT}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
       />
     </div>
