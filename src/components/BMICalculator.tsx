@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, X } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

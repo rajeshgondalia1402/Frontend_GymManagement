@@ -26,7 +26,7 @@ import { toast } from '@/hooks/use-toast';
 import { ExportButton } from '@/components/ui/export-button';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
-import type { Member, CoursePackage, BalancePayment, CreateBalancePayment, MembershipDetails } from '@/types';
+import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const MARITAL_STATUS = ['Single', 'Married', 'Divorced', 'Widowed'];
@@ -290,8 +290,6 @@ export function MembersPage() {
     return paymentMembershipDetails?.ptMembershipDetails?.finalFees || 0;
   }, [paymentMembershipDetails]);
 
-  const regularBalance = useMemo(() => regularFinalFees - regularPaidFees, [regularFinalFees, regularPaidFees]);
-  const ptBalance = useMemo(() => ptFinalFees - ptPaidFees, [ptFinalFees, ptPaidFees]);
   const balanceFees = useMemo(() => totalFeesAmount - totalPaidFees, [totalFeesAmount, totalPaidFees]);
 
   const hasPTMembership = useMemo(() => paymentMembershipDetails?.hasPTMembership || false, [paymentMembershipDetails]);
