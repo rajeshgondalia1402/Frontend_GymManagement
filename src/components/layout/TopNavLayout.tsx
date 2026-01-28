@@ -23,7 +23,8 @@ import {
   KeyRound,
   Eye,
   EyeOff,
-  Package
+  Package,
+  Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -84,16 +85,23 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
   ],
   GYM_OWNER: [
     { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
-    { title: 'Members', href: '/gym-owner/members', icon: Users },
-    { title: 'Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
-    { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+    {
+      title: 'Members',
+      icon: Users,
+      submenu: [
+        { title: 'Regular Member', href: '/gym-owner/members', icon: Users },
+        { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+        { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
+      ],
+    },
     { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
     { title: 'Diet Plans', href: '/gym-owner/diet-plans', icon: UtensilsCrossed },
-    { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
+    { title: 'Expenses', href: '/gym-owner/expenses', icon: Receipt },
     {
       title: 'Master',
       icon: FolderCog,
       submenu: [
+        { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
         { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
         { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
