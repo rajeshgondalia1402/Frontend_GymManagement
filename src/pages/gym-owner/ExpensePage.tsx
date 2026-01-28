@@ -123,8 +123,8 @@ export function ExpensePage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, formData }: { id: string; formData: FormData }) => gymOwnerService.updateExpense(id, formData),
     onSuccess: () => {
-      // Sort by most recent updated date
-      setSortBy('updatedAt');
+      // Sort by most recent created date (for consistency with backend)
+      setSortBy('createdAt');
       setSortOrder('desc');
       setPage(1);
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
