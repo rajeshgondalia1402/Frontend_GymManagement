@@ -11,6 +11,7 @@ import type {
   DietAssignment,
   ExerciseAssignment,
   ExpenseGroup,
+  Expense,
   Designation,
   BodyPart,
   WorkoutExercise,
@@ -399,6 +400,44 @@ export const gymOwnerService = {
 
   async deleteExpenseGroup(id: string): Promise<void> {
     await api.delete(`/gym-owner/expense-groups/${id}`);
+  },
+
+  // Expenses
+  async getExpenses(params?: Record<string, any>): Promise<{ data: Expense[]; pagination: any; summary?: any }> {
+    const response = await api.get<ApiResponse<Expense[]>>('/gym-owner/expenses', { params });
+    // API returns { status, message, data: [...], pagination: {...}, summary: {...} }
+    return {
+      data: response.data.data as any,
+      pagination: (response.data as any).pagination,
+      summary: (response.data as any).summary
+    };
+  },
+
+  async getExpense(id: string): Promise<Expense> {
+    const response = await api.get<ApiResponse<Expense>>(`/gym-owner/expenses/${id}`);
+    return response.data.data;
+  },
+
+  async createExpense(data: FormData): Promise<Expense> {
+    const response = await api.post<ApiResponse<Expense>>('/gym-owner/expenses', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  async updateExpense(id: string, data: FormData): Promise<Expense> {
+    const response = await api.put<ApiResponse<Expense>>(`/gym-owner/expenses/${id}`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  async deleteExpense(id: string): Promise<void> {
+    await api.delete(`/gym-owner/expenses/${id}`);
   },
 
   // Designations

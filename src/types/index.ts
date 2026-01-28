@@ -353,6 +353,39 @@ export interface ExpenseGroup {
   gymId?: string;
 }
 
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
+
+export interface Expense {
+  id: string;
+  expenseDate: string;
+  name: string;
+  expenseGroupId: string;
+  expenseGroupName?: string;
+  description?: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  attachments?: string[];
+  createdBy?: string;
+  gymId?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  expenseGroup?: ExpenseGroup;
+}
+
+export interface CreateExpense {
+  name: string;
+  expenseGroupId: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  expenseDate?: string;
+  description?: string;
+}
+
+export interface UpdateExpense extends Partial<CreateExpense> {
+  keepAttachments?: string;
+}
+
 export interface Designation {
   id: string;
   designationName: string;
