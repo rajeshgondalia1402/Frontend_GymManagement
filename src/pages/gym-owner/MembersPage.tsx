@@ -302,6 +302,126 @@ export function MembersPage() {
     return new Date(endDate) < new Date();
   }, [selectedMemberForPayment]);
 
+  // Export All Members to Excel with styled headers and frozen header
+  const exportMembersExcel = () => {
+    if (!members || members.length === 0) {
+      toast({ title: 'No data to export', variant: 'destructive' });
+      return;
+    }
+
+    // Build styled HTML table for Excel with freeze panes
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8">';
+    html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+    html += '<x:Name>Members Report</x:Name>';
+    html += '<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane><x:ActivePane>2</x:ActivePane></x:WorksheetOptions>';
+    html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    html += '<style>';
+    html += 'table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }';
+    html += 'th { background-color: #4F46E5; color: white; font-weight: bold; padding: 12px 8px; border: 1px solid #3730A3; text-align: left; position: sticky; top: 0; }';
+    html += 'td { border: 1px solid #E5E7EB; padding: 8px; }';
+    html += 'tr:nth-child(even) { background-color: #F9FAFB; }';
+    html += 'tr:hover { background-color: #F3F4F6; }';
+    html += '.amount { color: #059669; font-weight: bold; }';
+    html += '.expired { color: #DC2626; font-weight: bold; }';
+    html += '.active { color: #059669; font-weight: bold; }';
+    html += '.inactive { color: #6B7280; font-weight: bold; }';
+    html += '</style></head><body>';
+
+    html += '<table>';
+    // Header Row with Background Color
+    html += '<thead><tr>';
+    html += '<th>S.No</th>';
+    html += '<th>Member ID</th>';
+    html += '<th>First Name</th>';
+    html += '<th>Last Name</th>';
+    html += '<th>Email</th>';
+    html += '<th>Phone</th>';
+    html += '<th>Alt Contact</th>';
+    html += '<th>Gender</th>';
+    html += '<th>Date of Birth</th>';
+    html += '<th>Blood Group</th>';
+    html += '<th>Marital Status</th>';
+    html += '<th>Occupation</th>';
+    html += '<th>Address</th>';
+    html += '<th>Member Type</th>';
+    html += '<th>Package Fees</th>';
+    html += '<th>Final Fees</th>';
+    html += '<th>PT Final Fees</th>';
+    html += '<th>Membership Start</th>';
+    html += '<th>Membership End</th>';
+    html += '<th>Remaining Days</th>';
+    html += '<th>Status</th>';
+    html += '<th>SMS Facility</th>';
+    html += '<th>ID Proof Type</th>';
+    html += '<th>Anniversary Date</th>';
+    html += '<th>Health Notes</th>';
+    html += '</tr></thead>';
+
+    // Data Rows
+    html += '<tbody>';
+    members.forEach((member: Member, index: number) => {
+      const status = getMembershipStatus(member);
+      const endDate = member.membershipEnd || member.membershipEndDate;
+      const startDate = member.membershipStart || member.membershipStartDate;
+      let remainingDays = '-';
+      if (endDate) {
+        const end = new Date(endDate);
+        const now = new Date();
+        const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        remainingDays = daysLeft > 0 ? `${daysLeft} days` : 'Expired';
+      }
+
+      // PT Final Fees - handle different member types
+      let ptFinalFeesValue = '-';
+      if (member.memberType === 'PT') {
+        ptFinalFeesValue = member.finalFees ? `₹${member.finalFees.toLocaleString('en-IN')}` : '-';
+      } else if (member.memberType === 'REGULAR_PT' && member.ptFinalFees) {
+        ptFinalFeesValue = `₹${member.ptFinalFees.toLocaleString('en-IN')}`;
+      }
+
+      html += '<tr>';
+      html += `<td>${index + 1}</td>`;
+      html += `<td>${member.memberId || '-'}</td>`;
+      html += `<td>${member.firstName || '-'}</td>`;
+      html += `<td>${member.lastName || '-'}</td>`;
+      html += `<td>${member.email || member.user?.email || '-'}</td>`;
+      html += `<td>${member.phone || '-'}</td>`;
+      html += `<td>${member.altContactNo || '-'}</td>`;
+      html += `<td>${member.gender || '-'}</td>`;
+      html += `<td>${member.dateOfBirth ? format(new Date(member.dateOfBirth), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td>${member.bloodGroup || '-'}</td>`;
+      html += `<td>${member.maritalStatus || '-'}</td>`;
+      html += `<td>${member.occupation || '-'}</td>`;
+      html += `<td>${member.address || '-'}</td>`;
+      html += `<td>${member.memberType || '-'}</td>`;
+      html += `<td class="amount">${member.packageFees ? `₹${member.packageFees.toLocaleString('en-IN')}` : '-'}</td>`;
+      html += `<td class="amount">${member.finalFees ? `₹${member.finalFees.toLocaleString('en-IN')}` : '-'}</td>`;
+      html += `<td class="amount">${ptFinalFeesValue}</td>`;
+      html += `<td>${startDate ? format(new Date(startDate), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td>${endDate ? format(new Date(endDate), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td>${remainingDays}</td>`;
+      html += `<td class="${status}">${status === 'active' ? 'Active' : status === 'inactive' ? 'InActive' : 'Expired'}</td>`;
+      html += `<td>${member.smsFacility ? 'Yes' : 'No'}</td>`;
+      html += `<td>${member.idProofType || '-'}</td>`;
+      html += `<td>${member.anniversaryDate ? format(new Date(member.anniversaryDate), 'dd/MM/yyyy') : '-'}</td>`;
+      html += `<td>${member.healthNotes || '-'}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '</body></html>';
+
+    // Download XLS
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `members_report_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Members report exported successfully' });
+  };
+
   // Export Balance Payment to Excel with styled headers
   const exportBalancePaymentCsv = () => {
     if (!selectedMemberForPayment) return;
@@ -436,8 +556,6 @@ export function MembersPage() {
     const end = new Date(endDate);
     const now = new Date();
     if (end < now) return 'expired';
-    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysLeft <= 7) return 'expiring';
     return 'active';
   };
 
@@ -463,29 +581,22 @@ export function MembersPage() {
   const totalItems = pagination?.total || members.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Members</h1>
-          <p className="text-muted-foreground">Manage gym members and their profiles</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Members</h1>
+          <p className="text-sm text-muted-foreground">Manage gym members and their profiles</p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportButton
-            data={members}
-            filename="members"
-            columns={[
-              { key: 'memberId', label: 'Member ID' },
-              { key: 'firstName', label: 'First Name' },
-              { key: 'lastName', label: 'Last Name' },
-              { key: 'email', label: 'Email' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'gender', label: 'Gender' },
-              { key: 'finalFees', label: 'Final Fees', format: (v) => v ? `₹${v}` : '' },
-              { key: 'membershipEnd', label: 'Membership End', format: (v) => v ? format(new Date(v), 'dd/MM/yyyy') : '' },
-              { key: 'isActive', label: 'Status', format: (v) => v === false ? 'Inactive' : 'Active' },
-            ]}
-          />
+          <Button
+            onClick={exportMembersExcel}
+            disabled={!members || members.length === 0}
+            className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
           <Button onClick={() => navigate('/gym-owner/members/new')}>
             <Plus className="mr-2 h-4 w-4" /> Add New Member
           </Button>
@@ -652,8 +763,8 @@ export function MembersPage() {
             </div>
           ) : (
             <>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">#</TableHead>
@@ -663,6 +774,7 @@ export function MembersPage() {
                       <SortableHeader column="phone" label="Phone" />
                       <SortableHeader column="finalFees" label="Fees" />
                       <SortableHeader column="membershipEnd" label="Membership End" />
+                      <SortableHeader column="membershipEnd" label="Remaining Days" />
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
@@ -733,12 +845,31 @@ export function MembersPage() {
                           </TableCell>
                           <TableCell className="text-sm">{(member.membershipEnd || member.membershipEndDate) ? format(new Date(member.membershipEnd || member.membershipEndDate!), 'MMM dd, yyyy') : '-'}</TableCell>
                           <TableCell>
+                            {(() => {
+                              const endDate = member.membershipEnd || member.membershipEndDate;
+                              if (!endDate) return <span className="text-muted-foreground text-sm">-</span>;
+                              const end = new Date(endDate);
+                              const now = new Date();
+                              const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                              if (daysLeft > 0) {
+                                return (
+                                  <span className={`font-medium text-sm ${daysLeft <= 7 ? 'text-yellow-600' : 'text-blue-600'}`}>
+                                    {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+                                  </span>
+                                );
+                              } else {
+                                return <span className="text-red-600 font-medium text-sm">Expired</span>;
+                              }
+                            })()}
+                          </TableCell>
+                          <TableCell>
                             <Badge
-                              variant={status === 'active' ? 'default' : status === 'expiring' ? 'secondary' : status === 'inactive' ? 'outline' : 'destructive'}
-                              className={`cursor-pointer ${status === 'active' ? 'bg-green-500' : status === 'expiring' ? 'bg-yellow-500' : status === 'inactive' ? 'bg-gray-400 text-white' : ''}`}
+                              variant={status === 'active' ? 'default' : status === 'inactive' ? 'outline' : 'destructive'}
+                              className={`cursor-pointer ${status === 'active' ? 'bg-green-500' : status === 'inactive' ? 'bg-gray-400 text-white' : ''}`}
                               onClick={() => toggleStatusMutation.mutate(member.id)}
                             >
-                              {status === 'active' ? 'Active' : status === 'expiring' ? 'Expiring' : status === 'inactive' ? 'InActive' : 'Expired'}
+                              {status === 'active' ? 'Active' : status === 'inactive' ? 'InActive' : 'Expired'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -807,9 +938,9 @@ export function MembersPage() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalItems)} of {totalItems} results
                   </p>
                   <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
@@ -823,15 +954,15 @@ export function MembersPage() {
                       <SelectItem value="100">100</SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-sm text-muted-foreground">per page</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">per page</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                    <ChevronLeft className="h-4 w-4" /> Previous
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="text-xs">
+                    <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous</span>
                   </Button>
-                  <span className="text-sm">Page {page} of {totalPages}</span>
-                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                    Next <ChevronRight className="h-4 w-4" />
+                  <span className="text-xs sm:text-sm font-medium whitespace-nowrap">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="text-xs">
+                    <span className="hidden sm:inline">Next</span> <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

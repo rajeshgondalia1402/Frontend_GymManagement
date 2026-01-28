@@ -1,6 +1,6 @@
 import { Route } from 'react-router-dom';
 import { TrainerGuard } from '@/guards/RoleGuard';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { TopNavLayout } from '@/components/layout/TopNavLayout';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -29,9 +29,9 @@ export const TrainerRoutes = () => (
       path="/trainer"
       element={
         <TrainerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <TrainerDashboard />
-          </SidebarLayout>
+          </TopNavLayout>
         </TrainerGuard>
       }
     />
@@ -39,9 +39,9 @@ export const TrainerRoutes = () => (
       path="/trainer/pt-members"
       element={
         <TrainerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <PTMembersPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </TrainerGuard>
       }
     />
@@ -49,9 +49,9 @@ export const TrainerRoutes = () => (
       path="/trainer/pt-members/:id"
       element={
         <TrainerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <PTMemberDetailPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </TrainerGuard>
       }
     />

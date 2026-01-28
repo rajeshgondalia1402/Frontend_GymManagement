@@ -117,8 +117,8 @@ function AppTable<T>({
   return (
     <>
       {/* Desktop Table */}
-      <div className={cn('relative w-full overflow-auto', breakpointClass, className)}>
-        <Table>
+      <div className={cn('relative w-full overflow-x-auto', breakpointClass, className)} style={{ WebkitOverflowScrolling: 'touch' }}>
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               {columns.map((col) => (

@@ -1,6 +1,6 @@
 import { Route } from 'react-router-dom';
 import { AdminGuard } from '@/guards/RoleGuard';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { TopNavLayout } from '@/components/layout/TopNavLayout';
 
 // Admin Pages
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
@@ -30,9 +30,9 @@ export const AdminRoutes = () => (
       path="/admin"
       element={
         <AdminGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <AdminDashboard />
-          </SidebarLayout>
+          </TopNavLayout>
         </AdminGuard>
       }
     />
@@ -40,9 +40,9 @@ export const AdminRoutes = () => (
       path="/admin/gyms"
       element={
         <AdminGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <GymsPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </AdminGuard>
       }
     />
@@ -50,9 +50,9 @@ export const AdminRoutes = () => (
       path="/admin/gym-owners"
       element={
         <AdminGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <GymOwnersPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </AdminGuard>
       }
     />
@@ -60,9 +60,9 @@ export const AdminRoutes = () => (
       path="/admin/subscription-plans"
       element={
         <AdminGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <SubscriptionPlansPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </AdminGuard>
       }
     />
@@ -70,9 +70,9 @@ export const AdminRoutes = () => (
       path="/admin/master/occupations"
       element={
         <AdminGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <OccupationMasterPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </AdminGuard>
       }
     />
