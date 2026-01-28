@@ -1,6 +1,6 @@
 import { Route } from 'react-router-dom';
 import { GymOwnerGuard } from '@/guards/RoleGuard';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { TopNavLayout } from '@/components/layout/TopNavLayout';
 
 // Gym Owner Pages
 import { GymOwnerDashboard } from '@/pages/gym-owner/GymOwnerDashboard';
@@ -41,9 +41,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <GymOwnerDashboard />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -51,9 +51,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MembersPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -61,9 +61,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members/new"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MemberFormPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -71,9 +71,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members/:id/edit"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MemberFormPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -81,9 +81,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members/:id"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MemberDetailPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -91,9 +91,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members/:id/add-pt"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <AddPTMembershipPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -101,9 +101,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/members/:id/edit-pt"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <EditPTMembershipPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -111,9 +111,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/trainers"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <TrainersPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -121,9 +121,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/diet-plans"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <DietPlansPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -131,9 +131,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/exercise-plans"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <ExercisePlansPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -141,9 +141,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/member-inquiries"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MemberInquiriesPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />
@@ -151,9 +151,9 @@ export const OwnerRoutes = () => (
       path="/gym-owner/course-packages"
       element={
         <GymOwnerGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <CoursePackagesPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </GymOwnerGuard>
       }
     />

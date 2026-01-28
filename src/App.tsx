@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { TopNavLayout } from '@/components/layout/TopNavLayout';
 import { RoleGuard } from '@/guards/RoleGuard';
 import { Toaster } from '@/components/ui/toaster';
 import type { Role } from '@/types';
@@ -113,9 +113,9 @@ function App() {
           path="/admin"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <AdminDashboard />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -123,9 +123,9 @@ function App() {
           path="/admin/gyms"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <GymsPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -133,9 +133,9 @@ function App() {
           path="/admin/gym-owners"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <GymOwnersPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -143,9 +143,9 @@ function App() {
           path="/admin/subscription-plans"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <SubscriptionPlansPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -153,9 +153,9 @@ function App() {
           path="/admin/master/occupations"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <OccupationMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -163,9 +163,9 @@ function App() {
           path="/admin/master/enquiry-types"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <EnquiryMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -173,9 +173,9 @@ function App() {
           path="/admin/master/payment-types"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <PaymentTypeMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -187,9 +187,9 @@ function App() {
           path="/gym-owner"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <GymOwnerDashboard />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -197,9 +197,9 @@ function App() {
           path="/gym-owner/members"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MembersPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -207,9 +207,9 @@ function App() {
           path="/gym-owner/members/new"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MemberFormPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -217,9 +217,9 @@ function App() {
           path="/gym-owner/members/:id/edit"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MemberFormPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -227,9 +227,9 @@ function App() {
           path="/gym-owner/members/:id/add-pt"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <AddPTMembershipPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -237,9 +237,9 @@ function App() {
           path="/gym-owner/members/:id/edit-pt"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <EditPTMembershipPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -247,9 +247,9 @@ function App() {
           path="/gym-owner/members/:id"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MemberDetailPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -257,9 +257,9 @@ function App() {
           path="/gym-owner/trainers"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <TrainersPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -267,9 +267,9 @@ function App() {
           path="/gym-owner/diet-plans"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <DietPlansPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -277,9 +277,9 @@ function App() {
           path="/gym-owner/exercise-plans"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <ExercisePlansPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -287,9 +287,9 @@ function App() {
           path="/gym-owner/master/expense-groups"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <ExpenseGroupMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -297,9 +297,9 @@ function App() {
           path="/gym-owner/master/designations"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <DesignationMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -307,9 +307,9 @@ function App() {
           path="/gym-owner/master/workout-exercises"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <WorkoutExerciseMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -317,9 +317,9 @@ function App() {
           path="/gym-owner/master/body-parts"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <BodyPartMasterPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -327,9 +327,9 @@ function App() {
           path="/gym-owner/member-inquiries"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MemberInquiriesPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -337,9 +337,9 @@ function App() {
           path="/gym-owner/course-packages"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <CoursePackagesPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -351,9 +351,9 @@ function App() {
           path="/trainer"
           element={
             <RoleGuard allowedRoles={['TRAINER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <TrainerDashboard />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -361,9 +361,9 @@ function App() {
           path="/trainer/pt-members"
           element={
             <RoleGuard allowedRoles={['TRAINER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <PTMembersPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -371,9 +371,9 @@ function App() {
           path="/trainer/pt-members/:id"
           element={
             <RoleGuard allowedRoles={['TRAINER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <PTMemberDetailPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -385,9 +385,9 @@ function App() {
           path="/member"
           element={
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MemberDashboard />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -395,9 +395,9 @@ function App() {
           path="/member/trainer"
           element={
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MyTrainerPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -405,9 +405,9 @@ function App() {
           path="/member/diet-plan"
           element={
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MyDietPlanPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -415,9 +415,9 @@ function App() {
           path="/member/exercise-plans"
           element={
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MyExercisePlansPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />
@@ -425,9 +425,9 @@ function App() {
           path="/member/membership"
           element={
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <SidebarLayout>
+              <TopNavLayout>
                 <MembershipPage />
-              </SidebarLayout>
+              </TopNavLayout>
             </RoleGuard>
           }
         />

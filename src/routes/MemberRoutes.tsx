@@ -1,6 +1,6 @@
 import { Route } from 'react-router-dom';
 import { MemberGuard } from '@/guards/RoleGuard';
-import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { TopNavLayout } from '@/components/layout/TopNavLayout';
 
 // Member Pages
 import { MemberDashboard } from '@/pages/member/MemberDashboard';
@@ -33,9 +33,9 @@ export const MemberRoutes = () => (
       path="/member"
       element={
         <MemberGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MemberDashboard />
-          </SidebarLayout>
+          </TopNavLayout>
         </MemberGuard>
       }
     />
@@ -43,9 +43,9 @@ export const MemberRoutes = () => (
       path="/member/trainer"
       element={
         <MemberGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MyTrainerPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </MemberGuard>
       }
     />
@@ -53,9 +53,9 @@ export const MemberRoutes = () => (
       path="/member/diet-plan"
       element={
         <MemberGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MyDietPlanPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </MemberGuard>
       }
     />
@@ -63,9 +63,9 @@ export const MemberRoutes = () => (
       path="/member/exercise-plans"
       element={
         <MemberGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MyExercisePlansPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </MemberGuard>
       }
     />
@@ -73,9 +73,9 @@ export const MemberRoutes = () => (
       path="/member/membership"
       element={
         <MemberGuard>
-          <SidebarLayout>
+          <TopNavLayout>
             <MembershipPage />
-          </SidebarLayout>
+          </TopNavLayout>
         </MemberGuard>
       }
     />
