@@ -183,6 +183,23 @@ export function ExpensePage() {
 
     if (!formData.expenseDate) {
       newErrors.expenseDate = 'Expense date is required';
+    } else {
+      // Parse the date string as a local date (YYYY-MM-DD format)
+      const [year, month, day] = formData.expenseDate.split('-').map(Number);
+      const expenseDate = new Date(year, month - 1, day);
+      
+      if (isNaN(expenseDate.getTime())) {
+        newErrors.expenseDate = 'Expense date is invalid';
+      } else {
+        // Compare with today's date in local timezone
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        expenseDate.setHours(0, 0, 0, 0);
+        
+        if (expenseDate > today) {
+          newErrors.expenseDate = 'Expense date cannot be in the future';
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -323,6 +340,8 @@ export function ExpensePage() {
       return;
     }
 
+    // Note: This export template has 8 columns (S.No, Date, Expense Name, Expense Group, Payment Mode, Amount, Description, Attachments)
+    // If table structure changes, update the column headers, data rows, and total row colspan values accordingly
     let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
     html += '<head><meta charset="utf-8">';
     html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
@@ -355,6 +374,7 @@ export function ExpensePage() {
       html += '</tr>';
     });
 
+    // Total row: colspan="5" spans columns 1-5 (S.No through Payment Mode), Amount in column 6, colspan="2" spans columns 7-8
     html += `<tr><td colspan="5" style="font-weight: bold;">Total</td><td class="amount">₹${totalAmount.toLocaleString('en-IN')}</td><td colspan="2"></td></tr>`;
     html += '</tbody></table></body></html>';
 
@@ -374,14 +394,50 @@ export function ExpensePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    const totalFiles = selectedFiles.length + keepAttachments.length;
-
-    if (totalFiles > 5) {
-      toast({ title: 'Too many files', description: 'Maximum 5 files allowed', variant: 'destructive' });
+    
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    setFiles(selectedFiles);
+    // Avoid adding duplicate files (same name, size, and lastModified)
+    const existingKeys = new Set(
+      files.map(file => `${file.name}-${file.size}-${file.lastModified}`)
+    );
+    
+    // Also check against existing attachment filenames to prevent re-uploading files already attached
+    const existingAttachmentNames = new Set(
+      keepAttachments.map(path => path.split('/').pop() || '')
+    );
+    
+    const uniqueNewFiles = selectedFiles.filter(file => {
+      const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+      return !existingKeys.has(fileKey) && !existingAttachmentNames.has(file.name);
+    });
+
+    // Notify user if some files were filtered out
+    const filteredCount = selectedFiles.length - uniqueNewFiles.length;
+    if (filteredCount > 0) {
+      toast({
+        title: 'Duplicate files skipped',
+        description: `${filteredCount} file(s) with matching names were not added`,
+        variant: 'default',
+      });
+    }
+
+    const totalFilesCount = files.length + uniqueNewFiles.length + keepAttachments.length;
+
+    if (totalFilesCount > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'Maximum 5 files allowed',
+        variant: 'destructive',
+      });
+      // Clear the input so the user can reselect a valid set of files
+      e.target.value = '';
+      return;
+    }
+
+    setFiles(prev => [...prev, ...uniqueNewFiles]);
   };
 
   return (
@@ -923,3 +979,5 @@ export function ExpensePage() {
     </div>
   );
 }
+
+export default ExpensePage;

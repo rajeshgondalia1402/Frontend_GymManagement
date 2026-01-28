@@ -383,7 +383,7 @@ export interface CreateExpense {
 }
 
 export interface UpdateExpense extends Partial<CreateExpense> {
-  keepAttachments?: string;
+  keepAttachments?: string[];
 }
 
 export interface Designation {
