@@ -175,7 +175,9 @@ export function ExpensePage() {
       newErrors.expenseGroupId = 'Expense group is required';
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    const amountStr = formData.amount?.trim() ?? '';
+    const amountValue = amountStr === '' ? NaN : Number(amountStr);
+    if (!amountStr || Number.isNaN(amountValue) || amountValue <= 0) {
       newErrors.amount = 'Amount must be greater than 0';
     }
 
