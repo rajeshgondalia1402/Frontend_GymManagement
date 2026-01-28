@@ -184,12 +184,18 @@ export function ExpensePage() {
     if (!formData.expenseDate) {
       newErrors.expenseDate = 'Expense date is required';
     } else {
-      const expenseDate = new Date(formData.expenseDate);
+      // Parse the date string as a local date (YYYY-MM-DD format)
+      const [year, month, day] = formData.expenseDate.split('-').map(Number);
+      const expenseDate = new Date(year, month - 1, day);
+      
       if (isNaN(expenseDate.getTime())) {
         newErrors.expenseDate = 'Expense date is invalid';
       } else {
+        // Compare with today's date in local timezone
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        expenseDate.setHours(0, 0, 0, 0);
+        
         if (expenseDate > today) {
           newErrors.expenseDate = 'Expense date cannot be in the future';
         }
@@ -407,6 +413,16 @@ export function ExpensePage() {
       const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
       return !existingKeys.has(fileKey) && !existingAttachmentNames.has(file.name);
     });
+
+    // Notify user if some files were filtered out
+    const filteredCount = selectedFiles.length - uniqueNewFiles.length;
+    if (filteredCount > 0) {
+      toast({
+        title: 'Duplicate files skipped',
+        description: `${filteredCount} file(s) with matching names were not added`,
+        variant: 'default',
+      });
+    }
 
     const totalFilesCount = files.length + uniqueNewFiles.length + keepAttachments.length;
 
