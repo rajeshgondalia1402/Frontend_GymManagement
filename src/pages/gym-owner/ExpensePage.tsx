@@ -397,9 +397,16 @@ export function ExpensePage() {
     const existingKeys = new Set(
       files.map(file => `${file.name}-${file.size}-${file.lastModified}`)
     );
-    const uniqueNewFiles = selectedFiles.filter(
-      file => !existingKeys.has(`${file.name}-${file.size}-${file.lastModified}`)
+    
+    // Also check against existing attachment filenames to prevent re-uploading files already attached
+    const existingAttachmentNames = new Set(
+      keepAttachments.map(path => path.split('/').pop() || '')
     );
+    
+    const uniqueNewFiles = selectedFiles.filter(file => {
+      const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+      return !existingKeys.has(fileKey) && !existingAttachmentNames.has(file.name);
+    });
 
     const totalFilesCount = files.length + uniqueNewFiles.length + keepAttachments.length;
 
