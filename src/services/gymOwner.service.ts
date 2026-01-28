@@ -28,6 +28,22 @@ import type {
   MembershipDetails
 } from '@/types';
 
+// Type for paginated expense list response
+type ExpensesListResponse = {
+  status: string | boolean;
+  message: string;
+  data: Expense[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+  summary?: {
+    totalAmount: number;
+  };
+};
+
 export const gymOwnerService = {
   // Dashboard
   async getDashboard(): Promise<GymOwnerDashboard> {
@@ -403,13 +419,15 @@ export const gymOwnerService = {
   },
 
   // Expenses
-  async getExpenses(params?: Record<string, any>): Promise<{ data: Expense[]; pagination: any; summary?: any }> {
-    const response = await api.get<ApiResponse<Expense[]>>('/gym-owner/expenses', { params });
+  async getExpenses(
+    params?: Record<string, any>
+  ): Promise<{ data: Expense[]; pagination: ExpensesListResponse['pagination']; summary?: ExpensesListResponse['summary'] }> {
     // API returns { status, message, data: [...], pagination: {...}, summary: {...} }
+    const response = await api.get<ExpensesListResponse>('/gym-owner/expenses', { params });
     return {
-      data: response.data.data as any,
-      pagination: (response.data as any).pagination,
-      summary: (response.data as any).summary
+      data: response.data.data,
+      pagination: response.data.pagination,
+      summary: response.data.summary,
     };
   },
 

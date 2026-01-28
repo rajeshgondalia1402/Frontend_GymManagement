@@ -183,6 +183,17 @@ export function ExpensePage() {
 
     if (!formData.expenseDate) {
       newErrors.expenseDate = 'Expense date is required';
+    } else {
+      const expenseDate = new Date(formData.expenseDate);
+      if (isNaN(expenseDate.getTime())) {
+        newErrors.expenseDate = 'Expense date is invalid';
+      } else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (expenseDate > today) {
+          newErrors.expenseDate = 'Expense date cannot be in the future';
+        }
+      }
     }
 
     setErrors(newErrors);
@@ -323,6 +334,8 @@ export function ExpensePage() {
       return;
     }
 
+    // Note: This export template has 8 columns (S.No, Date, Expense Name, Expense Group, Payment Mode, Amount, Description, Attachments)
+    // If table structure changes, update the column headers, data rows, and total row colspan values accordingly
     let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
     html += '<head><meta charset="utf-8">';
     html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
@@ -355,6 +368,7 @@ export function ExpensePage() {
       html += '</tr>';
     });
 
+    // Total row: colspan="5" spans columns 1-5 (S.No through Payment Mode), Amount in column 6, colspan="2" spans columns 7-8
     html += `<tr><td colspan="5" style="font-weight: bold;">Total</td><td class="amount">₹${totalAmount.toLocaleString('en-IN')}</td><td colspan="2"></td></tr>`;
     html += '</tbody></table></body></html>';
 
@@ -374,14 +388,33 @@ export function ExpensePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    const totalFiles = selectedFiles.length + keepAttachments.length;
-
-    if (totalFiles > 5) {
-      toast({ title: 'Too many files', description: 'Maximum 5 files allowed', variant: 'destructive' });
+    
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    setFiles(selectedFiles);
+    // Avoid adding duplicate files (same name, size, and lastModified)
+    const existingKeys = new Set(
+      files.map(file => `${file.name}-${file.size}-${file.lastModified}`)
+    );
+    const uniqueNewFiles = selectedFiles.filter(
+      file => !existingKeys.has(`${file.name}-${file.size}-${file.lastModified}`)
+    );
+
+    const totalFilesCount = files.length + uniqueNewFiles.length + keepAttachments.length;
+
+    if (totalFilesCount > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'Maximum 5 files allowed',
+        variant: 'destructive',
+      });
+      // Clear the input so the user can reselect a valid set of files
+      e.target.value = '';
+      return;
+    }
+
+    setFiles(prev => [...prev, ...uniqueNewFiles]);
   };
 
   return (
@@ -923,3 +956,5 @@ export function ExpensePage() {
     </div>
   );
 }
+
+export default ExpensePage;
