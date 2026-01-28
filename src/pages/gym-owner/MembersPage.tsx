@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import { ExportButton } from '@/components/ui/export-button';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
