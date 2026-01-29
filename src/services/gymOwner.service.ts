@@ -25,7 +25,13 @@ import type {
   MembershipRenewal,
   CreateMembershipRenewal,
   CreatePTAddon,
-  MembershipDetails
+  MembershipDetails,
+  DietTemplate,
+  CreateDietTemplate,
+  UpdateDietTemplate,
+  MemberDiet,
+  CreateMemberDiet,
+  UpdateMemberDiet
 } from '@/types';
 
 export const gymOwnerService = {
@@ -871,6 +877,160 @@ export const gymOwnerService = {
     combined: { totalFees: number; paidAmount: number; pendingAmount: number };
   }> {
     const response = await api.get(`/gym-owner/members/${memberId}/payment-summary`);
+    return response.data.data;
+  },
+
+  // Diet Templates (New Diet Plan System)
+  async getDietTemplates(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    mealsPerDay?: number;
+  } = {}): Promise<PaginatedResponse<DietTemplate>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/diet-templates', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getDietTemplates raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<DietTemplate>;
+    }
+    return responseData;
+  },
+
+  async getActiveDietTemplates(): Promise<DietTemplate[]> {
+    const response = await api.get('/gym-owner/diet-templates', { params: { isActive: true, limit: 100 } });
+    const responseData = response.data;
+    console.debug('getActiveDietTemplates raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      if (Array.isArray(innerData.items)) {
+        return innerData.items;
+      }
+      if (Array.isArray(innerData)) {
+        return innerData;
+      }
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  async getDietTemplate(id: string): Promise<DietTemplate> {
+    const response = await api.get<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}`);
+    return response.data.data;
+  },
+
+  async createDietTemplate(data: CreateDietTemplate): Promise<DietTemplate> {
+    const response = await api.post<ApiResponse<DietTemplate>>('/gym-owner/diet-templates', data);
+    return response.data.data;
+  },
+
+  async updateDietTemplate(id: string, data: UpdateDietTemplate): Promise<DietTemplate> {
+    const response = await api.put<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteDietTemplate(id: string): Promise<void> {
+    await api.delete(`/gym-owner/diet-templates/${id}`);
+  },
+
+  async toggleDietTemplateStatus(id: string): Promise<DietTemplate> {
+    const response = await api.patch<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  // Member Diet Assignments
+  async getMemberDiets(params: {
+    page?: number;
+    limit?: number;
+    memberId?: string;
+    isActive?: boolean;
+  } = {}): Promise<PaginatedResponse<MemberDiet>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/member-diets', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getMemberDiets raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<MemberDiet>;
+    }
+    return responseData;
+  },
+
+  async getMemberDiet(id: string): Promise<MemberDiet> {
+    const response = await api.get<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}`);
+    return response.data.data;
+  },
+
+  async getMemberActiveDiet(memberId: string): Promise<MemberDiet | null> {
+    const response = await api.get(`/gym-owner/members/${memberId}/active-diet`);
+    const responseData = response.data;
+    console.debug('getMemberActiveDiet raw response:', responseData);
+
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    }
+    return null;
+  },
+
+  async createMemberDiet(data: CreateMemberDiet): Promise<MemberDiet> {
+    const response = await api.post<ApiResponse<MemberDiet>>('/gym-owner/member-diets', data);
+    return response.data.data;
+  },
+
+  async updateMemberDiet(id: string, data: UpdateMemberDiet): Promise<MemberDiet> {
+    const response = await api.put<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}`, data);
+    return response.data.data;
+  },
+
+  async deactivateMemberDiet(id: string): Promise<MemberDiet> {
+    const response = await api.patch<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}/deactivate`);
     return response.data.data;
   },
 };
