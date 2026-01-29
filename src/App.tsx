@@ -35,6 +35,8 @@ import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
 import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
+import { AssignMemberDietPage } from '@/pages/gym-owner/AssignMemberDietPage';
+import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -350,6 +352,26 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <TopNavLayout>
                 <CoursePackagesPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/assign-diet"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <TopNavLayout>
+                <AssignMemberDietPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/diet-templates"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <TopNavLayout>
+                <DietTemplatesPage />
               </TopNavLayout>
             </RoleGuard>
           }

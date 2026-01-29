@@ -621,6 +621,117 @@ export interface MembershipDetails {
   };
 }
 
+// Diet Template Types (New Diet Plan System)
+export interface DietMeal {
+  id: string;
+  dietTemplateId?: string;
+  // API returns mealNo, frontend uses mealNumber
+  mealNo?: number;
+  mealNumber?: number; // 1-6
+  // API returns title, frontend uses mealTitle
+  title?: string;
+  mealTitle?: string;
+  // API returns time, frontend uses mealTime
+  time?: string;
+  mealTime?: string; // e.g., "08:00 AM"
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DietTemplate {
+  id: string;
+  // API returns name, frontend uses templateName
+  name?: string;
+  templateName?: string;
+  description?: string;
+  mealsPerDay?: number; // 1-6 (may not exist in API response, derive from meals.length)
+  isActive: boolean;
+  gymId?: string;
+  createdBy?: string;
+  creatorName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  meals?: DietMeal[];
+  _count?: { memberDiets: number };
+}
+
+export interface MemberDietMeal {
+  id: string;
+  memberDietId: string;
+  mealNumber: number;
+  mealTitle: string;
+  mealTime?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MemberDiet {
+  id: string;
+  memberId: string;
+  dietTemplateId: string;
+  assignedDate: string;
+  isActive: boolean;
+  deactivatedAt?: string;
+  deactivatedBy?: string;
+  gymId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  member?: Member;
+  dietTemplate?: DietTemplate;
+  meals?: MemberDietMeal[];
+}
+
+export interface CreateDietTemplate {
+  templateName: string;
+  description?: string;
+  mealsPerDay: number;
+  meals: {
+    mealNumber: number;
+    mealTitle: string;
+    mealTime?: string;
+    description?: string;
+  }[];
+}
+
+export interface UpdateDietTemplate {
+  templateName?: string;
+  description?: string;
+  mealsPerDay?: number;
+  meals?: {
+    id?: string;
+    mealNumber: number;
+    mealTitle: string;
+    mealTime?: string;
+    description?: string;
+  }[];
+}
+
+export interface CreateMemberDiet {
+  memberId: string;
+  dietTemplateId: string;
+  assignedDate: string;
+  meals: {
+    mealNumber: number;
+    mealTitle: string;
+    mealTime?: string;
+    description?: string;
+  }[];
+}
+
+export interface UpdateMemberDiet {
+  meals?: {
+    id?: string;
+    mealNumber: number;
+    mealTitle: string;
+    mealTime?: string;
+    description?: string;
+  }[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
