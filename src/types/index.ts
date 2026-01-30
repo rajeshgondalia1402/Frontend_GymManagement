@@ -640,6 +640,16 @@ export interface DietMeal {
   updatedAt?: string;
 }
 
+export interface AssignedMember {
+  memberDietId: string;
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  mobileNo: string;
+  memberType: 'REGULAR' | 'PT_MEMBER';
+  hasPTAddon: boolean;
+}
+
 export interface DietTemplate {
   id: string;
   // API returns name, frontend uses templateName
@@ -654,6 +664,7 @@ export interface DietTemplate {
   createdAt?: string;
   updatedAt?: string;
   meals?: DietMeal[];
+  assignedMembers?: AssignedMember[];
   _count?: { memberDiets: number };
 }
 
@@ -730,6 +741,41 @@ export interface UpdateMemberDiet {
     mealTime?: string;
     description?: string;
   }[];
+}
+
+// Bulk Diet Assignment Types
+export interface BulkDietAssignmentRequest {
+  memberIds: string[];
+  dietTemplateId: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  customMeals?: {
+    mealNumber: number;
+    mealTitle: string;
+    mealTime?: string;
+    description?: string;
+  }[];
+}
+
+export interface BulkDietAssignmentResult {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  dietTemplateId: string;
+  dietTemplateName: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface BulkDietAssignmentResponse {
+  success: boolean;
+  message: string;
+  data: BulkDietAssignmentResult[];
 }
 
 export interface ApiResponse<T> {

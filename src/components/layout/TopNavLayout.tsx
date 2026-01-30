@@ -93,15 +93,15 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
         { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
         { title: 'Assign Diet Plan', href: '/gym-owner/assign-diet', icon: UtensilsCrossed },
+        { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed },
       ],
     },
-    { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
-    { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed },
     { title: 'Expenses', href: '/gym-owner/expenses', icon: Receipt },
     {
       title: 'Master',
       icon: FolderCog,
       submenu: [
+        { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
         { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
         { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
