@@ -31,7 +31,9 @@ import type {
   UpdateDietTemplate,
   MemberDiet,
   CreateMemberDiet,
-  UpdateMemberDiet
+  UpdateMemberDiet,
+  BulkDietAssignmentRequest,
+  BulkDietAssignmentResponse
 } from '@/types';
 
 export const gymOwnerService = {
@@ -1032,5 +1034,21 @@ export const gymOwnerService = {
   async deactivateMemberDiet(id: string): Promise<MemberDiet> {
     const response = await api.patch<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}/deactivate`);
     return response.data.data;
+  },
+
+  // Bulk Diet Assignment
+  async assignDietToMultipleMembers(data: BulkDietAssignmentRequest): Promise<BulkDietAssignmentResponse> {
+    const response = await api.post<BulkDietAssignmentResponse>('/gym-owner/member-diets', data);
+    console.debug('assignDietToMultipleMembers raw response:', response.data);
+    return response.data;
+  },
+
+  // Bulk Remove Assigned Members from Diet
+  async bulkRemoveAssignedMembers(memberDietIds: string[]): Promise<{ status: string; message: string; data: { deletedCount: number; deletedIds: string[] } }> {
+    const response = await api.delete('/gym-owner/member-diets/bulk-remove', {
+      data: { memberDietIds },
+    });
+    console.debug('bulkRemoveAssignedMembers raw response:', response.data);
+    return response.data;
   },
 };
