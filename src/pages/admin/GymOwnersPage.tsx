@@ -415,7 +415,7 @@ export function GymOwnersPage() {
                   <p className="text-xs text-muted-foreground mt-1">No unassigned gyms available</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" disabled={createMutation.isPending}>
                 {createMutation.isPending ? 'Creating...' : 'Create Gym Owner'}
               </Button>
             </form>
@@ -739,7 +739,7 @@ export function GymOwnersPage() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={updateMutation.isPending}>
+              <Button type="submit" className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? 'Updating...' : 'Update Owner'}
               </Button>
             </div>

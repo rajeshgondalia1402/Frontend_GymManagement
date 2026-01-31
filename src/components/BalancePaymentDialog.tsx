@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import {
     Wallet, Calendar, IndianRupee, Plus, Pencil, Download, Phone, User,
     MapPin, FileText, MessageSquare, Edit, XCircle, CheckCircle, AlertTriangle,
+    Dumbbell, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +16,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import type { Member, BalancePayment, CreateBalancePayment } from '@/types';
+import type { Member, BalancePayment, CreateBalancePayment, PaymentFor } from '@/types';
 
 const PAY_MODES = ['Cash', 'Card', 'UPI', 'Online', 'Cheque', 'Other'];
 
@@ -34,7 +36,10 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
     const [editingPayment, setEditingPayment] = useState<BalancePayment | null>(null);
     // Track member's active status locally so it updates after toggle
     const [memberIsActive, setMemberIsActive] = useState<boolean>(member?.isActive !== false);
+    // Payment type selection (REGULAR or PT)
+    const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentFor>('REGULAR');
     const [paymentForm, setPaymentForm] = useState<CreateBalancePayment>({
+        paymentFor: 'REGULAR',
         paymentDate: new Date().toISOString().split('T')[0],
         paidFees: 0,
         payMode: 'Cash',
@@ -51,14 +56,30 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         return new Date(endDate) < new Date();
     }, [member]);
 
+    // Check if member has both Regular and PT memberships
+    const hasBothMemberships = useMemo(() => member?.memberType === 'REGULAR_PT', [member]);
+    const hasPTOnly = useMemo(() => member?.memberType === 'PT', [member]);
+
     // Sync memberIsActive when member prop changes (e.g., when opening dialog for different member)
     useEffect(() => {
         setMemberIsActive(member?.isActive !== false);
     }, [member?.id, member?.isActive]);
 
+    // Set default payment type based on member type
+    useEffect(() => {
+        if (hasPTOnly) {
+            setSelectedPaymentType('PT');
+        } else {
+            setSelectedPaymentType('REGULAR');
+        }
+    }, [member?.id, hasPTOnly]);
+
     // Reset form when member changes
     const resetPaymentForm = () => {
+        const defaultType = hasPTOnly ? 'PT' : 'REGULAR';
+        setSelectedPaymentType(defaultType);
         setPaymentForm({
+            paymentFor: defaultType,
             paymentDate: new Date().toISOString().split('T')[0],
             paidFees: 0,
             payMode: 'Cash',
@@ -109,13 +130,40 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         onError: (err: any) => toast({ title: 'Failed to update status', description: err?.response?.data?.message, variant: 'destructive' }),
     });
 
-    // Calculate totals for balance payment dialog
+    // Calculate totals for balance payment dialog - separate for Regular and PT
+    const regularPayments = useMemo(() => balancePayments.filter(p => p.paymentFor !== 'PT'), [balancePayments]);
+    const ptPayments = useMemo(() => balancePayments.filter(p => p.paymentFor === 'PT'), [balancePayments]);
+    
+    const totalRegularPaid = useMemo(() => regularPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [regularPayments]);
+    const totalPTPaid = useMemo(() => ptPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [ptPayments]);
     const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
-    const balanceFees = useMemo(() => (member?.finalFees || 0) - totalPaidFees, [member, totalPaidFees]);
+    
+    const regularBalance = useMemo(() => (member?.finalFees || 0) - totalRegularPaid, [member, totalRegularPaid]);
+    const ptBalance = useMemo(() => (member?.ptFinalFees || 0) - totalPTPaid, [member, totalPTPaid]);
+    const balanceFees = useMemo(() => regularBalance + ptBalance, [regularBalance, ptBalance]);
+
+    // Get current balance based on selected payment type
+    const currentTypeBalance = useMemo(() => {
+        if (selectedPaymentType === 'PT') return ptBalance;
+        return regularBalance;
+    }, [selectedPaymentType, regularBalance, ptBalance]);
+
+    const currentTypePaid = useMemo(() => {
+        if (selectedPaymentType === 'PT') return totalPTPaid;
+        return totalRegularPaid;
+    }, [selectedPaymentType, totalRegularPaid, totalPTPaid]);
+
+    const currentTypeFees = useMemo(() => {
+        if (selectedPaymentType === 'PT') return member?.ptFinalFees || 0;
+        return member?.finalFees || 0;
+    }, [selectedPaymentType, member]);
 
     const handleEditPayment = (payment: BalancePayment) => {
         setEditingPayment(payment);
+        const paymentType = payment.paymentFor || 'REGULAR';
+        setSelectedPaymentType(paymentType);
         setPaymentForm({
+            paymentFor: paymentType,
             paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
             paidFees: payment.paidFees,
             payMode: payment.payMode,
@@ -125,24 +173,33 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         });
     };
 
+    // Handle payment type change
+    const handlePaymentTypeChange = (value: PaymentFor) => {
+        setSelectedPaymentType(value);
+        setPaymentForm(prev => ({ ...prev, paymentFor: value }));
+    };
+
     const handlePaymentSubmit = () => {
         if (!paymentForm.paidFees || paymentForm.paidFees <= 0) {
             toast({ title: 'Invalid Amount', description: 'Please enter a valid paid fees amount', variant: 'destructive' });
             return;
         }
 
-        // Validate payment doesn't exceed remaining balance
-        const finalFees = member?.finalFees || 0;
-        const currentPaid = editingPayment
-            ? totalPaidFees - editingPayment.paidFees // Exclude current payment when editing
-            : totalPaidFees;
+        // Validate payment doesn't exceed remaining balance based on selected payment type
+        const typeLabel = selectedPaymentType === 'PT' ? 'PT' : 'Regular';
+        const typeFees = currentTypeFees;
+        const typePaid = currentTypePaid;
+        
+        const currentPaid = editingPayment && editingPayment.paymentFor === selectedPaymentType
+            ? typePaid - editingPayment.paidFees // Exclude current payment when editing same type
+            : typePaid;
         const newTotalPaid = currentPaid + paymentForm.paidFees;
 
-        if (newTotalPaid > finalFees) {
-            const remainingBalance = finalFees - currentPaid;
+        if (newTotalPaid > typeFees) {
+            const remainingBalance = typeFees - currentPaid;
             toast({
                 title: 'Amount Exceeds Balance',
-                description: `Payment amount (₹${paymentForm.paidFees.toLocaleString('en-IN')}) exceeds remaining balance (₹${remainingBalance.toLocaleString('en-IN')}). Maximum allowed: ₹${remainingBalance.toLocaleString('en-IN')}`,
+                description: `Payment amount (₹${paymentForm.paidFees.toLocaleString('en-IN')}) exceeds remaining ${typeLabel} balance (₹${remainingBalance.toLocaleString('en-IN')}). Maximum allowed: ₹${remainingBalance.toLocaleString('en-IN')}`,
                 variant: 'destructive'
             });
             return;
@@ -150,6 +207,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
 
         const payload = {
             ...paymentForm,
+            paymentFor: selectedPaymentType,
             paymentDate: new Date(paymentForm.paymentDate).toISOString(),
             nextPaymentDate: paymentForm.nextPaymentDate ? new Date(paymentForm.nextPaymentDate).toISOString() : undefined,
         };
@@ -366,26 +424,95 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                     </div>
 
                     {/* Fee Summary Cards */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
-                            <p className="text-xs text-blue-600 font-medium mb-1">Total Fees</p>
-                            <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
-                                <IndianRupee className="h-4 w-4" />{(member.finalFees || 0).toLocaleString('en-IN')}
-                            </p>
+                    {hasBothMemberships ? (
+                        // Show separate Regular and PT fee summaries when member has both
+                        <div className="space-y-3">
+                            {/* Regular Membership Fees */}
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <CreditCard className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-semibold text-blue-700">Regular Membership</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-blue-600 font-medium">Total</p>
+                                        <p className="text-sm font-bold text-blue-700 flex items-center justify-center">
+                                            <IndianRupee className="h-3 w-3" />{(member.finalFees || 0).toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-green-600 font-medium">Paid</p>
+                                        <p className="text-sm font-bold text-green-700 flex items-center justify-center">
+                                            <IndianRupee className="h-3 w-3" />{totalRegularPaid.toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className={`text-[10px] font-medium ${regularBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending</p>
+                                        <p className={`text-sm font-bold flex items-center justify-center ${regularBalance > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                                            <IndianRupee className="h-3 w-3" />{regularBalance.toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* PT Membership Fees */}
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-3 rounded-xl border border-purple-200 dark:border-purple-800">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Dumbbell className="h-4 w-4 text-purple-600" />
+                                    <span className="text-sm font-semibold text-purple-700">PT Membership</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-purple-600 font-medium">Total</p>
+                                        <p className="text-sm font-bold text-purple-700 flex items-center justify-center">
+                                            <IndianRupee className="h-3 w-3" />{(member.ptFinalFees || 0).toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-green-600 font-medium">Paid</p>
+                                        <p className="text-sm font-bold text-green-700 flex items-center justify-center">
+                                            <IndianRupee className="h-3 w-3" />{totalPTPaid.toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className={`text-[10px] font-medium ${ptBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending</p>
+                                        <p className={`text-sm font-bold flex items-center justify-center ${ptBalance > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                                            <IndianRupee className="h-3 w-3" />{ptBalance.toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Combined Total */}
+                            <div className={`${balanceFees > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-2 rounded-lg text-center border`}>
+                                <p className={`text-xs font-medium ${balanceFees > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                    Total Pending (Regular + PT): <span className="font-bold">₹{balanceFees.toLocaleString('en-IN')}</span>
+                                </p>
+                            </div>
                         </div>
-                        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
-                            <p className="text-xs text-green-600 font-medium mb-1">Paid Fees</p>
-                            <p className="text-lg font-bold text-green-700 flex items-center justify-center">
-                                <IndianRupee className="h-4 w-4" />{totalPaidFees.toLocaleString('en-IN')}
-                            </p>
+                    ) : (
+                        // Show single fee summary for Regular only or PT only members
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center border border-blue-200 dark:border-blue-800">
+                                <p className="text-xs text-blue-600 font-medium mb-1">
+                                    {hasPTOnly ? 'PT Total Fees' : 'Total Fees'}
+                                </p>
+                                <p className="text-lg font-bold text-blue-700 flex items-center justify-center">
+                                    <IndianRupee className="h-4 w-4" />{currentTypeFees.toLocaleString('en-IN')}
+                                </p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center border border-green-200 dark:border-green-800">
+                                <p className="text-xs text-green-600 font-medium mb-1">Paid Fees</p>
+                                <p className="text-lg font-bold text-green-700 flex items-center justify-center">
+                                    <IndianRupee className="h-4 w-4" />{currentTypePaid.toLocaleString('en-IN')}
+                                </p>
+                            </div>
+                            <div className={`${currentTypeBalance > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-3 rounded-xl text-center border`}>
+                                <p className={`text-xs font-medium mb-1 ${currentTypeBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending Fees</p>
+                                <p className={`text-lg font-bold flex items-center justify-center ${currentTypeBalance > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                                    <IndianRupee className="h-4 w-4" />{currentTypeBalance.toLocaleString('en-IN')}
+                                </p>
+                            </div>
                         </div>
-                        <div className={`${balanceFees > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'} p-3 rounded-xl text-center border`}>
-                            <p className={`text-xs font-medium mb-1 ${balanceFees > 0 ? 'text-red-600' : 'text-emerald-600'}`}>Pending Fees</p>
-                            <p className={`text-lg font-bold flex items-center justify-center ${balanceFees > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                                <IndianRupee className="h-4 w-4" />{balanceFees.toLocaleString('en-IN')}
-                            </p>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Payment Form */}
                     <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isExpired ? 'opacity-60' : ''}`}>
@@ -402,6 +529,50 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     <p className="font-medium text-sm">Membership Expired</p>
                                     <p className="text-xs">Payment cannot be added for expired memberships. Please renew the membership first.</p>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Payment Type Radio Buttons - Show when member has both Regular and PT */}
+                        {hasBothMemberships && (
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium">Payment For *</Label>
+                                <RadioGroup
+                                    value={selectedPaymentType}
+                                    onValueChange={(value) => handlePaymentTypeChange(value as PaymentFor)}
+                                    className="flex gap-4"
+                                    disabled={isExpired}
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="REGULAR" id="payment-regular" disabled={isExpired} />
+                                        <Label
+                                            htmlFor="payment-regular"
+                                            className={`text-sm cursor-pointer flex items-center gap-1 ${selectedPaymentType === 'REGULAR' ? 'text-blue-600 font-medium' : 'text-muted-foreground'}`}
+                                        >
+                                            <CreditCard className="h-3.5 w-3.5" />
+                                            Regular Membership
+                                            {regularBalance > 0 && (
+                                                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">
+                                                    ₹{regularBalance.toLocaleString('en-IN')} due
+                                                </Badge>
+                                            )}
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="PT" id="payment-pt" disabled={isExpired} />
+                                        <Label
+                                            htmlFor="payment-pt"
+                                            className={`text-sm cursor-pointer flex items-center gap-1 ${selectedPaymentType === 'PT' ? 'text-purple-600 font-medium' : 'text-muted-foreground'}`}
+                                        >
+                                            <Dumbbell className="h-3.5 w-3.5" />
+                                            PT Membership
+                                            {ptBalance > 0 && (
+                                                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">
+                                                    ₹{ptBalance.toLocaleString('en-IN')} due
+                                                </Badge>
+                                            )}
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
                         )}
 
@@ -486,7 +657,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                 size="sm"
                                 onClick={handlePaymentSubmit}
                                 disabled={isExpired || createPaymentMutation.isPending || updatePaymentMutation.isPending}
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                             >
                                 {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
                                     <><Spinner className="h-4 w-4 mr-1" />{editingPayment ? 'Updating...' : 'Adding...'}</>
@@ -519,6 +690,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                         <TableHeader>
                                             <TableRow className="bg-muted/50">
                                                 <TableHead className="text-xs">Receipt</TableHead>
+                                                {hasBothMemberships && <TableHead className="text-xs">Type</TableHead>}
                                                 <TableHead className="text-xs">Date</TableHead>
                                                 <TableHead className="text-xs">Amount</TableHead>
                                                 <TableHead className="text-xs">Mode</TableHead>
@@ -532,6 +704,16 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                                     <TableCell className="text-xs">
                                                         <Badge variant="secondary" className="text-[10px] font-mono">{payment.receiptNo || '-'}</Badge>
                                                     </TableCell>
+                                                    {hasBothMemberships && (
+                                                        <TableCell className="text-xs">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={`text-[10px] ${payment.paymentFor === 'PT' ? 'border-purple-500 text-purple-600 bg-purple-50' : 'border-blue-500 text-blue-600 bg-blue-50'}`}
+                                                            >
+                                                                {payment.paymentFor === 'PT' ? 'PT' : 'Regular'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                    )}
                                                     <TableCell className="text-xs">
                                                         {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yy') : '-'}
                                                     </TableCell>

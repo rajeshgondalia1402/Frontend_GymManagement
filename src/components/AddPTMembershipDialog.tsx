@@ -34,8 +34,6 @@ export function AddPTMembershipDialog({ open, onOpenChange, member, onSuccess }:
     const [selectedPackageId, setSelectedPackageId] = useState('');
     const [ptPackageName, setPtPackageName] = useState('');
     const [selectedTrainerId, setSelectedTrainerId] = useState('');
-    const [sessionsTotal, setSessionsTotal] = useState(12);
-    const [sessionDuration, setSessionDuration] = useState(60);
     const [ptPackageFees, setPtPackageFees] = useState(0);
     const [ptMaxDiscount, setPtMaxDiscount] = useState(0);
     const [ptExtraDiscount, setPtExtraDiscount] = useState(0);
@@ -80,8 +78,6 @@ export function AddPTMembershipDialog({ open, onOpenChange, member, onSuccess }:
             setSelectedPackageId('');
             setPtPackageName('');
             setSelectedTrainerId('');
-            setSessionsTotal(12);
-            setSessionDuration(60);
             setPtPackageFees(0);
             setPtMaxDiscount(0);
             setPtExtraDiscount(0);
@@ -147,8 +143,6 @@ export function AddPTMembershipDialog({ open, onOpenChange, member, onSuccess }:
         const data: CreatePTAddon = {
             ptPackageName,
             trainerId: selectedTrainerId,
-            sessionsTotal,
-            sessionDuration,
             ptPackageFees,
             ptMaxDiscount,
             ptExtraDiscount,
@@ -265,26 +259,7 @@ export function AddPTMembershipDialog({ open, onOpenChange, member, onSuccess }:
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Total Sessions *</Label>
-                                <Input
-                                    type="number"
-                                    value={sessionsTotal}
-                                    onChange={(e) => setSessionsTotal(parseInt(e.target.value) || 1)}
-                                    min={1}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Session Duration (min)</Label>
-                                <Input
-                                    type="number"
-                                    value={sessionDuration}
-                                    onChange={(e) => setSessionDuration(parseInt(e.target.value) || 60)}
-                                    min={15}
-                                    step={15}
-                                />
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label className="text-xs flex items-center gap-1"><Calendar className="h-3 w-3" /> Start Date</Label>
                                 <Input
@@ -443,7 +418,7 @@ export function AddPTMembershipDialog({ open, onOpenChange, member, onSuccess }:
                     <Button
                         onClick={handleSubmit}
                         disabled={addPTMutation.isPending}
-                        className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >
                         {addPTMutation.isPending ? (
                             <><Spinner className="h-4 w-4 mr-2" />Adding PT...</>

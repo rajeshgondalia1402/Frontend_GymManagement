@@ -24,7 +24,8 @@ import {
   Eye,
   EyeOff,
   Package,
-  Receipt
+  Receipt,
+  Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -96,7 +97,14 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed },
       ],
     },
-    { title: 'Expenses', href: '/gym-owner/expenses', icon: Receipt },
+    {
+      title: 'Expenses',
+      icon: Receipt,
+      submenu: [
+        { title: 'Manage Expenses', href: '/gym-owner/expenses', icon: Receipt },
+        { title: 'Salary Settlement', href: '/gym-owner/salary-settlement', icon: Banknote },
+      ],
+    },
     {
       title: 'Master',
       icon: FolderCog,
@@ -113,6 +121,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
   TRAINER: [
     { title: 'Dashboard', href: '/trainer', icon: LayoutDashboard },
     { title: 'My PT Members', href: '/trainer/pt-members', icon: Users },
+    { title: 'My Salary', href: '/trainer/salary-settlements', icon: Banknote },
   ],
   MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
@@ -262,7 +271,7 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 <Dumbbell className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent hidden sm:inline">
-                GymManager
+                Gym Desk Pro
               </span>
             </Link>
 

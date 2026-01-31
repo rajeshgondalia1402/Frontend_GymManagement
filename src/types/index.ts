@@ -158,10 +158,6 @@ export type MemberType = 'REGULAR' | 'PT' | 'REGULAR_PT';
 export interface PTInfo {
   trainerId: string;
   trainerName: string;
-  sessionsTotal: number;
-  sessionsUsed: number;
-  sessionsRemaining: number;
-  sessionDuration: number;
   startDate: string;
   endDate?: string;
   goals?: string;
@@ -215,7 +211,7 @@ export interface Member {
   ptAfterDiscount?: number;             // PT amount after discount
   ptExtraDiscount?: number;             // PT extra discount
   ptFinalFees?: number;                 // PT final fees
-  ptInfo?: PTInfo;                      // PT session and trainer info
+  ptInfo?: PTInfo;                      // PT trainer info
   userId: string;
   gymId: string;
   user: { id: string; name: string; email: string; isActive?: boolean };
@@ -551,8 +547,6 @@ export interface MembershipRenewal {
 export interface CreatePTAddon {
   ptPackageName: string;
   trainerId: string;
-  sessionsTotal: number;
-  sessionDuration?: number;
   ptPackageFees: number;
   ptMaxDiscount?: number;
   ptExtraDiscount?: number;
@@ -608,10 +602,6 @@ export interface MembershipDetails {
     packageName: string;
     trainerId: string;
     trainerName: string;
-    sessionsTotal: number;
-    sessionsUsed: number;
-    sessionsRemaining: number;
-    sessionDuration: number;
     startDate: string;
     endDate?: string;
     goals?: string;
@@ -793,6 +783,163 @@ export interface PaginatedResponse<T> {
     limit: number;
     total: number;
     totalPages: number;
+  };
+}
+
+// Trainer Salary Settlement Types
+export type IncentiveType = 'PT' | 'PROTEIN' | 'MEMBER_REFERENCE' | 'OTHERS';
+
+export interface TrainerDropdownItem {
+  trainerId: string;
+  name: string;
+  mobileNumber: string;
+  joiningDate: string;
+  monthlySalary: number;
+}
+
+export interface SalaryCalculationRequest {
+  trainerId: string;
+  salaryMonth: string;
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+}
+
+export interface SalaryCalculationResponse {
+  trainerId: string;
+  trainerName: string;
+  mobileNumber: string;
+  joiningDate: string;
+  monthlySalary: number;
+  salaryMonth: string;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType: IncentiveType | null;
+  finalPayableAmount: number;
+}
+
+export interface TrainerSalarySettlement {
+  id: string;
+  trainerId: string;
+  trainerName: string;
+  mobileNumber: string;
+  joiningDate: string;
+  monthlySalary: number;
+  salaryMonth: string;
+  salarySentDate: string;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType: IncentiveType | null;
+  paymentMode: PaymentMode;
+  finalPayableAmount: number;
+  remarks?: string;
+  gymId: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSalarySettlement {
+  trainerId: string;
+  salaryMonth: string;
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  salarySentDate: string;
+  remarks?: string;
+}
+
+export interface UpdateSalarySettlement {
+  presentDays?: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode?: PaymentMode;
+  salarySentDate?: string;
+  remarks?: string;
+}
+
+// Salary Slip Types
+export interface SalarySlipGymDetails {
+  gymId: string;
+  gymName: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  fullAddress?: string;
+  mobileNo?: string;
+  phoneNo?: string;
+  email?: string;
+  gstRegNo?: string;
+  gymLogo?: string;
+}
+
+export interface SalarySlipTrainerDetails {
+  trainerId: string;
+  trainerName: string;
+  email?: string;
+  mobileNumber?: string;
+  gender?: string;
+  designation?: string;
+  joiningDate?: string;
+  employeeCode?: string;
+}
+
+export interface SalarySlipAttendance {
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  attendancePercentage: number;
+}
+
+export interface SalarySlipEarnings {
+  basicSalary: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType | null;
+  grossEarnings: number;
+}
+
+export interface SalarySlipDeductions {
+  totalDeductions: number;
+  items: { name: string; amount: number }[];
+}
+
+export interface SalarySlip {
+  slipId: string;
+  slipNumber: string;
+  generatedDate: string;
+  salaryMonth: string;
+  salaryPeriod: string;
+  periodStartDate: string;
+  periodEndDate: string;
+  gymDetails: SalarySlipGymDetails;
+  trainerDetails: SalarySlipTrainerDetails;
+  attendance: SalarySlipAttendance;
+  earnings: SalarySlipEarnings;
+  deductions: SalarySlipDeductions;
+  netPayableAmount: number;
+  netPayableInWords: string;
+  paymentDetails: {
+    paymentMode: PaymentMode;
+    paymentDate?: string;
   };
 }
 

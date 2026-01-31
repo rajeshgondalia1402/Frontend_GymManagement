@@ -243,7 +243,7 @@ export function BodyPartMasterPage() {
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
+                <Button type="submit" disabled={createMutation.isPending} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                   {createMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                   Create
                 </Button>
@@ -511,7 +511,7 @@ export function BodyPartMasterPage() {
               <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
+              <Button type="submit" disabled={updateMutation.isPending} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                 {updateMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                 Update
               </Button>

@@ -33,7 +33,14 @@ import type {
   CreateMemberDiet,
   UpdateMemberDiet,
   BulkDietAssignmentRequest,
-  BulkDietAssignmentResponse
+  BulkDietAssignmentResponse,
+  TrainerDropdownItem,
+  SalaryCalculationRequest,
+  SalaryCalculationResponse,
+  TrainerSalarySettlement,
+  CreateSalarySettlement,
+  UpdateSalarySettlement,
+  SalarySlip
 } from '@/types';
 
 export const gymOwnerService = {
@@ -855,23 +862,6 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
-  // PT Session Credits
-  async getMemberSessionCredits(memberId: string): Promise<any[]> {
-    const response = await api.get(`/gym-owner/members/${memberId}/session-credits`);
-    const responseData = response.data;
-    console.debug('getMemberSessionCredits raw response:', responseData);
-
-    if (responseData.success !== undefined && responseData.data) {
-      if (Array.isArray(responseData.data)) {
-        return responseData.data;
-      }
-    }
-    if (Array.isArray(responseData)) {
-      return responseData;
-    }
-    return [];
-  },
-
   // Payment Summary (Regular vs PT breakdown)
   async getMemberPaymentSummary(memberId: string): Promise<{
     regular: { totalFees: number; paidAmount: number; pendingAmount: number };
@@ -1050,5 +1040,91 @@ export const gymOwnerService = {
     });
     console.debug('bulkRemoveAssignedMembers raw response:', response.data);
     return response.data;
+  },
+
+  // Trainer Salary Settlement
+  async getTrainersDropdown(): Promise<TrainerDropdownItem[]> {
+    const response = await api.get('/gym-owner/trainers/dropdown');
+    const responseData = response.data;
+    console.debug('getTrainersDropdown raw response:', responseData);
+
+    if (responseData.success !== undefined && Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  async calculateSalary(data: SalaryCalculationRequest): Promise<SalaryCalculationResponse> {
+    const response = await api.post<ApiResponse<SalaryCalculationResponse>>('/gym-owner/salary-settlement/calculate', data);
+    return response.data.data;
+  },
+
+  async getSalarySettlements(params: {
+    page?: number;
+    limit?: number;
+    trainerId?: string;
+    fromDate?: string;
+    toDate?: string;
+    paymentMode?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<PaginatedResponse<TrainerSalarySettlement>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/salary-settlement', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getSalarySettlements raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<TrainerSalarySettlement>;
+    }
+    return responseData;
+  },
+
+  async getSalarySettlement(id: string): Promise<TrainerSalarySettlement> {
+    const response = await api.get<ApiResponse<TrainerSalarySettlement>>(`/gym-owner/salary-settlement/${id}`);
+    return response.data.data;
+  },
+
+  async createSalarySettlement(data: CreateSalarySettlement): Promise<TrainerSalarySettlement> {
+    const response = await api.post<ApiResponse<TrainerSalarySettlement>>('/gym-owner/salary-settlement', data);
+    return response.data.data;
+  },
+
+  async updateSalarySettlement(id: string, data: UpdateSalarySettlement): Promise<TrainerSalarySettlement> {
+    const response = await api.put<ApiResponse<TrainerSalarySettlement>>(`/gym-owner/salary-settlement/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteSalarySettlement(id: string): Promise<void> {
+    await api.delete(`/gym-owner/salary-settlement/${id}`);
+  },
+
+  async getSalarySlip(settlementId: string): Promise<SalarySlip> {
+    const response = await api.get<ApiResponse<SalarySlip>>(`/gym-owner/salary-settlement/${settlementId}/slip`);
+    return response.data.data;
   },
 };
