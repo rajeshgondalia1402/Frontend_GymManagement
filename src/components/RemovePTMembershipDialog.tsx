@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
-    Dumbbell, Calendar, IndianRupee, AlertTriangle, CheckCircle,
-    XCircle, RefreshCw, Clock,
+    Dumbbell, Calendar, IndianRupee, AlertTriangle,
+    XCircle, Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +12,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import type { Member } from '@/types';
-
-type RemovePTAction = 'COMPLETE' | 'FORFEIT' | 'CARRY_FORWARD';
 
 interface RemovePTMembershipDialogProps {
     open: boolean;
@@ -31,15 +28,8 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
     const queryClient = useQueryClient();
 
     // Form state
-    const [selectedAction, setSelectedAction] = useState<RemovePTAction>('COMPLETE');
     const [notes, setNotes] = useState('');
     const [showConfirmation, setShowConfirmation] = useState(false);
-
-    // Calculate session info
-    const sessionsTotal = member?.ptInfo?.sessionsTotal || 0;
-    const sessionsUsed = member?.ptInfo?.sessionsUsed || 0;
-    const sessionsRemaining = sessionsTotal - sessionsUsed;
-    const hasUnusedSessions = sessionsRemaining > 0;
 
     // Payment status for display
     const ptPaymentStatus = useMemo(() => {
@@ -50,7 +40,7 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
 
     // Remove PT Mutation
     const removePTMutation = useMutation({
-        mutationFn: () => gymOwnerService.removePTAddon(member!.id, selectedAction, notes || undefined),
+        mutationFn: () => gymOwnerService.removePTAddon(member!.id, 'FORFEIT', notes || undefined),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['members'] });
             toast({ title: 'PT Membership removed successfully!' });
@@ -84,7 +74,6 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
     const handleClose = (open: boolean) => {
         if (!open) {
             setShowConfirmation(false);
-            setSelectedAction('COMPLETE');
             setNotes('');
         }
         onOpenChange(open);
@@ -147,7 +136,7 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
                             <AlertTriangle className="h-4 w-4" />
                             Current PT Status
                         </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <p className="text-[10px] text-muted-foreground">PT Package</p>
                                 <p className="text-sm font-semibold">{member.ptPackageName || member.ptInfo?.trainerId || 'N/A'}</p>
@@ -155,14 +144,6 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
                             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <p className="text-[10px] text-muted-foreground">Trainer</p>
                                 <p className="text-sm font-semibold">{member.ptInfo?.trainerName || 'N/A'}</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <p className="text-[10px] text-muted-foreground">Sessions</p>
-                                <p className="text-sm font-semibold">{sessionsUsed} / {sessionsTotal} used</p>
-                            </div>
-                            <div className={`p-3 rounded-lg text-center ${sessionsRemaining > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                                <p className={`text-[10px] ${sessionsRemaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>Remaining</p>
-                                <p className={`text-sm font-bold ${sessionsRemaining > 0 ? 'text-orange-700' : 'text-green-700'}`}>{sessionsRemaining} sessions</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
@@ -183,70 +164,14 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
                         </div>
                     </div>
 
-                    {/* Session Handling Options */}
-                    {hasUnusedSessions ? (
-                        <div className="space-y-3">
-                            <h4 className="font-semibold text-sm">How would you like to handle the {sessionsRemaining} unused sessions?</h4>
-
-                            <RadioGroup value={selectedAction} onValueChange={(v) => setSelectedAction(v as RemovePTAction)} className="space-y-3">
-                                {/* Option 1: Complete Remaining */}
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedAction === 'COMPLETE' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
-                                    <RadioGroupItem value="COMPLETE" id="complete" className="mt-1" />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                            <span className="font-semibold text-green-700 dark:text-green-400">Complete Remaining Sessions</span>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">Member can use remaining {sessionsRemaining} sessions until {ptEndDate}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">After completion, PT membership will auto-expire</p>
-                                        <Badge variant="outline" className="mt-2 text-[10px] border-green-300 text-green-600">
-                                            💡 Recommended when member paid full amount
-                                        </Badge>
-                                    </div>
-                                </label>
-
-                                {/* Option 2: Forfeit Sessions */}
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedAction === 'FORFEIT' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
-                                    <RadioGroupItem value="FORFEIT" id="forfeit" className="mt-1" />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <XCircle className="h-4 w-4 text-red-600" />
-                                            <span className="font-semibold text-red-700 dark:text-red-400">Forfeit Sessions</span>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">{sessionsRemaining} unused sessions will be forfeited (no refund)</p>
-                                        <p className="text-xs text-muted-foreground mt-1">PT membership ends today</p>
-                                        <Badge variant="outline" className="mt-2 text-[10px] border-red-300 text-red-600">
-                                            ⚠️ Use when member explicitly agrees to forfeit
-                                        </Badge>
-                                    </div>
-                                </label>
-
-                                {/* Option 3: Carry Forward */}
-                                <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedAction === 'CARRY_FORWARD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'}`}>
-                                    <RadioGroupItem value="CARRY_FORWARD" id="carry_forward" className="mt-1" />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <RefreshCw className="h-4 w-4 text-blue-600" />
-                                            <span className="font-semibold text-blue-700 dark:text-blue-400">Carry Forward Sessions</span>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">{sessionsRemaining} sessions saved as credit</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Member can use these when they purchase PT again. Credit expires in 6 months.</p>
-                                        <Badge variant="outline" className="mt-2 text-[10px] border-blue-300 text-blue-600">
-                                            💰 Good option for temporary break from PT
-                                        </Badge>
-                                    </div>
-                                </label>
-                            </RadioGroup>
+                    {/* Removal Info */}
+                    <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="h-5 w-5" />
+                            <span className="font-medium">PT membership will be removed</span>
                         </div>
-                    ) : (
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                                <CheckCircle className="h-5 w-5" />
-                                <span className="font-medium">All PT sessions have been completed!</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">No unused sessions to handle. PT membership can be removed safely.</p>
-                        </div>
-                    )}
+                        <p className="text-sm text-muted-foreground mt-1">This member will be converted to regular membership only. PT benefits will no longer be available.</p>
+                    </div>
 
                     {/* Notes */}
                     <div className="space-y-2">

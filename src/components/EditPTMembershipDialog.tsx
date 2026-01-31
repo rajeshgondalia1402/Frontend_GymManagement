@@ -31,8 +31,6 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
     const [selectedPackageId, setSelectedPackageId] = useState('');
     const [ptPackageName, setPtPackageName] = useState('');
     const [selectedTrainerId, setSelectedTrainerId] = useState('');
-    const [sessionsTotal, setSessionsTotal] = useState(12);
-    const [sessionDuration, setSessionDuration] = useState(60);
     const [ptPackageFees, setPtPackageFees] = useState(0);
     const [ptMaxDiscount, setPtMaxDiscount] = useState(0);
     const [ptExtraDiscount, setPtExtraDiscount] = useState(0);
@@ -69,8 +67,6 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
         if (open && member && member.ptInfo) {
             setPtPackageName(member.ptPackageName || '');
             setSelectedTrainerId(member.ptInfo.trainerId || '');
-            setSessionsTotal(member.ptInfo.sessionsTotal || 12);
-            setSessionDuration(member.ptInfo.sessionDuration || 60);
             setPtPackageFees(member.ptPackageFees || 0);
             setPtMaxDiscount(member.ptMaxDiscount || 0);
             setPtExtraDiscount(member.ptExtraDiscount || 0);
@@ -141,8 +137,6 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
         const data: Partial<CreatePTAddon> = {
             ptPackageName,
             trainerId: selectedTrainerId,
-            sessionsTotal,
-            sessionDuration,
             ptPackageFees,
             ptMaxDiscount,
             ptExtraDiscount,
@@ -163,8 +157,6 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
     const memberName = member.firstName && member.lastName
         ? `${member.firstName} ${member.lastName}`
         : member.user?.name || 'Unknown';
-
-    const sessionsUsed = member.ptInfo?.sessionsUsed || 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -205,14 +197,6 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Sessions Info */}
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200">
-                        <p className="text-sm text-amber-800 dark:text-amber-200">
-                            <strong>Note:</strong> This member has used <strong>{sessionsUsed}</strong> out of <strong>{member.ptInfo?.sessionsTotal || 0}</strong> sessions. 
-                            You can update the total sessions but used sessions will remain unchanged.
-                        </p>
                     </div>
 
                     {/* PT Package Details */}
@@ -267,27 +251,7 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Total Sessions *</Label>
-                                <Input
-                                    type="number"
-                                    value={sessionsTotal}
-                                    onChange={(e) => setSessionsTotal(Math.max(sessionsUsed, parseInt(e.target.value) || 1))}
-                                    min={sessionsUsed}
-                                />
-                                <p className="text-[10px] text-muted-foreground">Min: {sessionsUsed} (used)</p>
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Session Duration (min)</Label>
-                                <Input
-                                    type="number"
-                                    value={sessionDuration}
-                                    onChange={(e) => setSessionDuration(parseInt(e.target.value) || 60)}
-                                    min={15}
-                                    step={15}
-                                />
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label className="text-xs flex items-center gap-1"><Calendar className="h-3 w-3" /> Start Date</Label>
                                 <Input
@@ -379,16 +343,16 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
                     {/* Summary */}
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200">
                         <h4 className="font-semibold text-sm text-blue-700 mb-2 flex items-center gap-1">
-                            <CheckCircle className="h-4 w-4" /> Changes Summary
+                            <CheckCircle className="h-4 w-4" /> PT Details Updated
                         </h4>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">New Total Sessions:</span>
-                                <span className="font-medium">{sessionsTotal}</span>
+                                <span className="text-muted-foreground">Package:</span>
+                                <span className="font-medium">{ptPackageName || 'Not selected'}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Remaining Sessions:</span>
-                                <span className="font-medium">{sessionsTotal - sessionsUsed}</span>
+                                <span className="text-muted-foreground">Final Fees:</span>
+                                <span className="font-medium">₹{ptFinalFees.toLocaleString('en-IN')}</span>
                             </div>
                         </div>
                     </div>
@@ -400,7 +364,7 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
                     <Button
                         onClick={handleSubmit}
                         disabled={updatePTMutation.isPending}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                     >
                         {updatePTMutation.isPending ? (
                             <><Spinner className="h-4 w-4 mr-2" />Updating PT...</>

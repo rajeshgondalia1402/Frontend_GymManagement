@@ -245,39 +245,66 @@ export function AssignMemberDietPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            className="shrink-0"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <UtensilsCrossed className="h-7 w-7 text-primary" />
-              Assign Diet Plan
-            </h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Create and assign personalized diet plans to members
-            </p>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 bg-background border-b px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="shrink-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                <UtensilsCrossed className="h-7 w-7 text-primary" />
+                Assign Diet Plan
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Create and assign personalized diet plans to members
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleClear} className="hidden sm:flex">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!isFormValid || createDietMutation.isPending}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              {createDietMutation.isPending ? (
+                <>
+                  <Spinner className="h-4 w-4 mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Diet Plan
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Top Section - Member & Template Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Member & Template Selection</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Assign Date */}
-            <div className="space-y-2">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Top Section - Member & Template Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Member & Template Selection</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Assign Date */}
+              <div className="space-y-2">
               <Label htmlFor="assignDate" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Assign Date *
@@ -537,30 +564,21 @@ export function AssignMemberDietPage() {
         </CardContent>
       </Card>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+      {/* Mobile Action Buttons */}
+      <div className="sm:hidden flex flex-col gap-3">
         {activeDiet && (
           <Button
             variant="outline"
             onClick={() => setViewDietDialogOpen(true)}
-            className="sm:order-1"
           >
             <Eye className="h-4 w-4 mr-2" />
             View Assigned Diet
           </Button>
         )}
         <Button
-          variant="outline"
-          onClick={handleClear}
-          className="sm:order-2"
-        >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Clear
-        </Button>
-        <Button
           onClick={handleSave}
           disabled={!isFormValid || createDietMutation.isPending}
-          className="sm:order-3"
+          className="h-12 text-base bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
         >
           {createDietMutation.isPending ? (
             <>
@@ -584,6 +602,7 @@ export function AssignMemberDietPage() {
             : `${validationErrors.length} fields need attention`}
         </div>
       )}
+      </div>
 
       {/* View Active Diet Dialog */}
       <Dialog open={viewDietDialogOpen} onOpenChange={setViewDietDialogOpen}>

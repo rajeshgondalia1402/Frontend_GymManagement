@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserCheck, Calendar, Activity } from 'lucide-react';
+import { Users, UserCheck } from 'lucide-react';
 import { trainerService } from '@/services/trainer.service';
 import { useAuthStore } from '@/store/authStore';
 
@@ -24,8 +24,6 @@ export function TrainerDashboard() {
   const stats = dashboard?.data || {
     totalPTMembers: 0,
     activePTMembers: 0,
-    sessionsThisWeek: 0,
-    upcomingSessions: 0,
   };
 
   return (
@@ -44,7 +42,7 @@ export function TrainerDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total PT Members</CardTitle>
@@ -67,32 +65,6 @@ export function TrainerDashboard() {
             <div className="text-2xl font-bold">{stats.activePTMembers}</div>
             <p className="text-xs text-muted-foreground">
               Currently training
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sessions This Week</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.sessionsThisWeek}</div>
-            <p className="text-xs text-muted-foreground">
-              Completed sessions
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Sessions</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.upcomingSessions}</div>
-            <p className="text-xs text-muted-foreground">
-              Scheduled this week
             </p>
           </CardContent>
         </Card>

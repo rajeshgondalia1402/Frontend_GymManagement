@@ -260,7 +260,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           <div className="flex items-center justify-between h-16 px-4 border-b">
             <Link to="/" className="flex items-center gap-2">
               <Dumbbell className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">GymManager</span>
+              <span className="text-xl font-bold">Gym Desk Pro</span>
             </Link>
             <Button
               variant="ghost"

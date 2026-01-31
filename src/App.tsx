@@ -37,11 +37,13 @@ import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
 import { AssignMemberDietPage } from '@/pages/gym-owner/AssignMemberDietPage';
 import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
+import { TrainerSalarySettlementPage } from '@/pages/gym-owner/TrainerSalarySettlementPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
 import { PTMembersPage } from '@/pages/trainer/PTMembersPage';
 import { PTMemberDetailPage } from '@/pages/trainer/PTMemberDetailPage';
+import { MySalarySettlementsPage } from '@/pages/trainer/MySalarySettlementsPage';
 
 // Member Pages
 import { MemberDashboard } from '@/pages/member/MemberDashboard';
@@ -376,6 +378,16 @@ function App() {
             </RoleGuard>
           }
         />
+        <Route
+          path="/gym-owner/salary-settlement"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <TopNavLayout>
+                <TrainerSalarySettlementPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
 
         {/* ==================== TRAINER ROUTES (STRICT ISOLATION) ==================== */}
         {/* Only TRAINER role can access these routes */}
@@ -406,6 +418,16 @@ function App() {
             <RoleGuard allowedRoles={['TRAINER']}>
               <TopNavLayout>
                 <PTMemberDetailPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/trainer/salary-settlements"
+          element={
+            <RoleGuard allowedRoles={['TRAINER']}>
+              <TopNavLayout>
+                <MySalarySettlementsPage />
               </TopNavLayout>
             </RoleGuard>
           }
