@@ -292,6 +292,25 @@ export function MembersPage() {
   const balanceFees = useMemo(() => totalFeesAmount - totalPaidFees, [totalFeesAmount, totalPaidFees]);
 
   const hasPTMembership = useMemo(() => paymentMembershipDetails?.hasPTMembership || false, [paymentMembershipDetails]);
+  const hasRegularMembership = useMemo(() => paymentMembershipDetails?.hasRegularMembership || false, [paymentMembershipDetails]);
+
+  // Calculate pending fees dynamically based on finalFees - paidFees (updates immediately when payment is added)
+  const regularPendingFees = useMemo(() => {
+    return regularFinalFees - regularPaidFees;
+  }, [regularFinalFees, regularPaidFees]);
+
+  const ptPendingFees = useMemo(() => {
+    return ptFinalFees - ptPaidFees;
+  }, [ptFinalFees, ptPaidFees]);
+
+  // Get current type fees based on selected payment type
+  const currentTypeTotalFees = useMemo(() => {
+    return paymentForm.paymentFor === 'PT' ? ptFinalFees : regularFinalFees;
+  }, [paymentForm.paymentFor, ptFinalFees, regularFinalFees]);
+
+  const currentTypePendingFees = useMemo(() => {
+    return paymentForm.paymentFor === 'PT' ? ptPendingFees : regularPendingFees;
+  }, [paymentForm.paymentFor, ptPendingFees, regularPendingFees]);
 
   // Check if selected member's membership is expired (for Balance Payment dialog)
   const isSelectedMemberExpired = useMemo(() => {
@@ -1390,38 +1409,132 @@ export function MembersPage() {
                 {/* Payment Type Selector - Show when member has both memberships */}
                 {!isLoadingPaymentMembershipDetails && paymentMembershipDetails &&
                  paymentMembershipDetails.hasRegularMembership && paymentMembershipDetails.hasPTMembership && (
-                  <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border">
-                    <Label className="text-sm font-medium">Payment For:</Label>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="paymentFor"
-                          value="REGULAR"
-                          checked={paymentForm.paymentFor === 'REGULAR'}
-                          onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'REGULAR' })}
-                          className="w-4 h-4 text-blue-600"
-                          disabled={isSelectedMemberExpired}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border">
+                      <Label className="text-sm font-medium">Payment For:</Label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentFor"
+                            value="REGULAR"
+                            checked={paymentForm.paymentFor === 'REGULAR'}
+                            onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'REGULAR' })}
+                            className="w-4 h-4 text-blue-600"
+                            disabled={isSelectedMemberExpired}
+                          />
+                          <span className="text-sm flex items-center gap-1">
+                            💪 <span className="text-blue-600 font-medium">Regular Membership</span>
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentFor"
+                            value="PT"
+                            checked={paymentForm.paymentFor === 'PT'}
+                            onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'PT' })}
+                            className="w-4 h-4 text-purple-600"
+                            disabled={isSelectedMemberExpired}
+                          />
+                          <span className="text-sm flex items-center gap-1">
+                            <Dumbbell className="h-3.5 w-3.5 text-purple-600" />
+                            <span className="text-purple-600 font-medium">PT Membership</span>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                    {/* Total Fees & Pending Fees - Disabled Textboxes */}
+                    <div className={`grid grid-cols-2 gap-3 p-3 rounded-lg border ${
+                      paymentForm.paymentFor === 'REGULAR'
+                        ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800'
+                        : 'bg-purple-50/50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-800'
+                    }`}>
+                      <div className="space-y-1">
+                        <Label className={`text-xs font-medium ${
+                          paymentForm.paymentFor === 'REGULAR' ? 'text-blue-600' : 'text-purple-600'
+                        }`}>
+                          {paymentForm.paymentFor === 'REGULAR' ? 'Regular' : 'PT'} Total Fees
+                        </Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            value={currentTypeTotalFees.toLocaleString('en-IN')}
+                            className={`h-8 pl-7 font-semibold ${
+                              paymentForm.paymentFor === 'REGULAR'
+                                ? 'bg-blue-100 text-blue-700 border-blue-300'
+                                : 'bg-purple-100 text-purple-700 border-purple-300'
+                            }`}
+                            disabled
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className={`text-xs font-medium ${
+                          currentTypePendingFees > 0 ? 'text-red-600' : 'text-emerald-600'
+                        }`}>
+                          {paymentForm.paymentFor === 'REGULAR' ? 'Regular' : 'PT'} Pending Fees
+                        </Label>
+                        <div className="relative">
+                          <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            value={currentTypePendingFees.toLocaleString('en-IN')}
+                            className={`h-8 pl-7 font-semibold ${
+                              currentTypePendingFees > 0
+                                ? 'bg-red-100 text-red-700 border-red-300'
+                                : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                            }`}
+                            disabled
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show Total & Pending Fees for PT-only membership type (hide for Regular-only) */}
+                {!isLoadingPaymentMembershipDetails && paymentMembershipDetails &&
+                 hasPTMembership && !hasRegularMembership && (
+                  <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border bg-purple-50/50 border-purple-200 dark:bg-purple-900/10 dark:border-purple-800">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-purple-600">
+                        PT Total Fees
+                      </Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="text"
+                          value={currentTypeTotalFees.toLocaleString('en-IN')}
+                          className="h-8 pl-7 font-semibold bg-purple-100 text-purple-700 border-purple-300"
+                          disabled
+                          readOnly
                         />
-                        <span className="text-sm flex items-center gap-1">
-                          💪 <span className="text-blue-600 font-medium">Regular Membership</span>
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="paymentFor"
-                          value="PT"
-                          checked={paymentForm.paymentFor === 'PT'}
-                          onChange={() => setPaymentForm({ ...paymentForm, paymentFor: 'PT' })}
-                          className="w-4 h-4 text-purple-600"
-                          disabled={isSelectedMemberExpired}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className={`text-xs font-medium ${
+                        currentTypePendingFees > 0 ? 'text-red-600' : 'text-emerald-600'
+                      }`}>
+                        PT Pending Fees
+                      </Label>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="text"
+                          value={currentTypePendingFees.toLocaleString('en-IN')}
+                          className={`h-8 pl-7 font-semibold ${
+                            currentTypePendingFees > 0
+                              ? 'bg-red-100 text-red-700 border-red-300'
+                              : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                          }`}
+                          disabled
+                          readOnly
                         />
-                        <span className="text-sm flex items-center gap-1">
-                          <Dumbbell className="h-3.5 w-3.5 text-purple-600" />
-                          <span className="text-purple-600 font-medium">PT Membership</span>
-                        </span>
-                      </label>
+                      </div>
                     </div>
                   </div>
                 )}
