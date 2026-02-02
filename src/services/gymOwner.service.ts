@@ -11,6 +11,7 @@ import type {
   DietAssignment,
   ExerciseAssignment,
   ExpenseGroup,
+  Expense,
   Designation,
   BodyPart,
   WorkoutExercise,
@@ -24,7 +25,22 @@ import type {
   MembershipRenewal,
   CreateMembershipRenewal,
   CreatePTAddon,
-  MembershipDetails
+  MembershipDetails,
+  DietTemplate,
+  CreateDietTemplate,
+  UpdateDietTemplate,
+  MemberDiet,
+  CreateMemberDiet,
+  UpdateMemberDiet,
+  BulkDietAssignmentRequest,
+  BulkDietAssignmentResponse,
+  TrainerDropdownItem,
+  SalaryCalculationRequest,
+  SalaryCalculationResponse,
+  TrainerSalarySettlement,
+  CreateSalarySettlement,
+  UpdateSalarySettlement,
+  SalarySlip
 } from '@/types';
 
 export const gymOwnerService = {
@@ -399,6 +415,44 @@ export const gymOwnerService = {
 
   async deleteExpenseGroup(id: string): Promise<void> {
     await api.delete(`/gym-owner/expense-groups/${id}`);
+  },
+
+  // Expenses
+  async getExpenses(params?: Record<string, any>): Promise<{ data: Expense[]; pagination: any; summary?: any }> {
+    const response = await api.get<ApiResponse<Expense[]>>('/gym-owner/expenses', { params });
+    // API returns { status, message, data: [...], pagination: {...}, summary: {...} }
+    return {
+      data: response.data.data as any,
+      pagination: (response.data as any).pagination,
+      summary: (response.data as any).summary
+    };
+  },
+
+  async getExpense(id: string): Promise<Expense> {
+    const response = await api.get<ApiResponse<Expense>>(`/gym-owner/expenses/${id}`);
+    return response.data.data;
+  },
+
+  async createExpense(data: FormData): Promise<Expense> {
+    const response = await api.post<ApiResponse<Expense>>('/gym-owner/expenses', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  async updateExpense(id: string, data: FormData): Promise<Expense> {
+    const response = await api.put<ApiResponse<Expense>>(`/gym-owner/expenses/${id}`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  async deleteExpense(id: string): Promise<void> {
+    await api.delete(`/gym-owner/expenses/${id}`);
   },
 
   // Designations
@@ -808,15 +862,68 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
-  // PT Session Credits
-  async getMemberSessionCredits(memberId: string): Promise<any[]> {
-    const response = await api.get(`/gym-owner/members/${memberId}/session-credits`);
+  // Payment Summary (Regular vs PT breakdown)
+  async getMemberPaymentSummary(memberId: string): Promise<{
+    regular: { totalFees: number; paidAmount: number; pendingAmount: number };
+    pt: { totalFees: number; paidAmount: number; pendingAmount: number };
+    combined: { totalFees: number; paidAmount: number; pendingAmount: number };
+  }> {
+    const response = await api.get(`/gym-owner/members/${memberId}/payment-summary`);
+    return response.data.data;
+  },
+
+  // Diet Templates (New Diet Plan System)
+  async getDietTemplates(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    mealsPerDay?: number;
+  } = {}): Promise<PaginatedResponse<DietTemplate>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/diet-templates', { params: queryParams });
     const responseData = response.data;
-    console.debug('getMemberSessionCredits raw response:', responseData);
+    console.debug('getDietTemplates raw response:', responseData);
 
     if (responseData.success !== undefined && responseData.data) {
-      if (Array.isArray(responseData.data)) {
-        return responseData.data;
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<DietTemplate>;
+    }
+    return responseData;
+  },
+
+  async getActiveDietTemplates(): Promise<DietTemplate[]> {
+    const response = await api.get('/gym-owner/diet-templates', { params: { isActive: true, limit: 100 } });
+    const responseData = response.data;
+    console.debug('getActiveDietTemplates raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      if (Array.isArray(innerData.items)) {
+        return innerData.items;
+      }
+      if (Array.isArray(innerData)) {
+        return innerData;
       }
     }
     if (Array.isArray(responseData)) {
@@ -825,13 +932,199 @@ export const gymOwnerService = {
     return [];
   },
 
-  // Payment Summary (Regular vs PT breakdown)
-  async getMemberPaymentSummary(memberId: string): Promise<{
-    regular: { totalFees: number; paidAmount: number; pendingAmount: number };
-    pt: { totalFees: number; paidAmount: number; pendingAmount: number };
-    combined: { totalFees: number; paidAmount: number; pendingAmount: number };
-  }> {
-    const response = await api.get(`/gym-owner/members/${memberId}/payment-summary`);
+  async getDietTemplate(id: string): Promise<DietTemplate> {
+    const response = await api.get<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}`);
+    return response.data.data;
+  },
+
+  async createDietTemplate(data: CreateDietTemplate): Promise<DietTemplate> {
+    const response = await api.post<ApiResponse<DietTemplate>>('/gym-owner/diet-templates', data);
+    return response.data.data;
+  },
+
+  async updateDietTemplate(id: string, data: UpdateDietTemplate): Promise<DietTemplate> {
+    const response = await api.put<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteDietTemplate(id: string): Promise<void> {
+    await api.delete(`/gym-owner/diet-templates/${id}`);
+  },
+
+  async toggleDietTemplateStatus(id: string): Promise<DietTemplate> {
+    const response = await api.patch<ApiResponse<DietTemplate>>(`/gym-owner/diet-templates/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  // Member Diet Assignments
+  async getMemberDiets(params: {
+    page?: number;
+    limit?: number;
+    memberId?: string;
+    isActive?: boolean;
+  } = {}): Promise<PaginatedResponse<MemberDiet>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/member-diets', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getMemberDiets raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<MemberDiet>;
+    }
+    return responseData;
+  },
+
+  async getMemberDiet(id: string): Promise<MemberDiet> {
+    const response = await api.get<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}`);
+    return response.data.data;
+  },
+
+  async getMemberActiveDiet(memberId: string): Promise<MemberDiet | null> {
+    const response = await api.get(`/gym-owner/members/${memberId}/active-diet`);
+    const responseData = response.data;
+    console.debug('getMemberActiveDiet raw response:', responseData);
+
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    }
+    return null;
+  },
+
+  async createMemberDiet(data: CreateMemberDiet): Promise<MemberDiet> {
+    const response = await api.post<ApiResponse<MemberDiet>>('/gym-owner/member-diets', data);
+    return response.data.data;
+  },
+
+  async updateMemberDiet(id: string, data: UpdateMemberDiet): Promise<MemberDiet> {
+    const response = await api.put<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}`, data);
+    return response.data.data;
+  },
+
+  async deactivateMemberDiet(id: string): Promise<MemberDiet> {
+    const response = await api.patch<ApiResponse<MemberDiet>>(`/gym-owner/member-diets/${id}/deactivate`);
+    return response.data.data;
+  },
+
+  // Bulk Diet Assignment
+  async assignDietToMultipleMembers(data: BulkDietAssignmentRequest): Promise<BulkDietAssignmentResponse> {
+    const response = await api.post<BulkDietAssignmentResponse>('/gym-owner/member-diets', data);
+    console.debug('assignDietToMultipleMembers raw response:', response.data);
+    return response.data;
+  },
+
+  // Bulk Remove Assigned Members from Diet
+  async bulkRemoveAssignedMembers(memberDietIds: string[]): Promise<{ status: string; message: string; data: { deletedCount: number; deletedIds: string[] } }> {
+    const response = await api.delete('/gym-owner/member-diets/bulk-remove', {
+      data: { memberDietIds },
+    });
+    console.debug('bulkRemoveAssignedMembers raw response:', response.data);
+    return response.data;
+  },
+
+  // Trainer Salary Settlement
+  async getTrainersDropdown(): Promise<TrainerDropdownItem[]> {
+    const response = await api.get('/gym-owner/trainers/dropdown');
+    const responseData = response.data;
+    console.debug('getTrainersDropdown raw response:', responseData);
+
+    if (responseData.success !== undefined && Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    return [];
+  },
+
+  async calculateSalary(data: SalaryCalculationRequest): Promise<SalaryCalculationResponse> {
+    const response = await api.post<ApiResponse<SalaryCalculationResponse>>('/gym-owner/salary-settlement/calculate', data);
+    return response.data.data;
+  },
+
+  async getSalarySettlements(params: {
+    page?: number;
+    limit?: number;
+    trainerId?: string;
+    fromDate?: string;
+    toDate?: string;
+    paymentMode?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<PaginatedResponse<TrainerSalarySettlement>> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    const response = await api.get('/gym-owner/salary-settlement', { params: queryParams });
+    const responseData = response.data;
+    console.debug('getSalarySettlements raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      const innerData = responseData.data;
+      return {
+        success: responseData.success,
+        message: responseData.message || '',
+        data: innerData.items || innerData.data || [],
+        pagination: innerData.pagination || {
+          page,
+          limit,
+          total: (innerData.items || innerData.data || []).length,
+          totalPages: 1
+        },
+      };
+    }
+    if (Array.isArray(responseData.data)) {
+      return responseData as PaginatedResponse<TrainerSalarySettlement>;
+    }
+    return responseData;
+  },
+
+  async getSalarySettlement(id: string): Promise<TrainerSalarySettlement> {
+    const response = await api.get<ApiResponse<TrainerSalarySettlement>>(`/gym-owner/salary-settlement/${id}`);
+    return response.data.data;
+  },
+
+  async createSalarySettlement(data: CreateSalarySettlement): Promise<TrainerSalarySettlement> {
+    const response = await api.post<ApiResponse<TrainerSalarySettlement>>('/gym-owner/salary-settlement', data);
+    return response.data.data;
+  },
+
+  async updateSalarySettlement(id: string, data: UpdateSalarySettlement): Promise<TrainerSalarySettlement> {
+    const response = await api.put<ApiResponse<TrainerSalarySettlement>>(`/gym-owner/salary-settlement/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteSalarySettlement(id: string): Promise<void> {
+    await api.delete(`/gym-owner/salary-settlement/${id}`);
+  },
+
+  async getSalarySlip(settlementId: string): Promise<SalarySlip> {
+    const response = await api.get<ApiResponse<SalarySlip>>(`/gym-owner/salary-settlement/${settlementId}/slip`);
     return response.data.data;
   },
 };

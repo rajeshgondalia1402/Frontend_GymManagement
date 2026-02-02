@@ -286,40 +286,43 @@ export function MemberFormPage() {
 
 
     return (
-        <div className="h-full flex flex-col">
-            {/* Header - Same style as AddPTMembershipPage */}
-            <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/gym-owner/members')} className="h-8 w-8">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg">
-                        <User className="h-4 w-4 text-white" />
+        <div className="h-full flex flex-col overflow-hidden">
+            {/* Fixed Header - Consistent with other pages */}
+            <div className="flex-shrink-0 bg-background border-b px-4 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" onClick={() => navigate('/gym-owner/members')} className="shrink-0">
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                                <User className="h-7 w-7 text-purple-600" />
+                                {isEditMode ? 'Edit Member' : 'Add New Member'}
+                            </h1>
+                            <p className="text-muted-foreground text-sm sm:text-base">
+                                {isEditMode ? 'Update member information' : 'Register a new gym member'}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-base font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                            {isEditMode ? 'Edit Member' : 'Add New Member'}
-                        </h1>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => navigate('/gym-owner/members')} className="hidden sm:flex">
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSubmit(onSubmit)} 
+                            disabled={isPending} 
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        >
+                            {isPending ? <Spinner className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                            {isPending ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Member' : 'Create Member')}
+                        </Button>
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => navigate('/gym-owner/members')} className="hidden sm:flex">
-                        Cancel
-                    </Button>
-                    <Button 
-                        size="sm" 
-                        onClick={handleSubmit(onSubmit)} 
-                        disabled={isPending} 
-                        className="bg-gradient-to-r from-purple-600 to-blue-600"
-                    >
-                        {isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4 mr-1" />{isEditMode ? 'Update' : 'Create'}</>}
-                    </Button>
                 </div>
             </div>
 
-            {/* Main Content - Full Page Responsive */}
-            <div className="flex-1 overflow-auto p-3 md:p-4 lg:p-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="h-full max-w-7xl mx-auto">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 md:p-6">
                         
                         {/* Top Section: Photo/Document + Membership & Fees side by side */}

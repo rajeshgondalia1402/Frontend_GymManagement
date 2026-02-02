@@ -946,13 +946,14 @@ export function MemberInquiriesPage() {
             </div>
 
             {/* Form Actions */}
-            <div className="flex justify-end gap-2 pt-2 border-t">
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleCloseDialog}>
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
                 {createMutation.isPending || updateMutation.isPending ? (
                   <>
@@ -1072,7 +1073,10 @@ export function MemberInquiriesPage() {
                 <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
                   Close
                 </Button>
-                <Button onClick={() => { setViewDialogOpen(false); handleEdit(viewingInquiry); }}>
+                <Button 
+                  onClick={() => { setViewDialogOpen(false); handleEdit(viewingInquiry); }}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </Button>

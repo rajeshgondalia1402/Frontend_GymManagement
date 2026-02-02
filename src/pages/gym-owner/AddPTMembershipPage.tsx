@@ -27,7 +27,6 @@ interface ValidationErrors {
   package?: string;
   trainer?: string;
   fees?: string;
-  sessions?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -43,8 +42,6 @@ export function AddPTMembershipPage() {
   const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
   const [ptPackageName, setPtPackageName] = useState('');
   const [selectedTrainerId, setSelectedTrainerId] = useState('');
-  const [sessionsTotal] = useState(12);
-  const [sessionDuration] = useState(60);
   const [ptPackageFees, setPtPackageFees] = useState(0);
   const [ptMaxDiscount, setPtMaxDiscount] = useState(0);
   const [ptExtraDiscount, setPtExtraDiscount] = useState(0);
@@ -146,9 +143,6 @@ export function AddPTMembershipPage() {
     if (ptPackageFees <= 0) {
       newErrors.fees = 'Package fees must be greater than 0';
     }
-    if (sessionsTotal < 1) {
-      newErrors.sessions = 'At least 1 session required';
-    }
     if (!startDate) {
       newErrors.startDate = 'Start date is required';
     }
@@ -161,8 +155,8 @@ export function AddPTMembershipPage() {
 
     setErrors(newErrors);
     // Mark all fields as touched on submit
-    setTouched({ package: true, trainer: true, fees: true, sessions: true, startDate: true, endDate: true });
-    
+    setTouched({ package: true, trainer: true, fees: true, startDate: true, endDate: true });
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -190,7 +184,6 @@ export function AddPTMembershipPage() {
         package: true,
         trainer: true,
         fees: true,
-        sessions: true,
         startDate: true,
         endDate: true,
       });
@@ -201,8 +194,6 @@ export function AddPTMembershipPage() {
     const data: CreatePTAddon = {
       ptPackageName,
       trainerId: selectedTrainerId,
-      sessionsTotal,
-      sessionDuration,
       ptPackageFees,
       ptMaxDiscount,
       ptExtraDiscount,
@@ -244,13 +235,6 @@ export function AddPTMembershipPage() {
           newErrors.fees = 'Package fees must be greater than 0';
         } else {
           delete newErrors.fees;
-        }
-        break;
-      case 'sessions':
-        if (sessionsTotal < 1) {
-          newErrors.sessions = 'At least 1 session required';
-        } else {
-          delete newErrors.sessions;
         }
         break;
       case 'startDate':
@@ -314,85 +298,91 @@ export function AddPTMembershipPage() {
     : member.user?.name || 'Unknown';
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/gym-owner/members')} className="h-8 w-8">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="p-1.5 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg">
-            <Dumbbell className="h-4 w-4 text-white" />
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 bg-background border-b px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/gym-owner/members')}
+              className="shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                <Dumbbell className="h-7 w-7 text-purple-600" />
+                Add PT Membership
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
+                Add personal training membership for member
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-purple-700">Add PT Membership</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/gym-owner/members')} className="hidden sm:flex">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={addPTMutation.isPending} 
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              {addPTMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              {addPTMutation.isPending ? 'Saving...' : 'Save PT Membership'}
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/gym-owner/members')} className="hidden sm:flex">
-            Cancel
-          </Button>
-          <Button 
-            size="sm" 
-            onClick={handleSubmit} 
-            disabled={addPTMutation.isPending} 
-            className="bg-gradient-to-r from-purple-600 to-violet-600"
-          >
-            {addPTMutation.isPending ? <Spinner className="h-4 w-4" /> : <><Save className="h-4 w-4 mr-1" />Save</>}
-          </Button>
         </div>
       </div>
 
-      {/* Main Content - Full Page */}
-      <div className="flex-1 overflow-auto p-3 md:p-4 lg:p-6">
-        <div className="h-full max-w-7xl mx-auto flex flex-col">
-          
-          {/* Member Info Card */}
-          <div className="shrink-0 bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 mb-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14 border-2 border-purple-200 shadow">
-                {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
-                <AvatarFallback className="text-lg bg-gradient-to-br from-purple-500 to-violet-600 text-white">
-                  {getInitials(memberName)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold truncate">{memberName}</h2>
-                <p className="text-sm text-muted-foreground">Member ID: {member.memberId || 'N/A'}</p>
-              </div>
-              <div className="hidden sm:flex items-center gap-2">
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-sm px-3 py-1">
-                  REGULAR
-                </Badge>
-                <span className="text-xl text-purple-400">→</span>
-                <Badge className="bg-purple-600 text-white text-sm px-3 py-1">
-                  <Dumbbell className="h-3.5 w-3.5 mr-1" />REGULAR + PT
-                </Badge>
-              </div>
-            </div>
-            {/* Mobile badge */}
-            <div className="flex sm:hidden items-center gap-2 mt-3 pt-3 border-t">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">REGULAR</Badge>
-              <span className="text-purple-400">→</span>
-              <Badge className="bg-purple-600 text-white"><Dumbbell className="h-3 w-3 mr-1" />+ PT</Badge>
-            </div>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Member Info Card */}
+        <div className="bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-xl border p-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
+              {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
+              <AvatarFallback className="text-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white">
+                {getInitials(memberName)}
+              </AvatarFallback>
+            </Avatar>
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="text-xl font-bold">{memberName}</h2>
+            <p className="text-sm text-muted-foreground">Member ID: {member.memberId || 'N/A'}</p>
           </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+              REGULAR
+            </Badge>
+            <span className="text-purple-400">→</span>
+            <Badge className="bg-purple-600 text-white">
+              <Dumbbell className="h-3 w-3 mr-1" />REGULAR + PT
+            </Badge>
+          </div>
+        </div>
+        </div>
 
-          {/* Form Grid - Fills remaining space */}
-          <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 md:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        {/* PT Package & Trainer Selection */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 sm:p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Dumbbell className="h-5 w-5 text-purple-500" />
+            PT Package Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               
-              {/* PT Package */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <Label className="text-sm font-semibold text-purple-700 mb-2 flex items-center gap-2">
-                  <Dumbbell className="h-4 w-4" /> PT Package <span className="text-red-500">*</span>
-                </Label>
-                <Select 
+            {/* PT Package */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Dumbbell className="h-4 w-4 text-purple-500" /> PT Package <span className="text-red-500">*</span>
+              </Label>
+              <Select 
                   value={selectedPackageId} 
                   onValueChange={handlePackageSelect}
                   onOpenChange={(open) => !open && handleBlur('package')}
                 >
-                  <SelectTrigger className={`h-11 ${touched.package && errors.package ? 'border-red-500 ring-1 ring-red-500' : ''}`}>
+                  <SelectTrigger className={touched.package && errors.package ? 'border-red-500 ring-1 ring-red-500' : ''}>
                     <SelectValue placeholder="Select PT package..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,16 +401,16 @@ export function AddPTMembershipPage() {
                   </SelectContent>
                 </Select>
                 {touched.package && errors.package && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />{errors.package}
                   </p>
                 )}
               </div>
 
               {/* Trainer */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <Label className="text-sm font-semibold text-purple-700 mb-2 flex items-center gap-2">
-                  <User className="h-4 w-4" /> Trainer <span className="text-red-500">*</span>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <User className="h-4 w-4 text-purple-500" /> Trainer <span className="text-red-500">*</span>
                 </Label>
                 <Select 
                   value={selectedTrainerId} 
@@ -431,7 +421,7 @@ export function AddPTMembershipPage() {
                   }}
                   onOpenChange={(open) => !open && handleBlur('trainer')}
                 >
-                  <SelectTrigger className={`h-11 ${touched.trainer && errors.trainer ? 'border-red-500 ring-1 ring-red-500' : ''}`}>
+                  <SelectTrigger className={touched.trainer && errors.trainer ? 'border-red-500 ring-1 ring-red-500' : ''}>
                     <SelectValue placeholder="Select trainer..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -443,29 +433,38 @@ export function AddPTMembershipPage() {
                   </SelectContent>
                 </Select>
                 {touched.trainer && errors.trainer && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />{errors.trainer}
                   </p>
                 )}
               </div>
 
               {/* BMI Calculator Link */}
-              <div className="sm:col-span-2 lg:col-span-1">
-                <Label className="text-sm font-semibold mb-2 block">Health Tools</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Health Tools</Label>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowBMICalculator(true)}
-                  className="h-11 w-full bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-300 text-purple-700"
+                  className="w-full bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-300 text-purple-700"
                 >
                   <Calculator className="h-4 w-4 mr-2" />
                   Calculate BMI
                 </Button>
               </div>
+        </div>
+      </div>
 
+      {/* Dates Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 sm:p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-500" />
+          PT Duration
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Start Date */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4 text-blue-600" /> Start Date <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -478,18 +477,18 @@ export function AddPTMembershipPage() {
                     }
                   }}
                   onBlur={() => handleBlur('startDate')}
-                  className={`h-11 ${touched.startDate && errors.startDate ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                  className={touched.startDate && errors.startDate ? 'border-red-500 ring-1 ring-red-500' : ''}
                 />
                 {touched.startDate && errors.startDate && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />{errors.startDate}
                   </p>
                 )}
               </div>
 
               {/* End Date */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
                   <Calendar className="h-4 w-4 text-blue-600" /> End Date <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -502,19 +501,28 @@ export function AddPTMembershipPage() {
                     }
                   }}
                   onBlur={() => handleBlur('endDate')}
-                  className={`h-11 ${touched.endDate && errors.endDate ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                  className={touched.endDate && errors.endDate ? 'border-red-500 ring-1 ring-red-500' : ''}
                 />
                 {touched.endDate && errors.endDate && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />{errors.endDate}
                   </p>
                 )}
               </div>
+        </div>
+      </div>
 
+      {/* Fee Details Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 sm:p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <IndianRupee className="h-5 w-5 text-green-500" />
+          Fee Details
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Package Fees */}
-              <div>
-                <Label className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-1">
-                  <IndianRupee className="h-4 w-4" /> Package Fees <span className="text-red-500">*</span>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1">
+                  <IndianRupee className="h-4 w-4 text-green-600" /> Package Fees <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -529,19 +537,19 @@ export function AddPTMembershipPage() {
                       }
                     }}
                     onBlur={() => handleBlur('fees')}
-                    className={`h-11 pl-9 ${touched.fees && errors.fees ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                    className={`pl-9 ${touched.fees && errors.fees ? 'border-red-500 ring-1 ring-red-500' : ''}`}
                   />
                 </div>
                 {touched.fees && errors.fees && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-red-500 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />{errors.fees}
                   </p>
                 )}
               </div>
 
               {/* Max Discount */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 block">Max Discount</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Max Discount</Label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -549,14 +557,14 @@ export function AddPTMembershipPage() {
                     placeholder="0"
                     value={ptMaxDiscount || ''}
                     onChange={(e) => setPtMaxDiscount(parseFloat(e.target.value) || 0)}
-                    className="h-11 pl-9"
+                    className="pl-9"
                   />
                 </div>
               </div>
 
               {/* Extra Discount */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 block">Extra Discount</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Extra Discount</Label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -564,7 +572,7 @@ export function AddPTMembershipPage() {
                     placeholder="0"
                     value={ptExtraDiscount || ''}
                     onChange={(e) => setPtExtraDiscount(parseFloat(e.target.value) || 0)}
-                    className="h-11 pl-9"
+                    className="pl-9"
                   />
                 </div>
               </div>
@@ -576,12 +584,21 @@ export function AddPTMembershipPage() {
                   <IndianRupee className="h-5 w-5" />{ptFinalFees.toLocaleString('en-IN')}
                 </p>
               </div>
+        </div>
+      </div>
 
+      {/* Payment Details Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 sm:p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <IndianRupee className="h-5 w-5 text-orange-500" />
+          Payment Details
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Payment Mode */}
-              <div>
-                <Label className="text-sm font-semibold text-orange-700 mb-2 block">Payment Mode</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Payment Mode</Label>
                 <Select value={paymentMode} onValueChange={setPaymentMode}>
-                  <SelectTrigger className="h-11">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -593,8 +610,8 @@ export function AddPTMembershipPage() {
               </div>
 
               {/* Paid Amount */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 block">Paid Amount</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Paid Amount</Label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -602,7 +619,7 @@ export function AddPTMembershipPage() {
                     placeholder="0"
                     value={initialPayment || ''}
                     onChange={(e) => setInitialPayment(Math.min(parseFloat(e.target.value) || 0, ptFinalFees))}
-                    className="h-11 pl-9"
+                    className="pl-9"
                   />
                 </div>
               </div>
@@ -618,7 +635,7 @@ export function AddPTMembershipPage() {
               </div>
 
               {/* Payment Status */}
-              <div className="flex items-end pb-2">
+              <div className="flex items-end">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Status</p>
                   <Badge className={`text-sm px-4 py-1.5 ${
@@ -630,43 +647,49 @@ export function AddPTMembershipPage() {
                   </Badge>
                 </div>
               </div>
+        </div>
+      </div>
 
+      {/* Additional Info Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 sm:p-6">
+        <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Goals */}
-              <div className="sm:col-span-2">
-                <Label className="text-sm font-semibold mb-2 block">PT Goals (Optional)</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">PT Goals (Optional)</Label>
                 <Textarea
                   placeholder="e.g., Weight loss, Muscle building, Fitness improvement..."
                   value={goals}
                   onChange={(e) => setGoals(e.target.value)}
-                  rows={2}
+                  rows={3}
                   className="resize-none"
                 />
               </div>
 
               {/* Notes */}
-              <div className="sm:col-span-2">
-                <Label className="text-sm font-semibold mb-2 block">Notes (Optional)</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Notes (Optional)</Label>
                 <Textarea
                   placeholder="Any additional notes about this PT membership..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
+                  rows={3}
                   className="resize-none"
                 />
               </div>
-            </div>
           </div>
+        </div>
 
-          {/* Mobile Bottom Action */}
-          <div className="shrink-0 sm:hidden mt-4 pb-2">
-            <Button
-              onClick={handleSubmit}
-              disabled={addPTMutation.isPending}
-              className="w-full h-12 text-base bg-gradient-to-r from-purple-600 to-violet-600"
-            >
-              {addPTMutation.isPending ? <Spinner className="h-5 w-5" /> : <><Save className="h-5 w-5 mr-2" />Add PT Membership</>}
-            </Button>
-          </div>
+        {/* Mobile Bottom Action */}
+        <div className="sm:hidden pb-4">
+          <Button
+            onClick={handleSubmit}
+            disabled={addPTMutation.isPending}
+            className="w-full h-12 text-base bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+          >
+            {addPTMutation.isPending ? <Spinner className="h-5 w-5 mr-2" /> : <Save className="h-5 w-5 mr-2" />}
+            {addPTMutation.isPending ? 'Saving...' : 'Add PT Membership'}
+          </Button>
         </div>
       </div>
 

@@ -533,7 +533,7 @@ export function GymsPage() {
                 </div>
               </div>
               
-              <Button type="submit" className="w-full h-9" disabled={createMutation.isPending || isUploadingLogo}>
+              <Button type="submit" className="w-full h-9 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" disabled={createMutation.isPending || isUploadingLogo}>
                 {isUploadingLogo ? 'Uploading Logo...' : createMutation.isPending ? 'Creating...' : 'Create Gym'}
               </Button>
             </form>
@@ -952,7 +952,7 @@ export function GymsPage() {
               <Button type="button" variant="outline" className="flex-1 h-9" onClick={() => setEditDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 h-9" disabled={updateMutation.isPending || isUploadingLogo}>
+              <Button type="submit" className="flex-1 h-9 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" disabled={updateMutation.isPending || isUploadingLogo}>
                 {isUploadingLogo ? 'Uploading Logo...' : updateMutation.isPending ? 'Updating...' : 'Update Gym'}
               </Button>
             </div>

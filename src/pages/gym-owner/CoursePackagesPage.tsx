@@ -402,7 +402,7 @@ export function CoursePackagesPage() {
                                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto">
+                                <Button type="submit" disabled={createMutation.isPending} className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                                     {createMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                                     Create
                                 </Button>
@@ -952,7 +952,7 @@ export function CoursePackagesPage() {
                             <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="w-full sm:w-auto">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={updateMutation.isPending} className="w-full sm:w-auto">
+                            <Button type="submit" disabled={updateMutation.isPending} className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                                 {updateMutation.isPending ? <Spinner className="h-4 w-4 mr-2" /> : null}
                                 Update
                             </Button>

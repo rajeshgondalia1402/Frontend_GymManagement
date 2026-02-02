@@ -84,7 +84,7 @@ export function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your GymManager account</CardDescription>
+          <CardDescription>Sign in to your Gym Desk Pro account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -121,7 +121,7 @@ export function LoginPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Spinner size="sm" className="mr-2" />

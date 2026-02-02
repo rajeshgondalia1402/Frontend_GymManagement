@@ -73,3 +73,43 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Responsive Table Utilities */
+@layer utilities {
+  /* Full-width responsive container */
+  .responsive-container {
+    @apply w-full px-3 sm:px-4 md:px-6 lg:px-8;
+  }
+
+  /* Responsive table wrapper with horizontal scroll */
+  .table-responsive {
+    @apply w-full overflow-x-auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+
+  /* Ensure tables don't break on mobile */
+  .table-responsive table {
+    @apply min-w-full;
+  }
+
+  /* Card spacing adjustments for mobile */
+  .card-responsive {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+
+  /* Responsive text sizes for headers */
+  .heading-responsive {
+    @apply text-xl sm:text-2xl md:text-3xl;
+  }
+
+  .subheading-responsive {
+    @apply text-base sm:text-lg md:text-xl;
+  }
+}
+
+/* Smooth transitions for responsive layouts */
+@media (prefers-reduced-motion: no-preference) {
+  .table-responsive {
+    scroll-behavior: smooth;
+  }
+}

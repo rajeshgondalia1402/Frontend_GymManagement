@@ -34,11 +34,6 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
     // Check if PT is currently paused
     const isPTCurrentlyPaused = member?.ptInfo?.isPaused || false;
 
-    // Calculate session info
-    const sessionsTotal = member?.ptInfo?.sessionsTotal || 0;
-    const sessionsUsed = member?.ptInfo?.sessionsUsed || 0;
-    const sessionsRemaining = sessionsTotal - sessionsUsed;
-
     // Payment status for display
     const ptPaymentStatus = useMemo(() => {
         if (!member?.ptFinalFees) return 'N/A';
@@ -166,7 +161,7 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
                             {isPTCurrentlyPaused ? <PauseCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                             Current PT Status
                         </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <p className="text-[10px] text-muted-foreground">PT Package</p>
                                 <p className="text-sm font-semibold">{member.ptPackageName || member.ptInfo?.trainerId || 'N/A'}</p>
@@ -174,14 +169,6 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
                             <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
                                 <p className="text-[10px] text-muted-foreground">Trainer</p>
                                 <p className="text-sm font-semibold">{member.ptInfo?.trainerName || 'N/A'}</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
-                                <p className="text-[10px] text-muted-foreground">Sessions</p>
-                                <p className="text-sm font-semibold">{sessionsUsed} / {sessionsTotal} used</p>
-                            </div>
-                            <div className={`p-3 rounded-lg text-center ${sessionsRemaining > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                                <p className={`text-[10px] ${sessionsRemaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>Remaining</p>
-                                <p className={`text-sm font-bold ${sessionsRemaining > 0 ? 'text-orange-700' : 'text-green-700'}`}>{sessionsRemaining} sessions</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
@@ -213,8 +200,7 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
                                         Resuming will reactivate the PT membership. The member will be able to:
                                     </p>
                                     <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-                                        <li>Book PT sessions with their trainer</li>
-                                        <li>Use remaining {sessionsRemaining} sessions</li>
+                                        <li>Train with their assigned trainer</li>
                                         <li>Access all PT benefits</li>
                                     </ul>
                                 </div>
@@ -230,8 +216,7 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
                                         Pausing will temporarily suspend the PT membership. The member will:
                                     </p>
                                     <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-                                        <li>Keep their {sessionsRemaining} remaining sessions on hold</li>
-                                        <li>Not be able to book new PT sessions</li>
+                                        <li>Keep their PT membership on hold</li>
                                         <li>Retain their trainer assignment</li>
                                         <li>Be able to resume PT anytime</li>
                                     </ul>
@@ -267,8 +252,8 @@ export function PausePTMembershipDialog({ open, onOpenChange, member, onSuccess 
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                             {isPTCurrentlyPaused 
-                                ? 'PT membership will be reactivated and member can book sessions again.'
-                                : 'PT sessions will be on hold. Member can resume anytime to use remaining sessions.'
+                                ? 'PT membership will be reactivated and member can train with their trainer again.'
+                                : 'PT membership will be on hold. Member can resume anytime.'
                             }
                         </p>
                     </div>

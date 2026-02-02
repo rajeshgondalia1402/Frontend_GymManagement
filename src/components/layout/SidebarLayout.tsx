@@ -88,18 +88,17 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Members', href: '/gym-owner/members', icon: Users },
     { title: 'Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
     { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
-    { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
     { title: 'Diet Plans', href: '/gym-owner/diet-plans', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
     {
       title: 'Master',
       icon: FolderCog,
       submenu: [
+        { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
         { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
         { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
         { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
-
       ],
     },
   ],
@@ -261,7 +260,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           <div className="flex items-center justify-between h-16 px-4 border-b">
             <Link to="/" className="flex items-center gap-2">
               <Dumbbell className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">GymManager</span>
+              <span className="text-xl font-bold">Gym Desk Pro</span>
             </Link>
             <Button
               variant="ghost"
