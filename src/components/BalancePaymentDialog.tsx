@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import {
     Wallet, Calendar, IndianRupee, Plus, Pencil, Download, Phone, User,
     MapPin, FileText, MessageSquare, Edit, XCircle, CheckCircle, AlertTriangle,
-    Dumbbell, CreditCard,
+    Dumbbell, CreditCard, BadgeCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
@@ -56,39 +55,10 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         return new Date(endDate) < new Date();
     }, [member]);
 
-    // Check if member has both Regular and PT memberships
-    const hasBothMemberships = useMemo(() => member?.memberType === 'REGULAR_PT', [member]);
-    const hasPTOnly = useMemo(() => member?.memberType === 'PT', [member]);
-
     // Sync memberIsActive when member prop changes (e.g., when opening dialog for different member)
     useEffect(() => {
         setMemberIsActive(member?.isActive !== false);
     }, [member?.id, member?.isActive]);
-
-    // Set default payment type based on member type
-    useEffect(() => {
-        if (hasPTOnly) {
-            setSelectedPaymentType('PT');
-        } else {
-            setSelectedPaymentType('REGULAR');
-        }
-    }, [member?.id, hasPTOnly]);
-
-    // Reset form when member changes
-    const resetPaymentForm = () => {
-        const defaultType = hasPTOnly ? 'PT' : 'REGULAR';
-        setSelectedPaymentType(defaultType);
-        setPaymentForm({
-            paymentFor: defaultType,
-            paymentDate: new Date().toISOString().split('T')[0],
-            paidFees: 0,
-            payMode: 'Cash',
-            contactNo: member?.phone || '',
-            nextPaymentDate: '',
-            notes: '',
-        });
-        setEditingPayment(null);
-    };
 
     // Balance Payment Query & Mutations
     const { data: balancePayments = [], isLoading: isLoadingPayments } = useQuery({
@@ -96,6 +66,38 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         queryFn: () => member ? gymOwnerService.getMemberBalancePayments(member.id) : Promise.resolve([]),
         enabled: !!member && open,
     });
+
+    // Fetch membership details to get accurate membership type info and fees
+    const { data: membershipDetails, isLoading: isLoadingMembershipDetails } = useQuery({
+        queryKey: ['membershipDetails', member?.id],
+        queryFn: () => member ? gymOwnerService.getMemberMembershipDetails(member.id) : Promise.resolve(null),
+        enabled: !!member && open,
+    });
+
+    // Determine membership types from API response (source of truth)
+    // Only use membershipDetails when loaded - don't fallback to member.memberType as it may be inconsistent
+    const hasRegularMembership = useMemo(() => {
+        // Wait for membershipDetails to load for accurate info
+        if (membershipDetails) {
+            return membershipDetails.hasRegularMembership;
+        }
+        // Temporary fallback while loading - but will be corrected once API loads
+        return member?.memberType === 'REGULAR' || member?.memberType === 'REGULAR_PT';
+    }, [membershipDetails, member?.memberType]);
+
+    const hasPTMembership = useMemo(() => {
+        // Wait for membershipDetails to load for accurate info
+        if (membershipDetails) {
+            return membershipDetails.hasPTMembership;
+        }
+        // Temporary fallback while loading
+        return member?.memberType === 'PT' || member?.memberType === 'REGULAR_PT';
+    }, [membershipDetails, member?.memberType]);
+
+    // Check if member has both Regular and PT memberships (using API data)
+    const hasBothMemberships = useMemo(() => hasRegularMembership && hasPTMembership, [hasRegularMembership, hasPTMembership]);
+    const hasPTOnly = useMemo(() => hasPTMembership && !hasRegularMembership, [hasPTMembership, hasRegularMembership]);
+    const hasRegularOnly = useMemo(() => hasRegularMembership && !hasPTMembership, [hasRegularMembership, hasPTMembership]);
 
     const createPaymentMutation = useMutation({
         mutationFn: (data: CreateBalancePayment) => gymOwnerService.createBalancePayment(member!.id, data),
@@ -133,14 +135,115 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
     // Calculate totals for balance payment dialog - separate for Regular and PT
     const regularPayments = useMemo(() => balancePayments.filter(p => p.paymentFor !== 'PT'), [balancePayments]);
     const ptPayments = useMemo(() => balancePayments.filter(p => p.paymentFor === 'PT'), [balancePayments]);
-    
+
     const totalRegularPaid = useMemo(() => regularPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [regularPayments]);
     const totalPTPaid = useMemo(() => ptPayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [ptPayments]);
     const totalPaidFees = useMemo(() => balancePayments.reduce((sum, p) => sum + (p.paidFees || 0), 0), [balancePayments]);
+
+    // Get fees from membershipDetails API (source of truth) - only use when loaded
+    // Don't fallback to member object as it may not have fees from search API
+    const regularFinalFees = useMemo(() => {
+        if (membershipDetails?.regularMembershipDetails) {
+            return membershipDetails.regularMembershipDetails.finalFees ?? 0;
+        }
+        // Fallback to member object only if membershipDetails is loaded but has no regular membership
+        if (membershipDetails && !membershipDetails.hasRegularMembership) {
+            return 0;
+        }
+        // If membershipDetails not loaded yet, use member data as temporary value
+        return member?.finalFees ?? 0;
+    }, [membershipDetails, member?.finalFees]);
+
+    const ptFinalFees = useMemo(() => {
+        if (membershipDetails?.ptMembershipDetails) {
+            return membershipDetails.ptMembershipDetails.finalFees ?? 0;
+        }
+        // Fallback to member object only if membershipDetails is loaded but has no PT membership
+        if (membershipDetails && !membershipDetails.hasPTMembership) {
+            return 0;
+        }
+        // If membershipDetails not loaded yet, use member data as temporary value
+        return member?.ptFinalFees ?? 0;
+    }, [membershipDetails, member?.ptFinalFees]);
+
+    // Get pending fees directly from API if available
+    // Check if fee data is ready (membershipDetails loaded)
+    const isFeesDataReady = useMemo(() => {
+        return !isLoadingMembershipDetails && membershipDetails !== null && membershipDetails !== undefined;
+    }, [isLoadingMembershipDetails, membershipDetails]);
+
+    // Calculate balance dynamically based on finalFees - paidFees (updates immediately when payment is added)
+    const regularBalance = useMemo(() => {
+        return regularFinalFees - totalRegularPaid;
+    }, [regularFinalFees, totalRegularPaid]);
     
-    const regularBalance = useMemo(() => (member?.finalFees || 0) - totalRegularPaid, [member, totalRegularPaid]);
-    const ptBalance = useMemo(() => (member?.ptFinalFees || 0) - totalPTPaid, [member, totalPTPaid]);
+    const ptBalance = useMemo(() => {
+        return ptFinalFees - totalPTPaid;
+    }, [ptFinalFees, totalPTPaid]);
+    
     const balanceFees = useMemo(() => regularBalance + ptBalance, [regularBalance, ptBalance]);
+
+    // Check if payments are fully settled
+    const isRegularSettled = useMemo(() => {
+        return regularFinalFees > 0 && regularBalance <= 0;
+    }, [regularFinalFees, regularBalance]);
+
+    const isPTSettled = useMemo(() => {
+        return ptFinalFees > 0 && ptBalance <= 0;
+    }, [ptFinalFees, ptBalance]);
+
+    const isAllSettled = useMemo(() => {
+        if (hasBothMemberships) {
+            return isRegularSettled && isPTSettled;
+        }
+        if (hasRegularOnly) return isRegularSettled;
+        if (hasPTOnly) return isPTSettled;
+        return false;
+    }, [hasBothMemberships, hasRegularOnly, hasPTOnly, isRegularSettled, isPTSettled]);
+
+    // Set default payment type based on member type and pending balances
+    // Only set after membership details are loaded to ensure accurate data
+    useEffect(() => {
+        // Don't set default until membership details are loaded
+        if (!isFeesDataReady) return;
+
+        if (hasPTOnly) {
+            setSelectedPaymentType('PT');
+        } else if (hasRegularOnly) {
+            setSelectedPaymentType('REGULAR');
+        } else if (hasBothMemberships) {
+            // For members with both: prefer the one with pending balance
+            // If Regular has no fees (0) but PT has fees, default to PT
+            if (regularFinalFees <= 0 && ptFinalFees > 0) {
+                setSelectedPaymentType('PT');
+            } else if (isRegularSettled && !isPTSettled) {
+                setSelectedPaymentType('PT');
+            } else if (!isRegularSettled && isPTSettled) {
+                setSelectedPaymentType('REGULAR');
+            } else {
+                // Both have pending balance, default to Regular
+                setSelectedPaymentType('REGULAR');
+            }
+        } else {
+            setSelectedPaymentType('REGULAR');
+        }
+    }, [member?.id, isFeesDataReady, hasPTOnly, hasRegularOnly, hasBothMemberships, isRegularSettled, isPTSettled, regularFinalFees, ptFinalFees]);
+
+    // Reset form when member changes
+    const resetPaymentForm = () => {
+        const defaultType = hasPTOnly ? 'PT' : 'REGULAR';
+        setSelectedPaymentType(defaultType);
+        setPaymentForm({
+            paymentFor: defaultType,
+            paymentDate: new Date().toISOString().split('T')[0],
+            paidFees: 0,
+            payMode: 'Cash',
+            contactNo: member?.phone || '',
+            nextPaymentDate: '',
+            notes: '',
+        });
+        setEditingPayment(null);
+    };
 
     // Get current balance based on selected payment type
     const currentTypeBalance = useMemo(() => {
@@ -154,9 +257,9 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
     }, [selectedPaymentType, totalRegularPaid, totalPTPaid]);
 
     const currentTypeFees = useMemo(() => {
-        if (selectedPaymentType === 'PT') return member?.ptFinalFees || 0;
-        return member?.finalFees || 0;
-    }, [selectedPaymentType, member]);
+        if (selectedPaymentType === 'PT') return ptFinalFees;
+        return regularFinalFees;
+    }, [selectedPaymentType, regularFinalFees, ptFinalFees]);
 
     const handleEditPayment = (payment: BalancePayment) => {
         setEditingPayment(payment);
@@ -252,7 +355,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         // Fee Summary Section
         html += '<table>';
         html += '<tr><td colspan="2" class="section-header">FEE SUMMARY</td></tr>';
-        html += `<tr><td class="field-label">Total Fees</td><td class="field-value amount">\u20b9${(member.finalFees || 0).toLocaleString('en-IN')}</td></tr>`;
+        html += `<tr><td class="field-label">Total Fees</td><td class="field-value amount">\u20b9${(regularFinalFees + ptFinalFees).toLocaleString('en-IN')}</td></tr>`;
         html += `<tr><td class="field-label">Paid Fees</td><td class="field-value amount">\u20b9${totalPaidFees.toLocaleString('en-IN')}</td></tr>`;
         html += `<tr><td class="field-label">Balance</td><td class="field-value ${balanceFees > 0 ? 'balance-due' : 'balance-paid'}">\u20b9${balanceFees.toLocaleString('en-IN')}</td></tr>`;
         html += '</table><br/>';
@@ -437,7 +540,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     <div className="text-center">
                                         <p className="text-[10px] text-blue-600 font-medium">Total</p>
                                         <p className="text-sm font-bold text-blue-700 flex items-center justify-center">
-                                            <IndianRupee className="h-3 w-3" />{(member.finalFees || 0).toLocaleString('en-IN')}
+                                            <IndianRupee className="h-3 w-3" />{regularFinalFees.toLocaleString('en-IN')}
                                         </p>
                                     </div>
                                     <div className="text-center">
@@ -464,7 +567,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     <div className="text-center">
                                         <p className="text-[10px] text-purple-600 font-medium">Total</p>
                                         <p className="text-sm font-bold text-purple-700 flex items-center justify-center">
-                                            <IndianRupee className="h-3 w-3" />{(member.ptFinalFees || 0).toLocaleString('en-IN')}
+                                            <IndianRupee className="h-3 w-3" />{ptFinalFees.toLocaleString('en-IN')}
                                         </p>
                                     </div>
                                     <div className="text-center">
@@ -515,11 +618,39 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                     )}
 
                     {/* Payment Form */}
-                    <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isExpired ? 'opacity-60' : ''}`}>
+                    <div className={`bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl space-y-3 ${isExpired || isAllSettled || !isFeesDataReady ? 'opacity-60' : ''}`}>
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                             {editingPayment ? <Pencil className="h-4 w-4 text-orange-500" /> : <Plus className="h-4 w-4 text-blue-500" />}
                             {editingPayment ? 'Edit Payment' : 'Add New Payment'}
                         </h4>
+
+                        {/* Loading Fee Data */}
+                        {isLoadingMembershipDetails && (
+                            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-700 dark:text-blue-400">
+                                <Spinner className="h-5 w-5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-medium text-sm">Loading Fee Details</p>
+                                    <p className="text-xs">Please wait while we fetch membership fee information...</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* All Payments Settled Banner */}
+                        {isFeesDataReady && isAllSettled && !isExpired && (
+                            <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-700 dark:text-emerald-400">
+                                <BadgeCheck className="h-5 w-5 flex-shrink-0" />
+                                <div>
+                                    <p className="font-medium text-sm">All Payments Settled</p>
+                                    <p className="text-xs">
+                                        {hasBothMemberships
+                                            ? 'Congratulations! Both Regular and PT membership fees have been fully paid.'
+                                            : hasPTOnly
+                                                ? 'Congratulations! PT membership fees have been fully paid.'
+                                                : 'Congratulations! Regular membership fees have been fully paid.'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Expired Warning Banner */}
                         {isExpired && (
@@ -532,49 +663,125 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                             </div>
                         )}
 
-                        {/* Payment Type Radio Buttons - Show when member has both Regular and PT */}
-                        {hasBothMemberships && (
-                            <div className="space-y-2">
-                                <Label className="text-xs font-medium">Payment For *</Label>
-                                <RadioGroup
-                                    value={selectedPaymentType}
-                                    onValueChange={(value) => handlePaymentTypeChange(value as PaymentFor)}
-                                    className="flex gap-4"
-                                    disabled={isExpired}
-                                >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="REGULAR" id="payment-regular" disabled={isExpired} />
-                                        <Label
-                                            htmlFor="payment-regular"
-                                            className={`text-sm cursor-pointer flex items-center gap-1 ${selectedPaymentType === 'REGULAR' ? 'text-blue-600 font-medium' : 'text-muted-foreground'}`}
-                                        >
-                                            <CreditCard className="h-3.5 w-3.5" />
-                                            Regular Membership
-                                            {regularBalance > 0 && (
-                                                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">
-                                                    ₹{regularBalance.toLocaleString('en-IN')} due
-                                                </Badge>
-                                            )}
-                                        </Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="PT" id="payment-pt" disabled={isExpired} />
-                                        <Label
-                                            htmlFor="payment-pt"
-                                            className={`text-sm cursor-pointer flex items-center gap-1 ${selectedPaymentType === 'PT' ? 'text-purple-600 font-medium' : 'text-muted-foreground'}`}
-                                        >
-                                            <Dumbbell className="h-3.5 w-3.5" />
-                                            PT Membership
-                                            {ptBalance > 0 && (
-                                                <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">
-                                                    ₹{ptBalance.toLocaleString('en-IN')} due
-                                                </Badge>
-                                            )}
-                                        </Label>
-                                    </div>
-                                </RadioGroup>
+                        {/* Payment Type Selection - Simple Radio Buttons */}
+                        <div className="space-y-3">
+                            <Label className="text-xs font-medium">Select Payment Type *</Label>
+                            
+                            {/* Radio Buttons for Payment Type */}
+                            <div className="flex flex-wrap gap-4">
+                                {/* Regular Radio - Show if has regular membership OR if memberType includes REGULAR */}
+                                {(hasRegularMembership || member?.memberType === 'REGULAR' || member?.memberType === 'REGULAR_PT') && (
+                                    <label 
+                                        className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${
+                                            selectedPaymentType === 'REGULAR' 
+                                                ? 'bg-blue-50 border-blue-500' 
+                                                : 'border-gray-200 hover:border-blue-300'
+                                        } ${isRegularSettled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="paymentType"
+                                            value="REGULAR"
+                                            checked={selectedPaymentType === 'REGULAR'}
+                                            onChange={() => handlePaymentTypeChange('REGULAR')}
+                                            disabled={isRegularSettled || isExpired}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <CreditCard className="h-4 w-4 text-blue-600" />
+                                        <span className="font-medium text-sm">Regular</span>
+                                        {isRegularSettled && (
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500 text-emerald-600 bg-emerald-50">
+                                                Paid
+                                            </Badge>
+                                        )}
+                                    </label>
+                                )}
+                                
+                                {/* PT Radio - Show if has PT membership OR if memberType includes PT */}
+                                {(hasPTMembership || member?.memberType === 'PT' || member?.memberType === 'REGULAR_PT') && (
+                                    <label 
+                                        className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${
+                                            selectedPaymentType === 'PT' 
+                                                ? 'bg-purple-50 border-purple-500' 
+                                                : 'border-gray-200 hover:border-purple-300'
+                                        } ${isPTSettled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="paymentType"
+                                            value="PT"
+                                            checked={selectedPaymentType === 'PT'}
+                                            onChange={() => handlePaymentTypeChange('PT')}
+                                            disabled={isPTSettled || isExpired}
+                                            className="w-4 h-4 text-purple-600"
+                                        />
+                                        <Dumbbell className="h-4 w-4 text-purple-600" />
+                                        <span className="font-medium text-sm">PT</span>
+                                        {isPTSettled && (
+                                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500 text-emerald-600 bg-emerald-50">
+                                                Paid
+                                            </Badge>
+                                        )}
+                                    </label>
+                                )}
                             </div>
-                        )}
+                            
+                            {/* Disabled Textboxes - Show Total Fees & Pending Fees only for PT or Both memberships (hide for Regular-only) */}
+                            {(hasPTMembership || hasBothMemberships) && (
+                                <div className={`p-3 rounded-lg border ${
+                                    selectedPaymentType === 'REGULAR'
+                                        ? 'bg-blue-50/50 border-blue-200'
+                                        : 'bg-purple-50/50 border-purple-200'
+                                }`}>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {/* Total Fees - Disabled Textbox */}
+                                        <div className="space-y-1">
+                                            <Label className={`text-xs font-medium ${
+                                                selectedPaymentType === 'REGULAR' ? 'text-blue-600' : 'text-purple-600'
+                                            }`}>
+                                                {selectedPaymentType === 'REGULAR' ? 'Regular' : 'PT'} Total Fees
+                                            </Label>
+                                            <div className="relative">
+                                                <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    type="text"
+                                                    value={currentTypeFees.toLocaleString('en-IN')}
+                                                    className={`h-9 pl-7 font-semibold ${
+                                                        selectedPaymentType === 'REGULAR'
+                                                            ? 'bg-blue-100 text-blue-700 border-blue-300'
+                                                            : 'bg-purple-100 text-purple-700 border-purple-300'
+                                                    }`}
+                                                    disabled
+                                                    readOnly
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* Pending Fees - Disabled Textbox */}
+                                        <div className="space-y-1">
+                                            <Label className={`text-xs font-medium ${
+                                                currentTypeBalance > 0 ? 'text-red-600' : 'text-emerald-600'
+                                            }`}>
+                                                {selectedPaymentType === 'REGULAR' ? 'Regular' : 'PT'} Pending Fees
+                                            </Label>
+                                            <div className="relative">
+                                                <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    type="text"
+                                                    value={currentTypeBalance.toLocaleString('en-IN')}
+                                                    className={`h-9 pl-7 font-semibold ${
+                                                        currentTypeBalance > 0
+                                                            ? 'bg-red-100 text-red-700 border-red-300'
+                                                            : 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                                                    }`}
+                                                    disabled
+                                                    readOnly
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <div className="space-y-1">
@@ -584,29 +791,51 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.paymentDate}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                                     className="h-8"
-                                    disabled={isExpired}
+                                    disabled={isExpired || isAllSettled || !isFeesDataReady}
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Paid Fees *</Label>
+                                <Label className="text-xs flex items-center justify-between">
+                                    <span>Paid Fees *</span>
+                                    {currentTypeBalance > 0 && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                            Max: ₹{currentTypeBalance.toLocaleString('en-IN')}
+                                        </span>
+                                    )}
+                                </Label>
                                 <div className="relative">
                                     <IndianRupee className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         type="number"
                                         placeholder="0"
+                                        min="0"
+                                        max={currentTypeBalance > 0 ? currentTypeBalance : undefined}
                                         value={paymentForm.paidFees || ''}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, paidFees: parseFloat(e.target.value) || 0 })}
-                                        className="h-8 pl-7"
-                                        disabled={isExpired}
+                                        onChange={(e) => {
+                                            const value = parseFloat(e.target.value) || 0;
+                                            setPaymentForm({ ...paymentForm, paidFees: value });
+                                        }}
+                                        className={`h-8 pl-7 ${
+                                            paymentForm.paidFees > currentTypeBalance && currentTypeBalance > 0
+                                                ? 'border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500'
+                                                : ''
+                                        }`}
+                                        disabled={isExpired || isAllSettled || !isFeesDataReady}
                                     />
                                 </div>
+                                {paymentForm.paidFees > currentTypeBalance && currentTypeBalance > 0 && (
+                                    <p className="text-[10px] text-red-500 flex items-center gap-1">
+                                        <AlertTriangle className="h-2.5 w-2.5" />
+                                        Amount exceeds pending balance (₹{currentTypeBalance.toLocaleString('en-IN')})
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs">Pay Mode *</Label>
                                 <Select
                                     value={paymentForm.payMode}
                                     onValueChange={(v) => setPaymentForm({ ...paymentForm, payMode: v })}
-                                    disabled={isExpired}
+                                    disabled={isExpired || isAllSettled || !isFeesDataReady}
                                 >
                                     <SelectTrigger className="h-8">
                                         <SelectValue />
@@ -625,7 +854,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.contactNo || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, contactNo: e.target.value })}
                                     className="h-8"
-                                    disabled={isExpired}
+                                    disabled={isExpired || isAllSettled || !isFeesDataReady}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -635,7 +864,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.nextPaymentDate || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, nextPaymentDate: e.target.value })}
                                     className="h-8"
-                                    disabled={isExpired}
+                                    disabled={isExpired || isAllSettled || !isFeesDataReady}
                                 />
                             </div>
                             <div className="space-y-1">
@@ -645,26 +874,28 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                     value={paymentForm.notes || ''}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
                                     className="h-8"
-                                    disabled={isExpired}
+                                    disabled={isExpired || isAllSettled || !isFeesDataReady}
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
-                            {editingPayment && !isExpired && (
+                            {editingPayment && !isExpired && !isAllSettled && (
                                 <Button variant="outline" size="sm" onClick={resetPaymentForm}>Cancel</Button>
                             )}
-                            <Button
-                                size="sm"
-                                onClick={handlePaymentSubmit}
-                                disabled={isExpired || createPaymentMutation.isPending || updatePaymentMutation.isPending}
-                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                            >
-                                {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
-                                    <><Spinner className="h-4 w-4 mr-1" />{editingPayment ? 'Updating...' : 'Adding...'}</>
-                                ) : (
-                                    <>{editingPayment ? 'Update' : 'Add Payment'}</>
-                                )}
-                            </Button>
+                            {!isAllSettled && (
+                                <Button
+                                    size="sm"
+                                    onClick={handlePaymentSubmit}
+                                    disabled={isExpired || !isFeesDataReady || createPaymentMutation.isPending || updatePaymentMutation.isPending}
+                                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                                >
+                                    {(createPaymentMutation.isPending || updatePaymentMutation.isPending) ? (
+                                        <><Spinner className="h-4 w-4 mr-1" />{editingPayment ? 'Updating...' : 'Adding...'}</>
+                                    ) : (
+                                        <>{editingPayment ? 'Update' : 'Add Payment'}</>
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </div>
 

@@ -90,11 +90,11 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
       title: 'Members',
       icon: Users,
       submenu: [
-        { title: 'Regular Member', href: '/gym-owner/members', icon: Users },
         { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+        { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users }, 
         { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
-        { title: 'Assign Diet Plan', href: '/gym-owner/assign-diet', icon: UtensilsCrossed },
         { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed },
+        { title: 'Assign Diet Plan', href: '/gym-owner/assign-diet', icon: UtensilsCrossed }, 
       ],
     },
     {

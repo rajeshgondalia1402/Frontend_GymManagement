@@ -322,7 +322,7 @@ export function MemberFormPage() {
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="h-full max-w-7xl mx-auto">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 md:p-6">
                         
                         {/* Top Section: Photo/Document + Membership & Fees side by side */}
