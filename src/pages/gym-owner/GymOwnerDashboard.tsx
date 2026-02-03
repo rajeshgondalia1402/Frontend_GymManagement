@@ -32,6 +32,8 @@ export function GymOwnerDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['gym-owner-dashboard'],
     queryFn: gymOwnerService.getDashboard,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Live clock effect

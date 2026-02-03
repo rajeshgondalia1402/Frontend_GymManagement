@@ -32,6 +32,8 @@ export function AdminDashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-dashboard'],
     queryFn: adminService.getDashboard,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Live clock effect
