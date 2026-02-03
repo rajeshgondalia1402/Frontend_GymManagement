@@ -29,13 +29,12 @@ import { MemberFormPage } from '@/pages/gym-owner/MemberFormPage';
 import { ExpenseGroupMasterPage } from '@/pages/gym-owner/ExpenseGroupMasterPage';
 import { ExpensePage } from '@/pages/gym-owner/ExpensePage';
 import { DesignationMasterPage } from '@/pages/gym-owner/DesignationMasterPage';
-import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
-import { BodyPartMasterPage } from '@/pages/gym-owner/BodyPartMasterPage';
+// import { WorkoutExerciseMasterPage } from '@/pages/gym-owner/WorkoutExerciseMasterPage';
+// import { BodyPartMasterPage } from '@/pages/gym-owner/BodyPartMasterPage';
 import { MemberInquiriesPage } from '@/pages/gym-owner/MemberInquiriesPage';
 import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
-import { AssignMemberDietPage } from '@/pages/gym-owner/AssignMemberDietPage';
 import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
 import { TrainerSalarySettlementPage } from '@/pages/gym-owner/TrainerSalarySettlementPage';
 
@@ -44,6 +43,7 @@ import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
 import { PTMembersPage } from '@/pages/trainer/PTMembersPage';
 import { PTMemberDetailPage } from '@/pages/trainer/PTMemberDetailPage';
 import { MySalarySettlementsPage } from '@/pages/trainer/MySalarySettlementsPage';
+import { TrainerProfilePage } from '@/pages/trainer/TrainerProfilePage';
 
 // Member Pages
 import { MemberDashboard } from '@/pages/member/MemberDashboard';
@@ -318,7 +318,7 @@ function App() {
             </RoleGuard>
           }
         />
-        <Route
+        {/* <Route
           path="/gym-owner/master/workout-exercises"
           element={
             <RoleGuard allowedRoles={['GYM_OWNER']}>
@@ -337,7 +337,7 @@ function App() {
               </TopNavLayout>
             </RoleGuard>
           }
-        />
+        /> */}
         <Route
           path="/gym-owner/member-inquiries"
           element={
@@ -354,16 +354,6 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <TopNavLayout>
                 <CoursePackagesPage />
-              </TopNavLayout>
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/gym-owner/assign-diet"
-          element={
-            <RoleGuard allowedRoles={['GYM_OWNER']}>
-              <TopNavLayout>
-                <AssignMemberDietPage />
               </TopNavLayout>
             </RoleGuard>
           }
@@ -428,6 +418,16 @@ function App() {
             <RoleGuard allowedRoles={['TRAINER']}>
               <TopNavLayout>
                 <MySalarySettlementsPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/trainer/profile"
+          element={
+            <RoleGuard allowedRoles={['TRAINER']}>
+              <TopNavLayout>
+                <TrainerProfilePage />
               </TopNavLayout>
             </RoleGuard>
           }

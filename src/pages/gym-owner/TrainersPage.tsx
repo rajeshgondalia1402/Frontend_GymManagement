@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import {
   Plus,
   Dumbbell,
@@ -32,6 +32,11 @@ import {
   ArrowDown,
   Download,
   Lock,
+  ChevronDown,
+  Mail,
+  Target,
+  Clock,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +71,7 @@ import {
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import type { Trainer } from '@/types';
+import type { Trainer, TrainerPTMember, TrainerPTMembersResponse } from '@/types';
 
 const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -110,6 +115,13 @@ export function TrainersPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [genderFilter, setGenderFilter] = useState<string>('all');
+
+  // Expanded trainer row states
+  const [expandedTrainerId, setExpandedTrainerId] = useState<string | null>(null);
+  const [ptMembersData, setPtMembersData] = useState<Record<string, TrainerPTMembersResponse>>({});
+  const [ptMembersLoading, setPtMembersLoading] = useState<Record<string, boolean>>({});
+  const [ptMembersPage, setPtMembersPage] = useState<Record<string, number>>({});
+  const [ptMembersSearch, setPtMembersSearch] = useState<Record<string, string>>({});
 
   // File upload states
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -312,6 +324,57 @@ export function TrainersPage() {
     toggleStatusMutation.mutate(trainer.id);
   };
 
+  // Fetch PT members for a trainer
+  const fetchTrainerPTMembers = async (trainerId: string, page: number = 1, search: string = '') => {
+    setPtMembersLoading(prev => ({ ...prev, [trainerId]: true }));
+    try {
+      const response = await gymOwnerService.getTrainerPTMembers(trainerId, { page, limit: 5, search });
+      setPtMembersData(prev => ({ ...prev, [trainerId]: response }));
+      setPtMembersPage(prev => ({ ...prev, [trainerId]: page }));
+    } catch (error) {
+      console.error('Failed to fetch PT members:', error);
+      toast({ title: 'Failed to load PT members', variant: 'destructive' });
+    } finally {
+      setPtMembersLoading(prev => ({ ...prev, [trainerId]: false }));
+    }
+  };
+
+  // Handle trainer row click to expand/collapse
+  const handleTrainerRowClick = (trainer: Trainer, e: React.MouseEvent) => {
+    // Prevent expansion if clicking on action buttons or status badge
+    if ((e.target as HTMLElement).closest('button, [role="menuitem"], .badge-status')) {
+      return;
+    }
+
+    const trainerId = trainer.id;
+    if (expandedTrainerId === trainerId) {
+      setExpandedTrainerId(null);
+    } else {
+      setExpandedTrainerId(trainerId);
+      // Fetch PT members if not already loaded
+      if (!ptMembersData[trainerId]) {
+        fetchTrainerPTMembers(trainerId);
+      }
+    }
+  };
+
+  // Handle PT members pagination
+  const handlePtMembersPageChange = (trainerId: string, newPage: number) => {
+    fetchTrainerPTMembers(trainerId, newPage, ptMembersSearch[trainerId] || '');
+  };
+
+  // Handle PT members search
+  const handlePtMembersSearch = (trainerId: string, search: string) => {
+    setPtMembersSearch(prev => ({ ...prev, [trainerId]: search }));
+    fetchTrainerPTMembers(trainerId, 1, search);
+  };
+
+  // Calculate days remaining
+  const getDaysRemaining = (endDate: string) => {
+    const days = differenceInDays(parseISO(endDate), new Date());
+    return days > 0 ? days : 0;
+  };
+
   const handleSort = (column: string) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -505,6 +568,7 @@ export function TrainersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]"></TableHead>
                       <TableHead className="w-[50px]">#</TableHead>
                       <SortableHeader column="firstName" label="Trainer" />
                       <SortableHeader column="phone" label="Phone" />
@@ -512,7 +576,7 @@ export function TrainersPage() {
                       <SortableHeader column="experience" label="Experience" />
                       <SortableHeader column="salary" label="Salary" />
                       <SortableHeader column="joiningDate" label="Joining Date" />
-                      <TableHead>Members</TableHead>
+                      <TableHead>PT Members</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
@@ -522,85 +586,244 @@ export function TrainersPage() {
                       const trainerName = getTrainerName(trainer);
                       const trainerEmail = getTrainerEmail(trainer);
                       const photoUrl = trainer.trainerPhoto ? `${BACKEND_BASE_URL}${trainer.trainerPhoto}` : '';
+                      const isExpanded = expandedTrainerId === trainer.id;
+                      const trainerPtData = ptMembersData[trainer.id];
+                      const isLoadingPtMembers = ptMembersLoading[trainer.id];
+                      const currentPtPage = ptMembersPage[trainer.id] || 1;
 
                       return (
-                        <TableRow key={trainer.id}>
-                          <TableCell className="font-medium">
-                            {(page - 1) * limit + index + 1}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                {photoUrl ? <AvatarImage src={photoUrl} /> : null}
-                                <AvatarFallback className="text-xs">{getInitials(trainerName)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-sm">{trainerName}</p>
-                                <p className="text-xs text-muted-foreground">{trainerEmail}</p>
+                        <React.Fragment key={trainer.id}>
+                          <TableRow
+                            className={`cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? 'bg-muted/30 border-l-4 border-l-primary' : ''}`}
+                            onClick={(e) => handleTrainerRowClick(trainer, e)}
+                          >
+                            <TableCell className="w-[40px]">
+                              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {(page - 1) * limit + index + 1}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  {photoUrl ? <AvatarImage src={photoUrl} /> : null}
+                                  <AvatarFallback className="text-xs">{getInitials(trainerName)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-sm">{trainerName}</p>
+                                  <p className="text-xs text-muted-foreground">{trainerEmail}</p>
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{trainer.phone || '-'}</TableCell>
-                          <TableCell>
-                            {trainer.specialization ? (
-                              <Badge variant="outline" className="text-xs">{trainer.specialization}</Badge>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {trainer.experience !== undefined && trainer.experience !== null
-                              ? `${trainer.experience} ${trainer.experience === 1 ? 'year' : 'years'}`
-                              : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {trainer.salary !== undefined && trainer.salary !== null ? (
-                              <span className="flex items-center text-green-600 font-medium text-sm">
-                                <IndianRupee className="h-3 w-3" />{trainer.salary.toLocaleString('en-IN')}
-                              </span>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {trainer.joiningDate
-                              ? format(new Date(trainer.joiningDate), 'MMM dd, yyyy')
-                              : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium text-sm">{trainer._count?.members || 0}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={trainer.isActive ? 'default' : 'secondary'}
-                              className={`cursor-pointer ${trainer.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 text-white hover:bg-gray-600'}`}
-                              onClick={() => handleToggleStatus(trainer)}
-                            >
-                              {trainer.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleView(trainer)}>
-                                  <Eye className="mr-2 h-4 w-4" />View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(trainer)}>
-                                  <Edit className="mr-2 h-4 w-4" />Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleStatus(trainer)}>
-                                  {trainer.isActive ? (
-                                    <><ToggleLeft className="mr-2 h-4 w-4" />Deactivate</>
+                            </TableCell>
+                            <TableCell className="text-sm">{trainer.phone || '-'}</TableCell>
+                            <TableCell>
+                              {trainer.specialization ? (
+                                <Badge variant="outline" className="text-xs">{trainer.specialization}</Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {trainer.experience !== undefined && trainer.experience !== null
+                                ? `${trainer.experience} ${trainer.experience === 1 ? 'year' : 'years'}`
+                                : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {trainer.salary !== undefined && trainer.salary !== null ? (
+                                <span className="flex items-center text-green-600 font-medium text-sm">
+                                  <IndianRupee className="h-3 w-3" />{trainer.salary.toLocaleString('en-IN')}
+                                </span>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {trainer.joiningDate
+                                ? format(new Date(trainer.joiningDate), 'MMM dd, yyyy')
+                                : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4 text-primary" />
+                                <span className="font-medium text-sm text-primary">{trainer.ptMemberCount ?? trainer._count?.members ?? 0}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={trainer.isActive ? 'default' : 'secondary'}
+                                className={`badge-status cursor-pointer ${trainer.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 text-white hover:bg-gray-600'}`}
+                                onClick={(e) => { e.stopPropagation(); handleToggleStatus(trainer); }}
+                              >
+                                {trainer.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleView(trainer)}>
+                                    <Eye className="mr-2 h-4 w-4" />View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEdit(trainer)}>
+                                    <Edit className="mr-2 h-4 w-4" />Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleToggleStatus(trainer)}>
+                                    {trainer.isActive ? (
+                                      <><ToggleLeft className="mr-2 h-4 w-4" />Deactivate</>
+                                    ) : (
+                                      <><ToggleRight className="mr-2 h-4 w-4" />Activate</>
+                                    )}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+
+                          {/* Expanded PT Members Section */}
+                          {isExpanded && (
+                            <TableRow key={`${trainer.id}-expanded`}>
+                              <TableCell colSpan={11} className="p-0 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900/50 dark:to-gray-900/50">
+                                <div className="p-4 border-l-4 border-l-primary">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                                      <Users className="h-4 w-4 text-primary" />
+                                      PT Members assigned to {trainerName}
+                                      {trainerPtData?.pagination && (
+                                        <Badge variant="secondary" className="ml-2">
+                                          {trainerPtData.pagination.total} total
+                                        </Badge>
+                                      )}
+                                    </h4>
+                                    <div className="relative w-full sm:w-64">
+                                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                      <Input
+                                        placeholder="Search PT members..."
+                                        value={ptMembersSearch[trainer.id] || ''}
+                                        onChange={(e) => handlePtMembersSearch(trainer.id, e.target.value)}
+                                        className="pl-9 h-8 text-sm"
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {isLoadingPtMembers ? (
+                                    <div className="flex items-center justify-center py-8">
+                                      <Spinner className="h-6 w-6" />
+                                      <span className="ml-2 text-sm text-muted-foreground">Loading PT members...</span>
+                                    </div>
+                                  ) : !trainerPtData?.items?.length ? (
+                                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                                      <Users className="h-10 w-10 text-muted-foreground mb-2" />
+                                      <p className="text-sm text-muted-foreground">No PT members assigned to this trainer</p>
+                                    </div>
                                   ) : (
-                                    <><ToggleRight className="mr-2 h-4 w-4" />Activate</>
+                                    <>
+                                      {/* PT Members Grid */}
+                                      <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                        {trainerPtData.items.map((ptMember: TrainerPTMember) => {
+                                          const daysLeft = getDaysRemaining(ptMember.endDate);
+                                          return (
+                                            <div
+                                              key={ptMember.id}
+                                              className="bg-white dark:bg-slate-800 rounded-lg border shadow-sm p-4 hover:shadow-md transition-shadow"
+                                            >
+                                              <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                  <Avatar className="h-10 w-10">
+                                                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm">
+                                                      {getInitials(ptMember.memberName)}
+                                                    </AvatarFallback>
+                                                  </Avatar>
+                                                  <div>
+                                                    <p className="font-medium text-sm">{ptMember.memberName}</p>
+                                                    <p className="text-xs text-muted-foreground">ID: {ptMember.memberMemberId}</p>
+                                                  </div>
+                                                </div>
+                                                <Badge
+                                                  variant={ptMember.isActive ? 'default' : 'secondary'}
+                                                  className={`text-xs ${ptMember.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : ''}`}
+                                                >
+                                                  {ptMember.isActive ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                              </div>
+
+                                              <div className="space-y-2 text-xs">
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                  <Mail className="h-3 w-3 text-blue-500" />
+                                                  <span className="truncate">{ptMember.memberEmail}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                  <Phone className="h-3 w-3 text-green-500" />
+                                                  <span>{ptMember.memberPhone}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                  <Package className="h-3 w-3 text-purple-500" />
+                                                  <span>{ptMember.packageName}</span>
+                                                </div>
+                                              </div>
+
+                                              <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                                                <div className="text-xs">
+                                                  <span className="text-muted-foreground">Duration: </span>
+                                                  <span className="font-medium">
+                                                    {format(parseISO(ptMember.startDate), 'dd MMM')} - {format(parseISO(ptMember.endDate), 'dd MMM yy')}
+                                                  </span>
+                                                </div>
+                                                <div className={`flex items-center gap-1 text-xs font-medium ${daysLeft <= 7 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                  <Clock className="h-3 w-3" />
+                                                  {daysLeft}d left
+                                                </div>
+                                              </div>
+
+                                              {ptMember.goals && (
+                                                <div className="mt-2 text-xs">
+                                                  <span className="text-muted-foreground flex items-center gap-1">
+                                                    <Target className="h-3 w-3 text-purple-500" />
+                                                    Goals:
+                                                  </span>
+                                                  <p className="text-muted-foreground mt-1 line-clamp-2">{ptMember.goals}</p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* PT Members Pagination */}
+                                      {trainerPtData.pagination && trainerPtData.pagination.totalPages > 1 && (
+                                        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+                                          <p className="text-xs text-muted-foreground">
+                                            Page {currentPtPage} of {trainerPtData.pagination.totalPages}
+                                          </p>
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 text-xs"
+                                              onClick={(e) => { e.stopPropagation(); handlePtMembersPageChange(trainer.id, currentPtPage - 1); }}
+                                              disabled={currentPtPage === 1}
+                                            >
+                                              <ChevronLeft className="h-3 w-3" /> Prev
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 text-xs"
+                                              onClick={(e) => { e.stopPropagation(); handlePtMembersPageChange(trainer.id, currentPtPage + 1); }}
+                                              disabled={currentPtPage === trainerPtData.pagination.totalPages}
+                                            >
+                                              Next <ChevronRight className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
                                   )}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </TableBody>
