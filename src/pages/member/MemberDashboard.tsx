@@ -21,6 +21,8 @@ export function MemberDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['member-dashboard'],
     queryFn: memberService.getDashboard,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   if (isLoading) {

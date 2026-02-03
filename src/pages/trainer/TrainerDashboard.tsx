@@ -29,6 +29,8 @@ export function TrainerDashboard() {
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['trainer-dashboard'],
     queryFn: () => trainerService.getDashboard(),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   if (isLoading) {

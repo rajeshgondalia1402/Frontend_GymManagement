@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addYears, addMonths } from 'date-fns';
 import {
-    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator,
+    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { BMICalculator } from '@/components/BMICalculator';
+import { CameraCapture } from '@/components/CameraCapture';
 import type { CoursePackage } from '@/types';
 
 const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
@@ -68,6 +69,7 @@ export function MemberFormPage() {
     const [docPreview, setDocPreview] = useState<string>('');
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
     const [showBMICalculator, setShowBMICalculator] = useState(false);
+    const [showCamera, setShowCamera] = useState(false);
 
     const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<MemberFormData>({
         resolver: zodResolver(memberSchema),
@@ -259,6 +261,14 @@ export function MemberFormPage() {
         }
     };
 
+    const handleCameraCapture = (file: File) => {
+        setPhotoFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setPhotoPreview(reader.result as string);
+        reader.readAsDataURL(file);
+        setShowCamera(false);
+    };
+
     const handlePackageChange = (packageId: string) => {
         setValue('coursePackageId', packageId);
         const pkg = coursePackages.find((p: CoursePackage) => p.id === packageId);
@@ -334,26 +344,40 @@ export function MemberFormPage() {
                                     <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
                                         <Camera className="h-4 w-4 text-purple-600" /> Photo
                                     </Label>
-                                    <div className="relative w-24 h-32 border-2 border-dashed border-purple-300 rounded-xl overflow-hidden bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
-                                        {photoPreview ? (
-                                            <>
-                                                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(''); }}
-                                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <div className="text-center">
-                                                <Camera className="h-6 w-6 mx-auto text-purple-400" />
-                                                <span className="text-[10px] text-purple-400 mt-1 block">Photo</span>
+                                    {showCamera ? (
+                                        <CameraCapture
+                                            onCapture={handleCameraCapture}
+                                            onCancel={() => setShowCamera(false)}
+                                        />
+                                    ) : (
+                                        <>
+                                            <div className="relative w-24 h-32 border-2 border-dashed border-purple-300 rounded-xl overflow-hidden bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                                                {photoPreview ? (
+                                                    <>
+                                                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(''); setShowCamera(false); }}
+                                                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Camera className="h-6 w-6 mx-auto text-purple-400" />
+                                                        <span className="text-[10px] text-purple-400 mt-1 block">Photo</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} className="hidden" />
-                                    <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} className="mt-2 h-8 text-xs">
-                                        <Upload className="h-3 w-3 mr-1" />{photoPreview ? 'Change' : 'Upload'}
-                                    </Button>
+                                            <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} className="hidden" />
+                                            <div className="flex gap-1 mt-2">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} className="h-7 text-xs px-2">
+                                                    <Upload className="h-3 w-3 mr-1" /> Upload
+                                                </Button>
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setShowCamera(true)} className="h-7 text-xs px-2">
+                                                    <Video className="h-3 w-3 mr-1" /> Capture
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* ID Document Upload */}
