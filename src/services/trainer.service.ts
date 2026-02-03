@@ -1,5 +1,5 @@
 import api from './api';
-import type { TrainerSalarySettlement, PaginatedResponse, SalarySlip } from '@/types';
+import type { TrainerSalarySettlement, PaginatedResponse, SalarySlip, TrainerProfileDetails } from '@/types';
 
 /**
  * Trainer Service - API calls for trainer role
@@ -39,6 +39,14 @@ export const trainerService = {
   getMyProfile: async () => {
     const response = await api.get('/trainer/profile');
     return response.data;
+  },
+
+  /**
+   * Get detailed profile information for the current trainer (read-only)
+   */
+  getProfileDetails: async (): Promise<TrainerProfileDetails> => {
+    const response = await api.get('/trainer/profile/details');
+    return response.data.data;
   },
 
   /**

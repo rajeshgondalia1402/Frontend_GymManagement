@@ -13,22 +13,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, Search, Eye } from 'lucide-react';
+import { Users, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { trainerService } from '@/services/trainer.service';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function PTMembersPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   const { data, isLoading } = useQuery({
     queryKey: ['trainer-pt-members', page, searchTerm],
     queryFn: () => trainerService.getMyPTMembers({ page, limit, search: searchTerm }),
   });
 
-  const members = data?.data?.items || [];
-  const pagination = data?.data?.pagination || { page: 1, totalPages: 1, total: 0 };
+  // API returns: { success, message, data: { ptMembers, total, page, limit } }
+  const members = data?.data?.ptMembers || [];
+  const total = data?.data?.total || 0;
+  const totalPages = Math.ceil(total / limit) || 1;
+  const pagination = { page: data?.data?.page || 1, totalPages, total };
 
   return (
     <div className="space-y-6">
@@ -86,9 +96,10 @@ export function PTMembersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Membership Status</TableHead>
-                    <TableHead>Assigned Date</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -96,27 +107,32 @@ export function PTMembersPage() {
                   {members.map((member: any) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
-                        {member.user?.name || member.name || 'N/A'}
+                        {member.memberName || 'N/A'}
                       </TableCell>
-                      <TableCell>{member.user?.email || member.email || 'N/A'}</TableCell>
-                      <TableCell>{member.phone || 'N/A'}</TableCell>
+                      <TableCell>{member.memberEmail || 'N/A'}</TableCell>
+                      <TableCell>{member.packageName || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={member.membershipStatus === 'ACTIVE' ? 'default' : 'secondary'}
+                          variant={member.isActive ? 'default' : 'secondary'}
                         >
-                          {member.membershipStatus || 'N/A'}
+                          {member.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {member.assignedAt
-                          ? new Date(member.assignedAt).toLocaleDateString()
+                        {member.startDate
+                          ? new Date(member.startDate).toLocaleDateString()
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {member.endDate
+                          ? new Date(member.endDate).toLocaleDateString()
                           : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/trainer/pt-members/${member.id}`)}
+                          onClick={() => navigate(`/trainer/pt-members/${member.memberId}`)}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
@@ -128,31 +144,33 @@ export function PTMembersPage() {
               </Table>
 
               {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Page {pagination.page} of {pagination.totalPages}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Showing {(page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} results
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                      disabled={page === pagination.totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+                    <SelectTrigger className="w-[70px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs sm:text-sm text-muted-foreground">per page</span>
                 </div>
-              )}
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="text-xs">
+                    <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous</span>
+                  </Button>
+                  <span className="text-xs sm:text-sm font-medium whitespace-nowrap">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="text-xs">
+                    <span className="hidden sm:inline">Next</span> <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </CardContent>

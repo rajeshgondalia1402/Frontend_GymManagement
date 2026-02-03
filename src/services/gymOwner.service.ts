@@ -40,7 +40,8 @@ import type {
   TrainerSalarySettlement,
   CreateSalarySettlement,
   UpdateSalarySettlement,
-  SalarySlip
+  SalarySlip,
+  TrainerPTMembersResponse
 } from '@/types';
 
 export const gymOwnerService = {
@@ -133,6 +134,25 @@ export const gymOwnerService = {
   async toggleTrainerStatus(id: string): Promise<Trainer> {
     const response = await api.patch<ApiResponse<Trainer>>(`/gym-owner/trainers/${id}/toggle-status`);
     return response.data.data;
+  },
+
+  async getTrainerPTMembers(trainerId: string, params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  } = {}): Promise<TrainerPTMembersResponse> {
+    const { page = 1, limit = 10, search = '' } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    if (search) queryParams.search = search;
+
+    const response = await api.get(`/gym-owner/trainers/${trainerId}/pt-members`, { params: queryParams });
+    const responseData = response.data;
+    console.debug('getTrainerPTMembers raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      return responseData.data;
+    }
+    return responseData;
   },
 
   // Members

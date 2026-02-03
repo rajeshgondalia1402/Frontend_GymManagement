@@ -103,6 +103,7 @@ export interface Trainer {
   gymId: string;
   user: { id: string; name: string; email: string; isActive?: boolean };
   _count?: { members: number };
+  ptMemberCount?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -309,6 +310,105 @@ export interface MemberDashboard {
   assignedTrainer: Trainer | null;
   currentDietPlan: DietPlan | null;
   exercisePlans: ExercisePlan[];
+}
+
+// Trainer Dashboard Types
+export interface TrainerDashboardPTMember {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string;
+  memberGender?: string;
+  packageName: string;
+  startDate: string;
+  endDate: string;
+  goals?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  dietPlan?: {
+    id: string;
+    planName: string;
+    description?: string;
+    calories?: number;
+    meals?: Record<string, unknown>;
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
+export interface TrainerDashboardData {
+  totalSalary: number;
+  totalIncentive: number;
+  totalAssignedPTMembers: number;
+  currentMonthPTMembers: TrainerDashboardPTMember[];
+}
+
+// PT Member assigned to a trainer (for gym owner view)
+export interface TrainerPTMember {
+  id: string;
+  memberId: string;
+  memberMemberId: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string;
+  trainerId: string;
+  trainerName: string;
+  packageName: string;
+  startDate: string;
+  endDate: string;
+  goals?: string;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: string;
+}
+
+export interface TrainerPTMembersResponse {
+  trainer: {
+    id: string;
+    name: string;
+  };
+  items: TrainerPTMember[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Trainer Profile Details (for trainer's own profile view)
+export interface TrainerProfileDetails {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  specialization?: string;
+  experience?: number;
+  joiningDate?: string;
+  salary?: number;
+  trainerPhoto?: string;
+  idProofType?: string;
+  idProofDocument?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  gym?: {
+    id: string;
+    name: string;
+    logo?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    email?: string;
+  };
 }
 
 export interface Occupation {
