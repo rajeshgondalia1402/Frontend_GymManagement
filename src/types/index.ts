@@ -64,6 +64,7 @@ export interface Gym {
   email?: string;
   gstRegNo?: string;
   website?: string;
+  memberSize?: number;
   note?: string;
   gymLogo?: string;
   // Legacy field for backward compatibility
@@ -158,7 +159,7 @@ export interface Trainer {
   firstName?: string;
   lastName?: string;
   email?: string;
-  password?: string;
+  passwordHint?: string;
   phone?: string;
   specialization?: string;
   experience?: number;
@@ -484,7 +485,8 @@ export interface TrainerProfileDetails {
 
 export interface Occupation {
   id: string;
-  name: string;
+  name?: string;
+  occupationName?: string;
   description?: string;
   isActive?: boolean;
   createdAt?: string;
@@ -1220,12 +1222,15 @@ export interface GymInquiry {
   sellerName?: string | null;
   sellerMobileNo?: string | null;
   nextFollowupDate?: string | null;
+  memberSize?: number | null;
+  enquiryTypeId?: string | null;
   isActive: boolean;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
   subscriptionPlan?: { id: string; name: string; price: number; durationDays: number };
+  enquiryType?: { id: string; name: string };
   followups?: GymInquiryFollowup[];
   _count?: { followups: number };
 }
@@ -1252,6 +1257,8 @@ export interface CreateGymInquiryRequest {
   sellerName?: string;
   sellerMobileNo?: string;
   nextFollowupDate?: string;
+  memberSize?: number;
+  enquiryTypeId: string;
 }
 
 export interface GymInquiryParams {

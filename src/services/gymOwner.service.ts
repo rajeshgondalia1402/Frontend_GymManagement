@@ -138,6 +138,21 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
+  async resetTrainerPassword(id: string): Promise<{
+    trainerId: string;
+    email: string;
+    temporaryPassword: string;
+    message: string;
+  }> {
+    const response = await api.post<ApiResponse<{
+      trainerId: string;
+      email: string;
+      temporaryPassword: string;
+      message: string;
+    }>>(`/gym-owner/trainers/${id}/reset-password`);
+    return response.data.data;
+  },
+
   async getTrainerPTMembers(trainerId: string, params: {
     page?: number;
     limit?: number;
