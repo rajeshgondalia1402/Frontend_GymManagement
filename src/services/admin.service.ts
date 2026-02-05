@@ -249,17 +249,31 @@ export const adminService = {
     return response.data.data || response.data as unknown as User;
   },
 
-  async updateGymOwner(id: string, data: { name?: string; email?: string; phone?: string }): Promise<User> {
+  async updateGymOwner(id: string, data: { name?: string; email?: string; phone?: string; password?: string; firstName?: string; lastName?: string }): Promise<User> {
     // Clean up payload - remove empty/undefined values
     const payload: Record<string, any> = {};
-    if (data.name?.trim()) payload.name = data.name.trim();
+    // Support both name and firstName/lastName
+    if (data.name?.trim()) {
+      const nameParts = data.name.trim().split(' ');
+      payload.firstName = nameParts[0] || '';
+      payload.lastName = nameParts.slice(1).join(' ') || '';
+    }
+    if (data.firstName?.trim()) payload.firstName = data.firstName.trim();
+    if (data.lastName?.trim()) payload.lastName = data.lastName.trim();
     if (data.email?.trim()) payload.email = data.email.trim();
     if (data.phone?.trim()) payload.phone = data.phone.trim();
+    if (data.password?.trim()) payload.password = data.password.trim();
     
-    console.debug('Updating gym owner with payload:', payload);
+    console.debug('Updating gym owner with payload:', { ...payload, password: payload.password ? '***' : undefined });
     const response = await api.put<ApiResponse<User>>(`/admin/gym-owners/${id}`, payload);
     console.debug('Update gym owner response:', response.data);
     return response.data.data || response.data as unknown as User;
+  },
+
+  async resetGymOwnerPassword(id: string): Promise<{ ownerId: string; email: string; temporaryPassword: string; message: string }> {
+    const response = await api.post<ApiResponse<{ ownerId: string; email: string; temporaryPassword: string; message: string }>>(`/admin/gym-owners/${id}/reset-password`);
+    console.debug('Reset gym owner password response:', response.data);
+    return response.data.data;
   },
 
   async toggleUserStatus(id: string): Promise<User> {
@@ -272,10 +286,10 @@ export const adminService = {
     const response = await api.get<ApiResponse<Occupation[] | { items: Occupation[] }>>('/admin/occupations');
     console.debug('Occupations API response:', response.data);
     const data = response.data.data;
-    
+
     // Handle different response structures
     let occupations: Occupation[] = [];
-    
+
     if (Array.isArray(data)) {
       occupations = data;
     } else if (data && typeof data === 'object') {
@@ -287,9 +301,29 @@ export const adminService = {
         occupations = (data as { data: Occupation[] }).data;
       }
     }
-    
+
     console.debug('Parsed occupations:', occupations);
     return occupations;
+  },
+
+  async createOccupation(data: { occupationName: string; description?: string }): Promise<Occupation> {
+    const response = await api.post<ApiResponse<Occupation>>('/admin/occupations', data);
+    return response.data.data;
+  },
+
+  async updateOccupation(id: string, data: { occupationName?: string; description?: string; isActive?: boolean }): Promise<Occupation> {
+    const response = await api.put<ApiResponse<Occupation>>(`/admin/occupations/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteOccupation(id: string): Promise<Occupation> {
+    const response = await api.delete<ApiResponse<Occupation>>(`/admin/occupations/${id}`);
+    return response.data.data;
+  },
+
+  async getOccupationUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean }>>(`/admin/occupations/${id}/usage`);
+    return response.data.data;
   },
 
   // Enquiry Type Master
@@ -297,10 +331,10 @@ export const adminService = {
     const response = await api.get<ApiResponse<EnquiryType[] | { items: EnquiryType[] }>>('/admin/enquiry-types');
     console.debug('Enquiry Types API response:', response.data);
     const data = response.data.data;
-    
+
     // Handle different response structures
     let enquiryTypes: EnquiryType[] = [];
-    
+
     if (Array.isArray(data)) {
       enquiryTypes = data;
     } else if (data && typeof data === 'object') {
@@ -312,9 +346,29 @@ export const adminService = {
         enquiryTypes = (data as { data: EnquiryType[] }).data;
       }
     }
-    
+
     console.debug('Parsed enquiry types:', enquiryTypes);
     return enquiryTypes;
+  },
+
+  async createEnquiryType(data: { name: string }): Promise<EnquiryType> {
+    const response = await api.post<ApiResponse<EnquiryType>>('/admin/enquiry-types', data);
+    return response.data.data;
+  },
+
+  async updateEnquiryType(id: string, data: { name?: string; isActive?: boolean }): Promise<EnquiryType> {
+    const response = await api.put<ApiResponse<EnquiryType>>(`/admin/enquiry-types/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteEnquiryType(id: string): Promise<EnquiryType> {
+    const response = await api.delete<ApiResponse<EnquiryType>>(`/admin/enquiry-types/${id}`);
+    return response.data.data;
+  },
+
+  async getEnquiryTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean }>>(`/admin/enquiry-types/${id}/usage`);
+    return response.data.data;
   },
 
   // Payment Type Master
@@ -322,9 +376,9 @@ export const adminService = {
     const response = await api.get<ApiResponse<PaymentType[] | { items: PaymentType[] }>>('/admin/payment-types');
     console.debug('Payment Types API response:', response.data);
     const data = response.data.data;
-    
+
     let paymentTypes: PaymentType[] = [];
-    
+
     if (Array.isArray(data)) {
       paymentTypes = data;
     } else if (data && typeof data === 'object') {
@@ -336,9 +390,29 @@ export const adminService = {
         paymentTypes = (data as { data: PaymentType[] }).data;
       }
     }
-    
+
     console.debug('Parsed payment types:', paymentTypes);
     return paymentTypes;
+  },
+
+  async createPaymentType(data: { paymentTypeName: string; description?: string }): Promise<PaymentType> {
+    const response = await api.post<ApiResponse<PaymentType>>('/admin/payment-types', data);
+    return response.data.data;
+  },
+
+  async updatePaymentType(id: string, data: { paymentTypeName?: string; description?: string; isActive?: boolean }): Promise<PaymentType> {
+    const response = await api.put<ApiResponse<PaymentType>>(`/admin/payment-types/${id}`, data);
+    return response.data.data;
+  },
+
+  async deletePaymentType(id: string): Promise<PaymentType> {
+    const response = await api.delete<ApiResponse<PaymentType>>(`/admin/payment-types/${id}`);
+    return response.data.data;
+  },
+
+  async getPaymentTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }> {
+    const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }>>(`/admin/payment-types/${id}/usage`);
+    return response.data.data;
   },
 
   // =====================================================

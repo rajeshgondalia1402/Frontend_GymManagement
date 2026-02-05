@@ -74,16 +74,17 @@ import { getGymSubscriptionStatus, getGymDaysRemaining, getGymSubscriptionType }
 const gymSchema = z.object({
   name: z.string().min(2, 'Gym name is required'),
   address1: z.string().min(1, 'Address 1 is required'),
-  address2: z.string().min(1, 'Address 2 is required'),
+  address2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   state: z.string().min(1, 'State is required'),
   zipcode: z.string().min(1, 'Zipcode is required').regex(/^\d+$/, 'Only numbers allowed'),
   mobileNo: z.string().min(1, 'Mobile No is required').regex(/^\d+$/, 'Only numbers allowed'),
-  phoneNo: z.string().min(1, 'Phone No is required').regex(/^\d+$/, 'Only numbers allowed'),
+  phoneNo: z.string().optional().refine((val) => !val || /^\d+$/.test(val), 'Only numbers allowed'),
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
-  gstRegNo: z.string().min(1, 'GST Reg. No is required'),
-  website: z.string().min(1, 'Website is required'),
-  note: z.string().min(1, 'Note is required'),
+  gstRegNo: z.string().optional(),
+  website: z.string().optional(),
+  memberSize: z.string().optional().refine((val) => !val || /^\d+$/.test(val), 'Only numbers allowed'),
+  note: z.string().optional(),
   subscriptionPlanId: z.string().min(1, 'Subscription Plan is required'),
 });
 
@@ -251,7 +252,7 @@ export function GymsPage() {
     queryFn: adminService.getGymOwners,
   });
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<GymFormData>({
+  const { register, handleSubmit, reset, setValue, watch, clearErrors, formState: { errors } } = useForm<GymFormData>({
     resolver: zodResolver(gymSchema),
   });
 
@@ -261,7 +262,7 @@ export function GymsPage() {
     return plans?.find((p: GymSubscriptionPlan) => p.id === createSelectedPlanId);
   }, [plans, createSelectedPlanId]);
 
-  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, formState: { errors: errorsEdit } } = useForm<GymFormData>({
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue: setValueEdit, clearErrors: clearErrorsEdit, formState: { errors: errorsEdit } } = useForm<GymFormData>({
     resolver: zodResolver(gymSchema),
   });
 
@@ -381,7 +382,12 @@ export function GymsPage() {
           dataToSend[key] = value;
         }
       });
-      
+
+      // Convert memberSize to number
+      if (dataToSend.memberSize) {
+        dataToSend.memberSize = parseInt(dataToSend.memberSize, 10);
+      }
+
       // Include extra discount if provided
       if (createExtraDiscount > 0) {
         dataToSend.extraDiscount = createExtraDiscount;
@@ -423,7 +429,7 @@ export function GymsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Gym> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: GymFormData & { logo?: string } }) => {
       // Prepare clean data - remove any undefined/null values
       const dataToSend: Record<string, any> = {};
       
@@ -433,7 +439,12 @@ export function GymsPage() {
           dataToSend[key] = value;
         }
       });
-      
+
+      // Convert memberSize to number
+      if (dataToSend.memberSize) {
+        dataToSend.memberSize = parseInt(dataToSend.memberSize, 10);
+      }
+
       // Include extra discount if provided
       if (editExtraDiscount > 0) {
         dataToSend.extraDiscount = editExtraDiscount;
@@ -550,6 +561,7 @@ export function GymsPage() {
       email: gym.email || '',
       gstRegNo: gym.gstRegNo || '',
       website: gym.website || '',
+      memberSize: gym.memberSize?.toString() || '',
       note: gym.note || '',
       subscriptionPlanId: gym.subscriptionPlanId || '',
     });
@@ -708,31 +720,31 @@ export function GymsPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
               <div className="grid grid-cols-4 gap-3">
                 {/* Logo - takes 1 column */}
-                <div className="row-span-2">
+                <div className="row-span-3">
                   <Label className="text-xs">Gym Logo</Label>
                   <div className="mt-1">
                     {logoPreview ? (
                       <div className="relative inline-block">
-                        <img 
-                          src={logoPreview} 
-                          alt="Logo preview" 
-                          className="w-20 h-20 object-cover rounded-lg border"
+                        <img
+                          src={logoPreview}
+                          alt="Logo preview"
+                          className="w-32 h-32 object-cover rounded-lg border shadow-sm"
                         />
                         <button
                           type="button"
                           onClick={() => removeLogo(false)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                     ) : (
-                      <div 
-                        className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary"
+                      <div
+                        className="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors"
                         onClick={() => logoInputRef.current?.click()}
                       >
-                        <Upload className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Upload</span>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground mt-1">Upload Logo</span>
                       </div>
                     )}
                     <input
@@ -761,7 +773,7 @@ export function GymsPage() {
                 
                 {/* Address 2 */}
                 <div className="col-span-2">
-                  <Label htmlFor="address2" className="text-xs">Address 2 *</Label>
+                  <Label htmlFor="address2" className="text-xs">Address 2</Label>
                   <Input id="address2" {...register('address2')} placeholder="Enter area/locality" className="h-8" />
                   {errors.address2 && <p className="text-xs text-red-500">{errors.address2.message}</p>}
                 </div>
@@ -790,14 +802,34 @@ export function GymsPage() {
                 {/* Mobile No */}
                 <div>
                   <Label htmlFor="mobileNo" className="text-xs">Mobile No *</Label>
-                  <Input id="mobileNo" {...register('mobileNo')} placeholder="Enter mobile no" className="h-8" />
+                  <Input
+                    id="mobileNo"
+                    {...register('mobileNo')}
+                    placeholder="Enter mobile no"
+                    className="h-8"
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
                   {errors.mobileNo && <p className="text-xs text-red-500">{errors.mobileNo.message}</p>}
                 </div>
-                
+
                 {/* Phone No */}
                 <div>
-                  <Label htmlFor="phoneNo" className="text-xs">Phone No *</Label>
-                  <Input id="phoneNo" {...register('phoneNo')} placeholder="Enter phone no" className="h-8" />
+                  <Label htmlFor="phoneNo" className="text-xs">Phone No</Label>
+                  <Input
+                    id="phoneNo"
+                    {...register('phoneNo')}
+                    placeholder="Enter phone no"
+                    className="h-8"
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
                   {errors.phoneNo && <p className="text-xs text-red-500">{errors.phoneNo.message}</p>}
                 </div>
                 
@@ -810,22 +842,39 @@ export function GymsPage() {
                 
                 {/* GST Reg No */}
                 <div>
-                  <Label htmlFor="gstRegNo" className="text-xs">GST Reg. No *</Label>
+                  <Label htmlFor="gstRegNo" className="text-xs">GST Reg. No</Label>
                   <Input id="gstRegNo" {...register('gstRegNo')} placeholder="Enter GST number" className="h-8" />
                   {errors.gstRegNo && <p className="text-xs text-red-500">{errors.gstRegNo.message}</p>}
                 </div>
-                
+
                 {/* Website */}
                 <div>
-                  <Label htmlFor="website" className="text-xs">Website *</Label>
+                  <Label htmlFor="website" className="text-xs">Website</Label>
                   <Input id="website" {...register('website')} placeholder="https://example.com" className="h-8" />
                   {errors.website && <p className="text-xs text-red-500">{errors.website.message}</p>}
                 </div>
-                
+
+                {/* Member Size */}
+                <div>
+                  <Label htmlFor="memberSize" className="text-xs">Member Size</Label>
+                  <Input
+                    id="memberSize"
+                    {...register('memberSize')}
+                    placeholder="Enter expected members"
+                    className="h-8"
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  {errors.memberSize && <p className="text-xs text-red-500">{errors.memberSize.message}</p>}
+                </div>
+
                 {/* Subscription Plan */}
                 <div>
                   <Label className="text-xs">Subscription Plan *</Label>
-                  <Select onValueChange={(value) => { setValue('subscriptionPlanId', value); setCreateExtraDiscount(0); }}>
+                  <Select onValueChange={(value) => { setValue('subscriptionPlanId', value); clearErrors('subscriptionPlanId'); setCreateExtraDiscount(0); }}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select plan" />
                     </SelectTrigger>
@@ -860,6 +909,11 @@ export function GymsPage() {
                       const maxVal = createSelectedPlan?.price || 0;
                       setCreateExtraDiscount(Math.min(Math.max(0, val), maxVal));
                     }}
+                    onKeyPress={(e) => {
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="0"
                   />
                   {createExtraDiscount > (createSelectedPlan?.price || 0) && (
@@ -875,7 +929,7 @@ export function GymsPage() {
 
                 {/* Note - full width */}
                 <div className="col-span-4">
-                  <Label htmlFor="note" className="text-xs">Note (Terms & Conditions on Receipts) *</Label>
+                  <Label htmlFor="note" className="text-xs">Note (Terms & Conditions on Receipts)</Label>
                   <Textarea id="note" {...register('note')} rows={2} placeholder="Enter terms and conditions for receipts..." className="resize-none" />
                   {errors.note && <p className="text-xs text-red-500">{errors.note.message}</p>}
                 </div>
@@ -1350,31 +1404,31 @@ export function GymsPage() {
           <form onSubmit={handleSubmitEdit(onEditSubmit)} className="space-y-3">
             <div className="grid grid-cols-4 gap-3">
               {/* Logo - takes 1 column */}
-              <div className="row-span-2">
+              <div className="row-span-3">
                 <Label className="text-xs">Gym Logo</Label>
                 <div className="mt-1">
                   {editLogoPreview ? (
                     <div className="relative inline-block">
-                      <img 
-                        src={editLogoPreview} 
-                        alt="Logo preview" 
-                        className="w-20 h-20 object-cover rounded-lg border"
+                      <img
+                        src={editLogoPreview}
+                        alt="Logo preview"
+                        className="w-32 h-32 object-cover rounded-lg border shadow-sm"
                       />
                       <button
                         type="button"
                         onClick={() => removeLogo(true)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   ) : (
-                    <div 
-                      className="w-20 h-20 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary"
+                    <div
+                      className="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors"
                       onClick={() => editLogoInputRef.current?.click()}
                     >
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Upload</span>
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground mt-1">Upload Logo</span>
                     </div>
                   )}
                   <input
@@ -1403,67 +1457,104 @@ export function GymsPage() {
               
               {/* Address 2 */}
               <div className="col-span-2">
-                <Label htmlFor="edit-address2" className="text-xs">Address 2 *</Label>
+                <Label htmlFor="edit-address2" className="text-xs">Address 2</Label>
                 <Input id="edit-address2" {...registerEdit('address2')} placeholder="Enter area/locality" className="h-8" />
                 {errorsEdit.address2 && <p className="text-xs text-red-500">{errorsEdit.address2.message}</p>}
               </div>
-              
+
               {/* City */}
               <div>
                 <Label htmlFor="edit-city" className="text-xs">City *</Label>
                 <Input id="edit-city" {...registerEdit('city')} placeholder="Enter city" className="h-8" />
                 {errorsEdit.city && <p className="text-xs text-red-500">{errorsEdit.city.message}</p>}
               </div>
-              
+
               {/* State */}
               <div>
                 <Label htmlFor="edit-state" className="text-xs">State *</Label>
                 <Input id="edit-state" {...registerEdit('state')} placeholder="Enter state" className="h-8" />
                 {errorsEdit.state && <p className="text-xs text-red-500">{errorsEdit.state.message}</p>}
               </div>
-              
+
               {/* Zipcode */}
               <div>
                 <Label htmlFor="edit-zipcode" className="text-xs">Zipcode *</Label>
                 <Input id="edit-zipcode" {...registerEdit('zipcode')} placeholder="Enter zipcode" className="h-8" />
                 {errorsEdit.zipcode && <p className="text-xs text-red-500">{errorsEdit.zipcode.message}</p>}
               </div>
-              
+
               {/* Mobile No */}
               <div>
                 <Label htmlFor="edit-mobileNo" className="text-xs">Mobile No *</Label>
-                <Input id="edit-mobileNo" {...registerEdit('mobileNo')} placeholder="Enter mobile no" className="h-8" />
+                <Input
+                  id="edit-mobileNo"
+                  {...registerEdit('mobileNo')}
+                  placeholder="Enter mobile no"
+                  className="h-8"
+                  onKeyPress={(e) => {
+                    if (!/[0-9]/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
                 {errorsEdit.mobileNo && <p className="text-xs text-red-500">{errorsEdit.mobileNo.message}</p>}
               </div>
-              
+
               {/* Phone No */}
               <div>
-                <Label htmlFor="edit-phoneNo" className="text-xs">Phone No *</Label>
-                <Input id="edit-phoneNo" {...registerEdit('phoneNo')} placeholder="Enter phone no" className="h-8" />
+                <Label htmlFor="edit-phoneNo" className="text-xs">Phone No</Label>
+                <Input
+                  id="edit-phoneNo"
+                  {...registerEdit('phoneNo')}
+                  placeholder="Enter phone no"
+                  className="h-8"
+                  onKeyPress={(e) => {
+                    if (!/[0-9]/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
                 {errorsEdit.phoneNo && <p className="text-xs text-red-500">{errorsEdit.phoneNo.message}</p>}
               </div>
-              
+
               {/* Email */}
               <div>
                 <Label htmlFor="edit-email" className="text-xs">Email Id *</Label>
                 <Input id="edit-email" type="email" {...registerEdit('email')} placeholder="Enter email" className="h-8" />
                 {errorsEdit.email && <p className="text-xs text-red-500">{errorsEdit.email.message}</p>}
               </div>
-              
+
               {/* GST Reg No */}
               <div>
-                <Label htmlFor="edit-gstRegNo" className="text-xs">GST Reg. No *</Label>
+                <Label htmlFor="edit-gstRegNo" className="text-xs">GST Reg. No</Label>
                 <Input id="edit-gstRegNo" {...registerEdit('gstRegNo')} placeholder="Enter GST number" className="h-8" />
                 {errorsEdit.gstRegNo && <p className="text-xs text-red-500">{errorsEdit.gstRegNo.message}</p>}
               </div>
-              
+
               {/* Website */}
               <div>
-                <Label htmlFor="edit-website" className="text-xs">Website *</Label>
+                <Label htmlFor="edit-website" className="text-xs">Website</Label>
                 <Input id="edit-website" {...registerEdit('website')} placeholder="https://example.com" className="h-8" />
                 {errorsEdit.website && <p className="text-xs text-red-500">{errorsEdit.website.message}</p>}
               </div>
-              
+
+              {/* Member Size */}
+              <div>
+                <Label htmlFor="edit-memberSize" className="text-xs">Member Size</Label>
+                <Input
+                  id="edit-memberSize"
+                  {...registerEdit('memberSize')}
+                  placeholder="Enter expected members"
+                  className="h-8"
+                  onKeyPress={(e) => {
+                    if (!/[0-9]/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                {errorsEdit.memberSize && <p className="text-xs text-red-500">{errorsEdit.memberSize.message}</p>}
+              </div>
+
               {/* Subscription Plan */}
               <div>
                 <Label className="text-xs">Subscription Plan *</Label>
@@ -1472,6 +1563,7 @@ export function GymsPage() {
                   onValueChange={(value) => {
                     setEditPlanId(value);
                     setValueEdit('subscriptionPlanId', value);
+                    clearErrorsEdit('subscriptionPlanId');
                     setEditExtraDiscount(0);
                   }}
                 >
@@ -1509,6 +1601,11 @@ export function GymsPage() {
                     const maxVal = editSelectedPlan?.price || 0;
                     setEditExtraDiscount(Math.min(Math.max(0, val), maxVal));
                   }}
+                  onKeyPress={(e) => {
+                    if (!/[0-9]/.test(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="0"
                 />
                 {editExtraDiscount > (editSelectedPlan?.price || 0) && (
@@ -1524,7 +1621,7 @@ export function GymsPage() {
 
               {/* Note - full width */}
               <div className="col-span-4">
-                <Label htmlFor="edit-note" className="text-xs">Note (Terms & Conditions on Receipts) *</Label>
+                <Label htmlFor="edit-note" className="text-xs">Note (Terms & Conditions on Receipts)</Label>
                 <Textarea id="edit-note" {...registerEdit('note')} rows={2} placeholder="Enter terms and conditions for receipts..." className="resize-none" />
                 {errorsEdit.note && <p className="text-xs text-red-500">{errorsEdit.note.message}</p>}
               </div>
@@ -1603,18 +1700,18 @@ export function GymsPage() {
               {/* Logo and Header */}
               <div className="flex items-start gap-4 pb-3 border-b">
                 {(selectedGym.gymLogo || selectedGym.logo) ? (
-                  <img 
-                    src={adminService.getGymLogoUrl(selectedGym.gymLogo || selectedGym.logo)} 
-                    alt={selectedGym.name} 
-                    className="w-20 h-20 object-cover rounded-lg border shadow-sm"
+                  <img
+                    src={adminService.getGymLogoUrl(selectedGym.gymLogo || selectedGym.logo)}
+                    alt={selectedGym.name}
+                    className="w-28 h-28 object-cover rounded-lg border shadow-sm"
                     onError={(e) => {
                       // Hide image on error and show fallback
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-10 w-10 text-primary" />
+                  <div className="w-28 h-28 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Building2 className="h-12 w-12 text-primary" />
                   </div>
                 )}
                 <div className="flex-1">
@@ -1699,6 +1796,10 @@ export function GymsPage() {
                 <div>
                   <span className="text-muted-foreground text-xs">GST Reg. No</span>
                   <p className="font-medium">{selectedGym.gstRegNo || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Member Size</span>
+                  <p className="font-medium">{selectedGym.memberSize || '-'}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Owner</span>

@@ -37,6 +37,9 @@ import {
   Target,
   Clock,
   Package,
+  KeyRound,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,6 +106,17 @@ export function TrainersPage() {
   const [trainerToDelete, setTrainerToDelete] = useState<Trainer | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingTrainer, setViewingTrainer] = useState<Trainer | null>(null);
+
+  // Reset Password Dialog State
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordTrainer, setResetPasswordTrainer] = useState<Trainer | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{
+    trainerId: string;
+    email: string;
+    temporaryPassword: string;
+    message: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   // Search, Sort & Pagination
   const [search, setSearch] = useState('');
@@ -189,7 +203,7 @@ export function TrainersPage() {
         firstName: editingTrainer.firstName || '',
         lastName: editingTrainer.lastName || '',
         email: editingTrainer.email || editingTrainer.user?.email || '',
-        password: editingTrainer.password || '',
+        password: '', // Password is never pre-filled since API returns passwordHint (masked)
         phone: editingTrainer.phone || '',
         specialization: editingTrainer.specialization || '',
         experience: editingTrainer.experience || undefined,
@@ -252,6 +266,41 @@ export function TrainersPage() {
       toast({ title: 'Failed to toggle status', description: err?.response?.data?.message, variant: 'destructive' });
     },
   });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: gymOwnerService.resetTrainerPassword,
+    onSuccess: (data) => {
+      setResetPasswordResult(data);
+      queryClient.invalidateQueries({ queryKey: ['trainers'] });
+      toast({ title: 'Password reset successfully', description: 'A temporary password has been generated.' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to reset password', description: err?.response?.data?.message, variant: 'destructive' });
+      setResetPasswordDialogOpen(false);
+    },
+  });
+
+  const handleResetPassword = (trainer: Trainer) => {
+    setResetPasswordTrainer(trainer);
+    setResetPasswordResult(null);
+    setCopiedPassword(false);
+    setResetPasswordDialogOpen(true);
+  };
+
+  const confirmResetPassword = () => {
+    if (resetPasswordTrainer) {
+      resetPasswordMutation.mutate(resetPasswordTrainer.id);
+    }
+  };
+
+  const copyPasswordToClipboard = async () => {
+    if (resetPasswordResult?.temporaryPassword) {
+      await navigator.clipboard.writeText(resetPasswordResult.temporaryPassword);
+      setCopiedPassword(true);
+      toast({ title: 'Password copied to clipboard' });
+      setTimeout(() => setCopiedPassword(false), 2000);
+    }
+  };
 
   const onSubmit = (formData: TrainerFormData) => {
     const fd = new FormData();
@@ -667,6 +716,9 @@ export function TrainersPage() {
                                   <DropdownMenuItem onClick={() => handleEdit(trainer)}>
                                     <Edit className="mr-2 h-4 w-4" />Edit
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleResetPassword(trainer)}>
+                                    <KeyRound className="mr-2 h-4 w-4" />Reset Password
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleToggleStatus(trainer)}>
                                     {trainer.isActive ? (
                                       <><ToggleLeft className="mr-2 h-4 w-4" />Deactivate</>
@@ -887,7 +939,7 @@ export function TrainersPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-purple-500" /><span>Phone: {viewingTrainer.phone || '-'}</span></div>
-                <div className="flex items-center gap-2"><Lock className="h-4 w-4 text-purple-500" /><span>Password: {viewingTrainer.password || '-'}</span></div>
+                <div className="flex items-center gap-2"><Lock className="h-4 w-4 text-purple-500" /><span>Password: {viewingTrainer.passwordHint || '-'}</span></div>
                 <div className="flex items-center gap-2"><User className="h-4 w-4 text-purple-500" /><span>Gender: {viewingTrainer.gender || '-'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-purple-500" /><span>DOB: {viewingTrainer.dateOfBirth ? format(new Date(viewingTrainer.dateOfBirth), 'MMM dd, yyyy') : '-'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-purple-500" /><span>Joining: {viewingTrainer.joiningDate ? format(new Date(viewingTrainer.joiningDate), 'MMM dd, yyyy') : '-'}</span></div>
@@ -1249,6 +1301,104 @@ export function TrainersPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setResetPasswordDialogOpen(false);
+          setResetPasswordResult(null);
+          setCopiedPassword(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-orange-500" />
+              {resetPasswordResult ? 'Password Reset Successful' : 'Reset Trainer Password'}
+            </DialogTitle>
+            <DialogDescription>
+              {resetPasswordResult 
+                ? 'A new temporary password has been generated for this trainer.'
+                : `Are you sure you want to reset the password for ${resetPasswordTrainer ? getTrainerName(resetPasswordTrainer) : ''}?`
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          {resetPasswordResult ? (
+            <div className="space-y-4">
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium">{resetPasswordResult.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Temporary Password:</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-white dark:bg-slate-800 border rounded px-3 py-2 font-mono text-sm select-all">
+                      {resetPasswordResult.temporaryPassword}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyPasswordToClipboard}
+                      className="shrink-0"
+                    >
+                      {copiedPassword ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                  <strong>Important:</strong> {resetPasswordResult.message}
+                </p>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => {
+                  setResetPasswordDialogOpen(false);
+                  setResetPasswordResult(null);
+                }}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetPasswordDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                className="bg-orange-500 hover:bg-orange-600"
+                onClick={confirmResetPassword}
+                disabled={resetPasswordMutation.isPending}
+              >
+                {resetPasswordMutation.isPending ? (
+                  <>
+                    <Spinner className="mr-2 h-4 w-4" />
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Reset Password
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

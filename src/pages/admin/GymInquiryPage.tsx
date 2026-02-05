@@ -30,7 +30,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { ExportButton } from '@/components/ui/export-button';
 import { adminService } from '@/services/admin.service';
-import type { GymInquiry, GymInquiryFollowup, GymSubscriptionPlan } from '@/types';
+import type { GymInquiry, GymInquiryFollowup, GymSubscriptionPlan, EnquiryType } from '@/types';
 
 // Zod schemas
 const inquirySchema = z.object({
@@ -39,13 +39,15 @@ const inquirySchema = z.object({
   address2: z.string().optional(),
   state: z.string().optional(),
   city: z.string().optional(),
-  mobileNo: z.string().min(10, 'Mobile No is required').regex(/^\d+$/, 'Only numbers'),
+  mobileNo: z.string().min(10, 'Mobile No is required').regex(/^\d+$/, 'Only numbers allowed'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   subscriptionPlanId: z.string().min(1, 'Plan is required'),
   note: z.string().optional(),
   sellerName: z.string().optional(),
-  sellerMobileNo: z.string().regex(/^\d+$/, 'Only numbers').optional().or(z.literal('')),
+  sellerMobileNo: z.string().regex(/^\d+$/, 'Only numbers allowed').optional().or(z.literal('')),
   nextFollowupDate: z.string().optional(),
+  memberSize: z.string().optional(),
+  enquiryTypeId: z.string().min(1, 'Enquiry Type is required'),
 });
 
 type InquiryFormData = z.infer<typeof inquirySchema>;
@@ -110,6 +112,15 @@ export function GymInquiryPage() {
     queryFn: () => adminService.getSubscriptionPlans(),
   });
 
+  // Fetch enquiry types
+  const { data: enquiryTypes = [] } = useQuery<EnquiryType[]>({
+    queryKey: ['enquiry-types'],
+    queryFn: () => adminService.getEnquiryTypes(),
+  });
+
+  // Get today's date for min date restriction
+  const today = new Date().toISOString().slice(0, 10);
+
   // Fetch inquiries
   const { data: inquiriesData, isLoading } = useQuery({
     queryKey: ['gym-inquiries', page, limit, debouncedSearch, filterPlanId, filterStatus],
@@ -155,10 +166,12 @@ export function GymInquiryPage() {
       gymName: '', address1: '', address2: '', state: '', city: '',
       mobileNo: '', email: '', subscriptionPlanId: '', note: '',
       sellerName: '', sellerMobileNo: '', nextFollowupDate: '',
+      memberSize: '', enquiryTypeId: '',
     },
   });
 
   const selectedPlanId = watch('subscriptionPlanId');
+  const selectedEnquiryTypeId = watch('enquiryTypeId');
 
   // Followup form
   const {
@@ -173,7 +186,13 @@ export function GymInquiryPage() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: InquiryFormData) => adminService.createGymInquiry(data),
+    mutationFn: (data: InquiryFormData) => {
+      const requestData = {
+        ...data,
+        memberSize: data.memberSize ? parseInt(data.memberSize, 10) : undefined,
+      };
+      return adminService.createGymInquiry(requestData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gym-inquiries'] });
       setCreateDialogOpen(false);
@@ -186,7 +205,13 @@ export function GymInquiryPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<InquiryFormData> }) => adminService.updateGymInquiry(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<InquiryFormData> }) => {
+      const requestData = {
+        ...data,
+        memberSize: data.memberSize ? parseInt(data.memberSize, 10) : undefined,
+      };
+      return adminService.updateGymInquiry(id, requestData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gym-inquiries'] });
       setCreateDialogOpen(false);
@@ -231,6 +256,7 @@ export function GymInquiryPage() {
       gymName: '', address1: '', address2: '', state: '', city: '',
       mobileNo: '', email: '', subscriptionPlanId: '', note: '',
       sellerName: '', sellerMobileNo: '', nextFollowupDate: '',
+      memberSize: '', enquiryTypeId: '',
     });
     setEditingInquiry(null);
     setCreateDialogOpen(true);
@@ -251,6 +277,8 @@ export function GymInquiryPage() {
       sellerName: inquiry.sellerName || '',
       sellerMobileNo: inquiry.sellerMobileNo || '',
       nextFollowupDate: inquiry.nextFollowupDate ? inquiry.nextFollowupDate.slice(0, 10) : '',
+      memberSize: inquiry.memberSize ? String(inquiry.memberSize) : '',
+      enquiryTypeId: inquiry.enquiryTypeId || '',
     });
     setCreateDialogOpen(true);
   }, [reset]);
@@ -301,6 +329,8 @@ export function GymInquiryPage() {
               { key: 'city', label: 'City', format: (v) => v || '' },
               { key: 'state', label: 'State', format: (v) => v || '' },
               { key: 'subscriptionPlan', label: 'Plan', format: (_v, row) => row.subscriptionPlan?.name || '' },
+              { key: 'enquiryType', label: 'Enquiry Type', format: (_v, row) => row.enquiryType?.name || '' },
+              { key: 'memberSize', label: 'Member Size', format: (v) => v ? String(v) : '' },
               { key: 'sellerName', label: 'Seller Name', format: (v) => v || '' },
               { key: 'sellerMobileNo', label: 'Seller Mobile', format: (v) => v || '' },
               { key: 'nextFollowupDate', label: 'Next Followup', format: (v) => v ? formatDate(v) : '' },
@@ -415,6 +445,8 @@ export function GymInquiryPage() {
                       <TableHead>Gym</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Plan</TableHead>
+                      <TableHead>Enquiry Type</TableHead>
+                      <TableHead>Member Size</TableHead>
                       <TableHead>Seller</TableHead>
                       <TableHead>Next Followup</TableHead>
                       <TableHead>Followups</TableHead>
@@ -447,6 +479,12 @@ export function GymInquiryPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm">{inquiry.subscriptionPlan?.name || '-'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{inquiry.enquiryType?.name || '-'}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{inquiry.memberSize || '-'}</span>
                         </TableCell>
                         <TableCell>
                           <div>
@@ -563,7 +601,15 @@ export function GymInquiryPage() {
               {/* Mobile No */}
               <div>
                 <Label htmlFor="mobileNo" className="text-xs">Mobile No *</Label>
-                <Input id="mobileNo" {...register('mobileNo')} placeholder="Enter mobile no" className="h-8" />
+                <Input
+                  id="mobileNo"
+                  {...register('mobileNo')}
+                  placeholder="Enter mobile no"
+                  className="h-8"
+                  onInput={(e) => {
+                    e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                  }}
+                />
                 {errors.mobileNo && <p className="text-xs text-red-500">{errors.mobileNo.message}</p>}
               </div>
 
@@ -614,10 +660,45 @@ export function GymInquiryPage() {
                 {errors.subscriptionPlanId && <p className="text-xs text-red-500">{errors.subscriptionPlanId.message}</p>}
               </div>
 
+              {/* Enquiry Type */}
+              <div>
+                <Label className="text-xs">Enquiry Type *</Label>
+                <Select value={selectedEnquiryTypeId} onValueChange={(v) => setValue('enquiryTypeId', v)}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Select enquiry type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enquiryTypes.filter(et => et.isActive).map((et) => (
+                      <SelectItem key={et.id} value={et.id}>{et.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.enquiryTypeId && <p className="text-xs text-red-500">{errors.enquiryTypeId.message}</p>}
+              </div>
+
               {/* Next Followup Date */}
               <div>
                 <Label htmlFor="nextFollowupDate" className="text-xs">Next Followup Date</Label>
-                <Input id="nextFollowupDate" type="date" {...register('nextFollowupDate')} className="h-8" />
+                <Input
+                  id="nextFollowupDate"
+                  type="date"
+                  {...register('nextFollowupDate')}
+                  className="h-8"
+                  min={today}
+                />
+              </div>
+
+              {/* Member Size */}
+              <div>
+                <Label htmlFor="memberSize" className="text-xs">Member Size</Label>
+                <Input
+                  id="memberSize"
+                  type="number"
+                  {...register('memberSize')}
+                  placeholder="Expected members"
+                  className="h-8"
+                  min={0}
+                />
               </div>
 
               {/* Seller Name */}
@@ -629,7 +710,15 @@ export function GymInquiryPage() {
               {/* Seller Mobile */}
               <div>
                 <Label htmlFor="sellerMobileNo" className="text-xs">Seller Mobile</Label>
-                <Input id="sellerMobileNo" {...register('sellerMobileNo')} placeholder="Seller mobile" className="h-8" />
+                <Input
+                  id="sellerMobileNo"
+                  {...register('sellerMobileNo')}
+                  placeholder="Seller mobile"
+                  className="h-8"
+                  onInput={(e) => {
+                    e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                  }}
+                />
                 {errors.sellerMobileNo && <p className="text-xs text-red-500">{errors.sellerMobileNo.message}</p>}
               </div>
 
