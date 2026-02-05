@@ -15,6 +15,7 @@ import { CoursePackagesPage } from '@/pages/gym-owner/CoursePackagesPage';
 import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
 import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
+import { SubscriptionHistoryPage } from '@/pages/gym-owner/SubscriptionHistoryPage';
 
 /**
  * Gym Owner Routes - STRICT ISOLATION
@@ -164,6 +165,16 @@ export const OwnerRoutes = () => (
         <GymOwnerGuard>
           <TopNavLayout>
             <CoursePackagesPage />
+          </TopNavLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/subscription"
+      element={
+        <GymOwnerGuard>
+          <TopNavLayout>
+            <SubscriptionHistoryPage />
           </TopNavLayout>
         </GymOwnerGuard>
       }

@@ -1,13 +1,20 @@
 import api, { BACKEND_BASE_URL } from './api';
-import type { 
-  ApiResponse, 
-  AdminDashboard, 
-  Gym, 
+import type {
+  ApiResponse,
+  AdminDashboard,
+  Gym,
   GymSubscriptionPlan,
   User,
   Occupation,
   EnquiryType,
-  PaymentType
+  PaymentType,
+  GymSubscriptionHistory,
+  RenewGymSubscriptionRequest,
+  GymSubscriptionHistoryParams,
+  GymInquiry,
+  GymInquiryFollowup,
+  CreateGymInquiryRequest,
+  GymInquiryParams,
 } from '@/types';
 
 export const adminService = {
@@ -85,7 +92,12 @@ export const adminService = {
     if (data.ownerId && typeof data.ownerId === 'string' && data.ownerId.trim()) {
       payload.ownerId = data.ownerId.trim();
     }
-    
+
+    // Extra discount
+    if ((data as any).extraDiscount !== undefined && (data as any).extraDiscount !== null) {
+      payload.extraDiscount = Number((data as any).extraDiscount);
+    }
+
     console.debug('Creating gym with payload:', payload);
     const response = await api.post<ApiResponse<Gym>>('/admin/gyms', payload);
     console.debug('Create gym response:', response.data);
@@ -122,7 +134,12 @@ export const adminService = {
     if (data.ownerId && typeof data.ownerId === 'string' && data.ownerId.trim()) {
       payload.ownerId = data.ownerId.trim();
     }
-    
+
+    // Extra discount
+    if ((data as any).extraDiscount !== undefined && (data as any).extraDiscount !== null) {
+      payload.extraDiscount = Number((data as any).extraDiscount);
+    }
+
     console.debug('Updating gym with payload:', payload);
     const response = await api.put<ApiResponse<Gym>>(`/admin/gyms/${id}`, payload);
     console.debug('Update gym response:', response.data);
@@ -322,5 +339,131 @@ export const adminService = {
     
     console.debug('Parsed payment types:', paymentTypes);
     return paymentTypes;
+  },
+
+  // =====================================================
+  // Gym Subscription Management
+  // =====================================================
+
+  /**
+   * Renew a gym's subscription - can be same plan (renewal) or different plan (upgrade/downgrade)
+   * @param gymId - The gym ID to renew subscription for
+   * @param data - Renewal request data including subscriptionPlanId, paymentMode, paidAmount, notes
+   */
+  async renewGymSubscription(gymId: string, data: RenewGymSubscriptionRequest & { extraDiscount?: number }): Promise<GymSubscriptionHistory> {
+    console.debug('Renewing gym subscription:', { gymId, data });
+    const response = await api.post<ApiResponse<GymSubscriptionHistory>>(`/admin/gyms/${gymId}/renew-subscription`, data);
+    console.debug('Renew subscription response:', response.data);
+    return response.data.data;
+  },
+
+  /**
+   * Get subscription history for a specific gym
+   * @param gymId - The gym ID to fetch history for
+   * @param params - Query parameters for pagination, search, and filters
+   */
+  async getGymSubscriptionHistory(
+    gymId: string, 
+    params: GymSubscriptionHistoryParams = {}
+  ): Promise<{ items: GymSubscriptionHistory[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParams: Record<string, any> = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+    };
+    
+    if (params.search) queryParams.search = params.search;
+    if (params.sortBy) queryParams.sortBy = params.sortBy;
+    if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
+    if (params.paymentStatus) queryParams.paymentStatus = params.paymentStatus;
+    if (params.renewalType) queryParams.renewalType = params.renewalType;
+
+    console.debug('Fetching gym subscription history:', { gymId, queryParams });
+    const response = await api.get<ApiResponse<GymSubscriptionHistory[] | { items: GymSubscriptionHistory[]; pagination: any }>>(`/admin/gyms/${gymId}/subscription-history`, { params: queryParams });
+    console.debug('Subscription history response:', response.data);
+    
+    const data = response.data.data;
+    
+    // Handle both array and paginated response formats
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        pagination: (response.data as any).pagination || { page: 1, limit: 10, total: data.length, totalPages: 1 }
+      };
+    }
+    
+    return {
+      items: data.items || [],
+      pagination: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 }
+    };
+  },
+
+  /**
+   * Get a single subscription history record by ID
+   * @param id - The subscription history record ID
+   */
+  async getSubscriptionHistoryById(id: string): Promise<GymSubscriptionHistory> {
+    console.debug('Fetching subscription history by ID:', id);
+    const response = await api.get<ApiResponse<GymSubscriptionHistory>>(`/admin/subscription-history/${id}`);
+    console.debug('Subscription history record:', response.data);
+    return response.data.data;
+  },
+
+  // =====================================================
+  // Gym Inquiries
+  // =====================================================
+
+  async getGymInquiries(params: GymInquiryParams = {}): Promise<{ items: GymInquiry[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParams: Record<string, any> = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+    };
+    if (params.search) queryParams.search = params.search;
+    if (params.sortBy) queryParams.sortBy = params.sortBy;
+    if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
+    if (params.subscriptionPlanId) queryParams.subscriptionPlanId = params.subscriptionPlanId;
+    if (params.isActive !== undefined) queryParams.isActive = String(params.isActive);
+
+    const response = await api.get<ApiResponse<{ items: GymInquiry[]; pagination: any }>>('/admin/gym-inquiries', { params: queryParams });
+    const data = response.data.data;
+    if (Array.isArray(data)) {
+      return {
+        items: data as unknown as GymInquiry[],
+        pagination: (response.data as any).pagination || { page: 1, limit: 10, total: (data as any).length, totalPages: 1 },
+      };
+    }
+    return {
+      items: data.items || [],
+      pagination: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
+    };
+  },
+
+  async getGymInquiryById(id: string): Promise<GymInquiry> {
+    const response = await api.get<ApiResponse<GymInquiry>>(`/admin/gym-inquiries/${id}`);
+    return response.data.data;
+  },
+
+  async createGymInquiry(data: CreateGymInquiryRequest): Promise<GymInquiry> {
+    const response = await api.post<ApiResponse<GymInquiry>>('/admin/gym-inquiries', data);
+    return response.data.data;
+  },
+
+  async updateGymInquiry(id: string, data: Partial<CreateGymInquiryRequest>): Promise<GymInquiry> {
+    const response = await api.put<ApiResponse<GymInquiry>>(`/admin/gym-inquiries/${id}`, data);
+    return response.data.data;
+  },
+
+  async toggleGymInquiryStatus(id: string): Promise<GymInquiry> {
+    const response = await api.patch<ApiResponse<GymInquiry>>(`/admin/gym-inquiries/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  async getGymInquiryFollowups(id: string): Promise<GymInquiryFollowup[]> {
+    const response = await api.get<ApiResponse<GymInquiryFollowup[]>>(`/admin/gym-inquiries/${id}/followups`);
+    return response.data.data;
+  },
+
+  async createGymInquiryFollowup(id: string, data: { followupDate?: string; note?: string }): Promise<GymInquiryFollowup> {
+    const response = await api.post<ApiResponse<GymInquiryFollowup>>(`/admin/gym-inquiries/${id}/followups`, data);
+    return response.data.data;
   },
 };
