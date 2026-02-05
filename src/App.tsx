@@ -17,6 +17,7 @@ import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
 import { OccupationMasterPage } from '@/pages/admin/OccupationMasterPage';
 import { EnquiryMasterPage } from '@/pages/admin/EnquiryMasterPage';
 import { PaymentTypeMasterPage } from '@/pages/admin/PaymentTypeMasterPage';
+import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
 
 // Gym Owner Pages
 import { GymOwnerDashboard } from '@/pages/gym-owner/GymOwnerDashboard';
@@ -180,6 +181,16 @@ function App() {
             <RoleGuard allowedRoles={['ADMIN']}>
               <TopNavLayout>
                 <PaymentTypeMasterPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/gym-inquiry"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']}>
+              <TopNavLayout>
+                <GymInquiryPage />
               </TopNavLayout>
             </RoleGuard>
           }

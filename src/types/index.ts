@@ -77,10 +77,81 @@ export interface Gym {
   subscriptionPlan?: GymSubscriptionPlan;
   subscriptionStart?: string;
   subscriptionEnd?: string;
+  // Count of total subscriptions (1 = new, >1 = renewed)
+  subscriptionCount?: number;
+  // Subscription payment totals
+  totalSubscriptionAmount?: number;
+  totalPaidAmount?: number;
+  totalPendingAmount?: number;
   _count?: { members: number; trainers: number };
   createdAt: string;
   updatedAt?: string;
 }
+
+// Gym Subscription Status - calculated from subscription dates
+// NEW = No subscription ever (first time)
+// ACTIVE = Has subscription with end date > today  
+// EXPIRING_SOON = End date is today or within 7 days (still allowed to login)
+// EXPIRED = End date was yesterday or before (NOT allowed to login)
+// RENEWED = Has renewed subscription (subscriptionCount > 1) - used as additional info
+export type GymSubscriptionStatus = 'NEW' | 'ACTIVE' | 'EXPIRED' | 'EXPIRING_SOON';
+
+// Subscription type to distinguish first vs renewed
+export type GymSubscriptionType = 'NEW' | 'RENEWED';
+
+// Helper function to get subscription type (first time or renewed)
+export const getGymSubscriptionType = (gym: Gym): GymSubscriptionType => {
+  // If subscriptionCount > 1, it's a renewed subscription
+  if (gym.subscriptionCount && gym.subscriptionCount > 1) {
+    return 'RENEWED';
+  }
+  return 'NEW';
+};
+
+// Helper function to calculate gym subscription status
+// Logic: 
+// - Today is the last valid day (EXPIRING_SOON if today or within 7 days)
+// - Tomorrow onwards = EXPIRED
+export const getGymSubscriptionStatus = (gym: Gym): GymSubscriptionStatus => {
+  // No subscription plan assigned
+  if (!gym.subscriptionPlanId || !gym.subscriptionEnd) {
+    return 'NEW';
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(gym.subscriptionEnd);
+  endDate.setHours(0, 0, 0, 0);
+  
+  const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // If end date is before today (yesterday or earlier) = EXPIRED
+  if (daysRemaining < 0) {
+    return 'EXPIRED';
+  }
+  
+  // If end date is today (daysRemaining = 0) or within 7 days = EXPIRING_SOON
+  // Note: daysRemaining = 0 means today is the last day, user can still login
+  if (daysRemaining <= 7) {
+    return 'EXPIRING_SOON';
+  }
+  
+  return 'ACTIVE';
+};
+
+// Get days remaining for gym subscription
+export const getGymDaysRemaining = (gym: Gym): number => {
+  if (!gym.subscriptionEnd) return 0;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const endDate = new Date(gym.subscriptionEnd);
+  endDate.setHours(0, 0, 0, 0);
+  
+  return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+};
 
 export interface Trainer {
   id: string;
@@ -1041,5 +1112,155 @@ export interface SalarySlip {
     paymentMode: PaymentMode;
     paymentDate?: string;
   };
+}
+
+// =====================================================
+// Gym Subscription History Types
+// =====================================================
+
+export type GymRenewalType = 'NEW' | 'RENEWAL' | 'UPGRADE' | 'DOWNGRADE';
+export type GymPaymentStatus = 'PAID' | 'PARTIAL' | 'PENDING';
+
+export interface GymSubscriptionHistory {
+  id: string;
+  subscriptionNumber: string;
+  gymId: string;
+  subscriptionPlanId: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  renewalDate: string;
+  previousPlanId: string | null;
+  previousPlanName: string | null;
+  previousSubscriptionEnd: string | null;
+  renewalType: GymRenewalType;
+  planAmount: string | number | null;
+  extraDiscount: string | number | null;
+  amount: string | number;
+  paymentMode: string | null;
+  paymentStatus: GymPaymentStatus;
+  paidAmount: string | number;
+  pendingAmount: string | number;
+  isActive: boolean;
+  notes: string | null;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  subscriptionPlan: {
+    name: string;
+    price: number;
+    durationDays: number;
+  };
+  gym?: {
+    name: string;
+  };
+}
+
+export interface RenewGymSubscriptionRequest {
+  subscriptionPlanId: string;
+  subscriptionStart?: string;
+  paymentMode?: string;
+  paidAmount?: number;
+  extraDiscount?: number;
+  notes?: string;
+}
+
+export interface GymSubscriptionHistoryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  paymentStatus?: GymPaymentStatus;
+  renewalType?: GymRenewalType;
+}
+
+export interface GymCurrentSubscription {
+  plan: {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    currency: string;
+    durationDays: number;
+    features: string;
+  } | null;
+  subscriptionStart: string | null;
+  subscriptionEnd: string | null;
+  daysRemaining: number;
+  isExpired: boolean;
+  subscriptionHistory: {
+    id: string;
+    subscriptionNumber: string;
+    renewalType: GymRenewalType;
+    renewalDate: string;
+    amount: number;
+    paymentStatus: GymPaymentStatus;
+    paymentMode: string | null;
+    paidAmount: number;
+    pendingAmount: number;
+  } | null;
+}
+
+// =====================================================
+// Gym Inquiry Types
+// =====================================================
+
+export interface GymInquiry {
+  id: string;
+  gymName: string;
+  address1?: string | null;
+  address2?: string | null;
+  state?: string | null;
+  city?: string | null;
+  mobileNo: string;
+  email?: string | null;
+  subscriptionPlanId: string;
+  note?: string | null;
+  sellerName?: string | null;
+  sellerMobileNo?: string | null;
+  nextFollowupDate?: string | null;
+  isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  subscriptionPlan?: { id: string; name: string; price: number; durationDays: number };
+  followups?: GymInquiryFollowup[];
+  _count?: { followups: number };
+}
+
+export interface GymInquiryFollowup {
+  id: string;
+  gymInquiryId: string;
+  followupDate: string;
+  note?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface CreateGymInquiryRequest {
+  gymName: string;
+  address1?: string;
+  address2?: string;
+  state?: string;
+  city?: string;
+  mobileNo: string;
+  email?: string;
+  subscriptionPlanId: string;
+  note?: string;
+  sellerName?: string;
+  sellerMobileNo?: string;
+  nextFollowupDate?: string;
+}
+
+export interface GymInquiryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  subscriptionPlanId?: string;
+  isActive?: boolean;
 }
 

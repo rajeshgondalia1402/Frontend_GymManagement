@@ -8,6 +8,8 @@ import { GymsPage } from '@/pages/admin/GymsPage';
 import { GymOwnersPage } from '@/pages/admin/GymOwnersPage';
 import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
 import { OccupationMasterPage } from '@/pages/admin/OccupationMasterPage';
+import { GymSubscriptionHistoryPage } from '@/pages/admin/GymSubscriptionHistoryPage';
+import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
 
 /**
  * Admin Routes - STRICT ISOLATION
@@ -47,6 +49,16 @@ export const AdminRoutes = () => (
       }
     />
     <Route
+      path="/admin/gyms/:gymId/subscription-history"
+      element={
+        <AdminGuard>
+          <TopNavLayout>
+            <GymSubscriptionHistoryPage />
+          </TopNavLayout>
+        </AdminGuard>
+      }
+    />
+    <Route
       path="/admin/gym-owners"
       element={
         <AdminGuard>
@@ -72,6 +84,16 @@ export const AdminRoutes = () => (
         <AdminGuard>
           <TopNavLayout>
             <OccupationMasterPage />
+          </TopNavLayout>
+        </AdminGuard>
+      }
+    />
+    <Route
+      path="/admin/gym-inquiry"
+      element={
+        <AdminGuard>
+          <TopNavLayout>
+            <GymInquiryPage />
           </TopNavLayout>
         </AdminGuard>
       }
