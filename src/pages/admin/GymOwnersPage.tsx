@@ -72,6 +72,7 @@ export function GymOwnersPage() {
   const [selectedViewGym, setSelectedViewGym] = useState<Gym | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<{ email: string; temporaryPassword: string; message: string } | null>(null);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedOwnerPasswordId, setCopiedOwnerPasswordId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -118,6 +119,18 @@ export function GymOwnersPage() {
     );
   }, [owners]);
 
+  // Map owner IDs to their passwords from gyms data
+  const ownerPasswordMap = useMemo(() => {
+    const allGyms = gymsData?.items || [];
+    const map = new Map<string, string>();
+    allGyms.forEach((gym: any) => {
+      if (gym.ownerId && gym.ownerPassword) {
+        map.set(gym.ownerId, gym.ownerPassword);
+      }
+    });
+    return map;
+  }, [gymsData]);
+
   // Available gyms for assignment (not yet assigned to any owner)
   const availableGyms = useMemo(() => {
     const allGyms = gymsData?.items || [];
@@ -144,17 +157,18 @@ export function GymOwnersPage() {
     mutationFn: async (data: OwnerFormData) => {
       // First create the gym owner
       const newOwner = await adminService.createGymOwner(data);
-      
+
       // If a gym is selected (not 'none'), assign it to the new owner
+      // Pass the password so it gets stored in gym.ownerPassword for display
       if (selectedGymId && selectedGymId !== 'none' && newOwner.id) {
         try {
-          await adminService.assignGymOwner(selectedGymId, newOwner.id);
+          await adminService.assignGymOwner(selectedGymId, newOwner.id, data.password);
         } catch (error) {
           console.error('Failed to assign gym:', error);
           toast({ title: 'Owner created but gym assignment failed', variant: 'destructive' });
         }
       }
-      
+
       return newOwner;
     },
     onSuccess: () => {
@@ -252,6 +266,13 @@ export function GymOwnersPage() {
       setTimeout(() => setCopiedPassword(false), 2000);
       toast({ title: 'Password copied to clipboard' });
     }
+  };
+
+  const handleCopyOwnerPassword = (ownerId: string, password: string) => {
+    navigator.clipboard.writeText(password);
+    setCopiedOwnerPasswordId(ownerId);
+    setTimeout(() => setCopiedOwnerPasswordId(null), 2000);
+    toast({ title: 'Password copied to clipboard' });
   };
 
   const onSubmit = (data: OwnerFormData) => {
@@ -560,6 +581,9 @@ export function GymOwnersPage() {
                         <span className="text-xs">Password Hint</span>
                       </TableHead>
                       <TableHead>
+                        <span className="text-xs">Owner Password</span>
+                      </TableHead>
+                      <TableHead>
                         <Button variant="ghost" onClick={() => handleSort('ownedGym')} className="h-8 px-2 -ml-2">
                           Assigned Gym
                           {getSortIcon('ownedGym')}
@@ -594,6 +618,28 @@ export function GymOwnersPage() {
                         <TableCell>
                           {(owner as any).passwordHint ? (
                             <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{(owner as any).passwordHint}</code>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {ownerPasswordMap.get(owner.id) ? (
+                            <div className="flex items-center gap-1">
+                              <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{ownerPasswordMap.get(owner.id)}</code>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleCopyOwnerPassword(owner.id, ownerPasswordMap.get(owner.id)!)}
+                              >
+                                {copiedOwnerPasswordId === owner.id ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">-</span>
                           )}
@@ -647,7 +693,7 @@ export function GymOwnersPage() {
                       </TableRow>
                     )) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           No gym owners found
                         </TableCell>
                       </TableRow>

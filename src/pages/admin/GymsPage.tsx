@@ -3,20 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { 
-  Plus, 
-  Search, 
-  Building2, 
-  MoreVertical, 
-  Edit, 
-  Trash2, 
-  Power, 
-  ChevronLeft, 
-  ChevronRight, 
-  Upload, 
-  X, 
-  Eye, 
-  FileText, 
+import {
+  Plus,
+  Search,
+  Building2,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Power,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  X,
+  Eye,
+  FileText,
   History,
   RefreshCw,
   TrendingUp,
@@ -29,7 +29,10 @@ import {
   RotateCcw,
   Clock,
   Receipt,
-  IndianRupee
+  IndianRupee,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -188,6 +191,8 @@ export function GymsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<GymSubscriptionStatus | 'all'>('all');
+  const [sortBy, setSortBy] = useState<string>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -235,11 +240,23 @@ export function GymsPage() {
   // Reset page when filter changes
   useEffect(() => {
     setPage(1);
-  }, [planFilter]);
+  }, [planFilter, statusFilter]);
 
+  // Convert statusFilter to API format (only pass valid server-side statuses)
+  const apiStatusFilter = (statusFilter !== 'all')
+    ? statusFilter as 'ACTIVE' | 'EXPIRED' | 'EXPIRING_SOON'
+    : undefined;
+
+  // Main query for filtered gym list
   const { data, isLoading } = useQuery({
-    queryKey: ['gyms', debouncedSearch],
-    queryFn: () => adminService.getGyms(1, 100, debouncedSearch),
+    queryKey: ['gyms', debouncedSearch, statusFilter, sortBy, sortOrder],
+    queryFn: () => adminService.getGyms(1, 100, debouncedSearch, apiStatusFilter, sortBy, sortOrder),
+  });
+
+  // Separate query for all gyms (used for stats calculation)
+  const { data: allGymsData } = useQuery({
+    queryKey: ['gyms-all', debouncedSearch, sortBy, sortOrder],
+    queryFn: () => adminService.getGyms(1, 100, debouncedSearch, undefined, sortBy, sortOrder),
   });
 
   const { data: plans } = useQuery({
@@ -651,36 +668,35 @@ export function GymsPage() {
 
   const availableOwners = Array.isArray(owners) ? owners.filter((o: User) => !o.ownedGym) : [];
 
-  // Get gyms data from response and apply client-side filters
-  const allGyms = data?.items || [];
-  
-  // Apply plan filter
-  const planFilteredGyms = planFilter === 'all' 
-    ? allGyms 
-    : allGyms.filter((gym: Gym) => gym.subscriptionPlanId === planFilter);
-  
-  // Apply status filter
-  const filteredGyms = statusFilter === 'all'
-    ? planFilteredGyms
-    : planFilteredGyms.filter((gym: Gym) => getGymSubscriptionStatus(gym) === statusFilter);
-  
+  // Get gyms data from response
+  // Note: subscriptionStatus filter is now applied server-side
+  const serverFilteredGyms = data?.items || [];
+
+  // All gyms (unfiltered by status) for stats calculation
+  const allGymsForStats = allGymsData?.items || [];
+
+  // Apply plan filter (client-side) to server-filtered results
+  const filteredGyms = planFilter === 'all'
+    ? serverFilteredGyms
+    : serverFilteredGyms.filter((gym: Gym) => gym.subscriptionPlanId === planFilter);
+
   // Client-side pagination
   const totalPages = Math.ceil(filteredGyms.length / itemsPerPage);
   const startIndex = (page - 1) * itemsPerPage;
   const gyms = filteredGyms.slice(startIndex, startIndex + itemsPerPage);
 
-  // Subscription stats
+  // Subscription stats - calculated from ALL gyms (not filtered by status)
   const subscriptionStats = useMemo(() => {
-    const stats = { 
-      NEW: 0, 
-      ACTIVE: 0, 
-      EXPIRING_SOON: 0, 
+    const stats = {
+      NEW: 0,
+      ACTIVE: 0,
+      EXPIRING_SOON: 0,
       EXPIRED: 0,
       totalSubscriptionAmount: 0,
       totalPaidAmount: 0,
       totalPendingAmount: 0
     };
-    allGyms.forEach((gym: Gym) => {
+    allGymsForStats.forEach((gym: Gym) => {
       const status = getGymSubscriptionStatus(gym);
       stats[status]++;
       // Sum up payment totals
@@ -689,7 +705,30 @@ export function GymsPage() {
       stats.totalPendingAmount += gym.totalPendingAmount || 0;
     });
     return stats;
-  }, [allGyms]);
+  }, [allGymsForStats]);
+
+  // Sort toggle handler
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      // Toggle order if same column
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+    setPage(1); // Reset to first page on sort change
+  };
+
+  // Sort icon component
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="ml-1 h-4 w-4 text-muted-foreground" />;
+    }
+    return sortOrder === 'asc'
+      ? <ArrowUp className="ml-1 h-4 w-4" />
+      : <ArrowDown className="ml-1 h-4 w-4" />;
+  };
 
   return (
     <div className="space-y-6">
@@ -1011,22 +1050,6 @@ export function GymsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card 
-          className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'NEW' ? 'ring-2 ring-blue-500' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'NEW' ? 'all' : 'NEW')}
-        >
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-blue-600">{subscriptionStats.NEW}</p>
-                <p className="text-xs text-muted-foreground">No Plan</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Plus className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
@@ -1066,7 +1089,6 @@ export function GymsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="NEW">No Subscription</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="EXPIRING_SOON">Expiring (incl. Today)</SelectItem>
                   <SelectItem value="EXPIRED">Expired</SelectItem>
@@ -1086,12 +1108,36 @@ export function GymsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Gym</TableHead>
-                      <TableHead>Contact</TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('name')}
+                          className="flex items-center hover:text-foreground font-medium"
+                        >
+                          Gym
+                          <SortIcon column="name" />
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('email')}
+                          className="flex items-center hover:text-foreground font-medium"
+                        >
+                          Contact
+                          <SortIcon column="email" />
+                        </button>
+                      </TableHead>
                       <TableHead>Owner</TableHead>
                       <TableHead>Plan</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Subscription</TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('subscriptionEnd')}
+                          className="flex items-center hover:text-foreground font-medium"
+                        >
+                          Subscription
+                          <SortIcon column="subscriptionEnd" />
+                        </button>
+                      </TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
@@ -1309,7 +1355,7 @@ export function GymsPage() {
                   <div className="flex items-center gap-4">
                     <p className="text-sm text-muted-foreground">
                       Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredGyms.length)} of {filteredGyms.length} gyms
-                      {planFilter !== 'all' && ` (filtered from ${allGyms.length} total)`}
+                      {(planFilter !== 'all' || statusFilter !== 'all') && ` (filtered from ${allGymsForStats.length} total)`}
                     </p>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Rows per page:</span>

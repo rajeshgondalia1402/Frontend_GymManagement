@@ -45,10 +45,26 @@ export const adminService = {
   },
 
   // Gyms
-  async getGyms(page = 1, limit = 100, search = ''): Promise<{ items: Gym[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+  async getGyms(
+    page = 1,
+    limit = 100,
+    search = '',
+    subscriptionStatus?: 'ACTIVE' | 'EXPIRED' | 'EXPIRING_SOON',
+    sortBy?: string,
+    sortOrder?: 'asc' | 'desc'
+  ): Promise<{ items: Gym[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const params: Record<string, any> = { page, limit };
     if (search && search.trim()) {
       params.search = search.trim();
+    }
+    if (subscriptionStatus) {
+      params.subscriptionStatus = subscriptionStatus;
+    }
+    if (sortBy) {
+      params.sortBy = sortBy;
+    }
+    if (sortOrder) {
+      params.sortOrder = sortOrder;
     }
     console.debug('Fetching gyms with params:', params);
     const response = await api.get<{ success: boolean; message: string; data: { items: Gym[]; pagination: { page: number; limit: number; total: number; totalPages: number } } }>('/admin/gyms', { params });
@@ -195,10 +211,13 @@ export const adminService = {
     return response.data.data;
   },
 
-  async assignGymOwner(gymId: string, ownerId: string): Promise<Gym> {
+  async assignGymOwner(gymId: string, ownerId: string, password?: string): Promise<Gym> {
     const url = `/admin/gyms/${gymId}/assign-owner`;
-    const payload = { ownerId };
-    console.debug('Assign gym owner - URL:', url, 'Payload:', payload);
+    const payload: { ownerId: string; password?: string } = { ownerId };
+    if (password) {
+      payload.password = password;
+    }
+    console.debug('Assign gym owner - URL:', url, 'Payload:', { ...payload, password: payload.password ? '***' : undefined });
     try {
       const response = await api.patch<ApiResponse<Gym>>(url, payload);
       console.debug('Assign owner response:', response.data);
