@@ -559,4 +559,48 @@ export const adminService = {
     const response = await api.post<ApiResponse<GymInquiryFollowup>>(`/admin/gym-inquiries/${id}/followups`, data);
     return response.data.data;
   },
+
+  // =====================================================
+  // Members (for gym owner accordion report)
+  // =====================================================
+
+  /**
+   * Get members with optional filters (for admin accordion report)
+   * @param params - Query parameters including gymId for filtering by gym
+   */
+  async getMembers(params: {
+    gymId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  } = {}): Promise<{ items: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParams: Record<string, any> = {
+      page: params.page || 1,
+      limit: params.limit || 100,
+    };
+
+    if (params.gymId) queryParams.gymId = params.gymId;
+    if (params.search) queryParams.search = params.search;
+    if (params.membershipStatus) queryParams.membershipStatus = params.membershipStatus;
+
+    console.debug('Fetching members with params:', queryParams);
+    const response = await api.get<ApiResponse<any>>('/admin/members', { params: queryParams });
+    console.debug('Members response:', response.data);
+
+    const data = response.data.data;
+
+    // Handle both array and paginated response formats
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        pagination: (response.data as any).pagination || { page: 1, limit: 100, total: data.length, totalPages: 1 }
+      };
+    }
+
+    return {
+      items: data.items || data.members || [],
+      pagination: data.pagination || { page: 1, limit: 100, total: 0, totalPages: 1 }
+    };
+  },
 };

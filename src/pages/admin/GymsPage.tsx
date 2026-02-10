@@ -32,7 +32,8 @@ import {
   IndianRupee,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -730,6 +731,110 @@ export function GymsPage() {
       : <ArrowDown className="ml-1 h-4 w-4" />;
   };
 
+  // Export to Excel
+  const exportToExcel = () => {
+    if (!filteredGyms || filteredGyms.length === 0) {
+      toast({ title: 'No data to export', variant: 'destructive' });
+      return;
+    }
+
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8">';
+    html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+    html += '<x:Name>Gyms Report</x:Name>';
+    html += '<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane><x:ActivePane>2</x:ActivePane></x:WorksheetOptions>';
+    html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    html += '<style>';
+    html += 'table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }';
+    html += 'th { background-color: #4F46E5; color: white; font-weight: bold; padding: 12px 8px; border: 1px solid #3730A3; text-align: left; }';
+    html += 'td { border: 1px solid #E5E7EB; padding: 8px; }';
+    html += 'tr:nth-child(even) { background-color: #F9FAFB; }';
+    html += 'tr:hover { background-color: #F3F4F6; }';
+    html += '.amount { color: #059669; font-weight: bold; }';
+    html += '.due { color: #DC2626; font-weight: bold; }';
+    html += '.active { color: #059669; font-weight: bold; }';
+    html += '.inactive { color: #6B7280; font-weight: bold; }';
+    html += '.expired { color: #DC2626; font-weight: bold; }';
+    html += '</style></head><body>';
+
+    html += '<table><thead><tr>';
+    html += '<th>S.No</th>';
+    html += '<th>Gym Name</th>';
+    html += '<th>Address</th>';
+    html += '<th>City</th>';
+    html += '<th>State</th>';
+    html += '<th>Zipcode</th>';
+    html += '<th>Email</th>';
+    html += '<th>Mobile No</th>';
+    html += '<th>Phone No</th>';
+    html += '<th>Website</th>';
+    html += '<th>GST Reg No</th>';
+    html += '<th>Member Size</th>';
+    html += '<th>Owner Name</th>';
+    html += '<th>Owner Email</th>';
+    html += '<th>Subscription Plan</th>';
+    html += '<th>Plan Price</th>';
+    html += '<th>Total Amount</th>';
+    html += '<th>Paid Amount</th>';
+    html += '<th>Pending Amount</th>';
+    html += '<th>Subscription Start</th>';
+    html += '<th>Subscription End</th>';
+    html += '<th>Days Remaining</th>';
+    html += '<th>Subscription Status</th>';
+    html += '<th>Gym Status</th>';
+    html += '<th>Note</th>';
+    html += '<th>Created At</th>';
+    html += '</tr></thead><tbody>';
+
+    filteredGyms.forEach((gym: Gym, index: number) => {
+      const subscriptionStatus = getGymSubscriptionStatus(gym);
+      const daysRemaining = getGymDaysRemaining(gym);
+      const statusLabel = subscriptionStatus === 'EXPIRING_SOON' ? 'Expiring Soon' : subscriptionStatus === 'NEW' ? 'No Subscription' : subscriptionStatus;
+      const statusClass = subscriptionStatus === 'ACTIVE' ? 'active' : subscriptionStatus === 'EXPIRED' ? 'expired' : '';
+
+      html += '<tr>';
+      html += `<td>${index + 1}</td>`;
+      html += `<td>${gym.name || '-'}</td>`;
+      html += `<td>${[gym.address1 || gym.address, gym.address2].filter(Boolean).join(', ') || '-'}</td>`;
+      html += `<td>${gym.city || '-'}</td>`;
+      html += `<td>${gym.state || '-'}</td>`;
+      html += `<td>${gym.zipcode || '-'}</td>`;
+      html += `<td>${gym.email || '-'}</td>`;
+      html += `<td>${gym.mobileNo || '-'}</td>`;
+      html += `<td>${gym.phoneNo || gym.phone || '-'}</td>`;
+      html += `<td>${gym.website || '-'}</td>`;
+      html += `<td>${gym.gstRegNo || '-'}</td>`;
+      html += `<td>${gym.memberSize || '-'}</td>`;
+      html += `<td>${gym.owner?.name || '-'}</td>`;
+      html += `<td>${gym.owner?.email || '-'}</td>`;
+      html += `<td>${gym.subscriptionPlan?.name || '-'}</td>`;
+      html += `<td class="amount">${gym.subscriptionPlan?.price ? formatCurrency(gym.subscriptionPlan.price) : '-'}</td>`;
+      html += `<td class="amount">${(gym.totalSubscriptionAmount || 0) > 0 ? formatCurrency(gym.totalSubscriptionAmount || 0) : '-'}</td>`;
+      html += `<td class="amount">${(gym.totalPaidAmount || 0) > 0 ? formatCurrency(gym.totalPaidAmount || 0) : '-'}</td>`;
+      html += `<td class="${(gym.totalPendingAmount || 0) > 0 ? 'due' : ''}">${(gym.totalPendingAmount || 0) > 0 ? formatCurrency(gym.totalPendingAmount || 0) : '-'}</td>`;
+      html += `<td>${formatDate(gym.subscriptionStart)}</td>`;
+      html += `<td>${formatDate(gym.subscriptionEnd)}</td>`;
+      html += `<td>${daysRemaining !== null && daysRemaining !== undefined && daysRemaining >= 0 ? `${daysRemaining} days` : '-'}</td>`;
+      html += `<td class="${statusClass}">${statusLabel}</td>`;
+      html += `<td class="${gym.isActive ? 'active' : 'inactive'}">${gym.isActive ? 'Active' : 'Inactive'}</td>`;
+      html += `<td>${gym.note || '-'}</td>`;
+      html += `<td>${formatDate(gym.createdAt)}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></body></html>';
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().split('T')[0];
+    a.download = `gyms_report_${timestamp}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Gyms report exported successfully' });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -737,6 +842,15 @@ export function GymsPage() {
           <h1 className="text-3xl font-bold">Gyms</h1>
           <p className="text-muted-foreground">Manage all gyms in the system</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={exportToExcel}
+            disabled={!filteredGyms || filteredGyms.length === 0}
+            className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
@@ -980,6 +1094,7 @@ export function GymsPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Subscription Status Summary Cards */}
@@ -1104,42 +1219,42 @@ export function GymsPage() {
             </div>
           ) : (
             <>
-              <div className="rounded-md border">
+              <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="py-3">
                         <button
                           onClick={() => handleSort('name')}
-                          className="flex items-center hover:text-foreground font-medium"
+                          className="flex items-center text-white hover:text-gray-200 font-semibold"
                         >
                           Gym
                           <SortIcon column="name" />
                         </button>
                       </TableHead>
-                      <TableHead>
+                      <TableHead className="py-3">
                         <button
                           onClick={() => handleSort('email')}
-                          className="flex items-center hover:text-foreground font-medium"
+                          className="flex items-center text-white hover:text-gray-200 font-semibold"
                         >
                           Contact
                           <SortIcon column="email" />
                         </button>
                       </TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Owner</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Plan</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Amount</TableHead>
+                      <TableHead className="py-3">
                         <button
                           onClick={() => handleSort('subscriptionEnd')}
-                          className="flex items-center hover:text-foreground font-medium"
+                          className="flex items-center text-white hover:text-gray-200 font-semibold"
                         >
                           Subscription
                           <SortIcon column="subscriptionEnd" />
                         </button>
                       </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

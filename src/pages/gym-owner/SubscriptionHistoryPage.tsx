@@ -322,14 +322,14 @@ export function SubscriptionHistoryPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Sub. No.</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="py-3 text-white font-semibold">Sub. No.</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Plan</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Type</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Period</TableHead>
+                      <TableHead className="text-right py-3 text-white font-semibold">Amount</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="text-right py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

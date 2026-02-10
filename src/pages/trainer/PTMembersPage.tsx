@@ -93,14 +93,14 @@ export function PTMembersPage() {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Package</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                    <TableHead className="py-3 text-white font-semibold">Name</TableHead>
+                    <TableHead className="py-3 text-white font-semibold">Email</TableHead>
+                    <TableHead className="py-3 text-white font-semibold">Package</TableHead>
+                    <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                    <TableHead className="py-3 text-white font-semibold">Start Date</TableHead>
+                    <TableHead className="py-3 text-white font-semibold">End Date</TableHead>
+                    <TableHead className="text-right py-3 text-white font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

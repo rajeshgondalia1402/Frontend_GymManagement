@@ -422,15 +422,15 @@ export function TrainerSalarySettlementPage() {
 
   const SortableHeader = ({ column, label }: { column: string; label: string }) => (
     <TableHead
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-white/10 py-3"
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 text-white font-semibold">
         {label}
         {sortBy === column ? (
           sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
         ) : (
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-300" />
         )}
       </div>
     </TableHead>
@@ -833,17 +833,17 @@ export function TrainerSalarySettlementPage() {
               <div className="rounded-md border overflow-x-auto">
                 <Table className="min-w-[1000px]">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                       <SortableHeader column="trainerName" label="Trainer" />
                       <SortableHeader column="salaryMonth" label="Salary Month" />
-                      <TableHead>Days (P/A/D)</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Days (P/A/D)</TableHead>
                       <SortableHeader column="calculatedSalary" label="Calculated" />
-                      <TableHead>Incentive</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Incentive</TableHead>
                       <SortableHeader column="finalPayableAmount" label="Final Amount" />
-                      <TableHead>Payment Mode</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Payment Mode</TableHead>
                       <SortableHeader column="salarySentDate" label="Sent Date" />
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

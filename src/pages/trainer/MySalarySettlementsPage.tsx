@@ -97,15 +97,15 @@ export function MySalarySettlementsPage() {
 
   const SortableHeader = ({ column, label }: { column: string; label: string }) => (
     <TableHead
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-white/10 py-3"
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 text-white font-semibold">
         {label}
         {sortBy === column ? (
           sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
         ) : (
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-300" />
         )}
       </div>
     </TableHead>
@@ -548,16 +548,16 @@ export function MySalarySettlementsPage() {
               <div className="hidden md:block rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                       <SortableHeader column="salaryMonth" label="Month" />
-                      <TableHead>Attendance</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Attendance</TableHead>
                       <SortableHeader column="calculatedSalary" label="Calculated" />
-                      <TableHead>Incentive</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Incentive</TableHead>
                       <SortableHeader column="finalPayableAmount" label="Final Amount" />
-                      <TableHead>Payment</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Payment</TableHead>
                       <SortableHeader column="salarySentDate" label="Sent Date" />
-                      <TableHead className="w-[80px]">Action</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

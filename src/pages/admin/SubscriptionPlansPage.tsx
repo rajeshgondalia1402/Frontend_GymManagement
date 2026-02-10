@@ -506,45 +506,45 @@ export function SubscriptionPlansPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>
+                  <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                    <TableHead className="py-3">
                       <button
                         onClick={() => handleSort('name')}
-                        className="flex items-center gap-1 hover:text-foreground"
+                        className="flex items-center gap-1 text-white hover:text-gray-200 font-semibold"
                       >
                         Plan Name
                         <ArrowUpDown className="h-3 w-3" />
                       </button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="py-3">
                       <button
                         onClick={() => handleSort('price')}
-                        className="flex items-center gap-1 hover:text-foreground"
+                        className="flex items-center gap-1 text-white hover:text-gray-200 font-semibold"
                       >
                         Price
                         <ArrowUpDown className="h-3 w-3" />
                       </button>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="py-3">
                       <button
                         onClick={() => handleSort('durationDays')}
-                        className="flex items-center gap-1 hover:text-foreground"
+                        className="flex items-center gap-1 text-white hover:text-gray-200 font-semibold"
                       >
                         Duration
                         <ArrowUpDown className="h-3 w-3" />
                       </button>
                     </TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>
+                    <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                    <TableHead className="py-3">
                       <button
                         onClick={() => handleSort('createdAt')}
-                        className="flex items-center gap-1 hover:text-foreground"
+                        className="flex items-center gap-1 text-white hover:text-gray-200 font-semibold"
                       >
                         Created
                         <ArrowUpDown className="h-3 w-3" />
                       </button>
                     </TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right py-3 text-white font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

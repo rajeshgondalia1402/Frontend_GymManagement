@@ -391,15 +391,15 @@ export function EnquiryMasterPage() {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block rounded-md border">
+              <div className="hidden md:block rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created At</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Name</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Created At</TableHead>
+                      <TableHead className="w-[100px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
