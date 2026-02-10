@@ -303,6 +303,21 @@ export const gymOwnerService = {
     return response.data.data;
   },
 
+  async resetMemberPassword(id: string): Promise<{
+    memberId: string;
+    email: string;
+    temporaryPassword: string;
+    message: string;
+  }> {
+    const response = await api.post<ApiResponse<{
+      memberId: string;
+      email: string;
+      temporaryPassword: string;
+      message: string;
+    }>>(`/gym-owner/members/${id}/reset-password`);
+    return response.data.data;
+  },
+
   // Diet Plans
   async getDietPlans(): Promise<DietPlan[]> {
     const response = await api.get('/gym-owner/diet-plans');
