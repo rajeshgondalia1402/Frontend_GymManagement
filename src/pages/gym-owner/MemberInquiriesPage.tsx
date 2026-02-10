@@ -438,30 +438,30 @@ export function MemberInquiriesPage() {
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-white/10 py-3"
                         onClick={() => handleSort('fullName')}
                       >
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-white font-semibold">
                           Name
-                          <ArrowUpDown className="h-4 w-4" />
+                          <ArrowUpDown className="h-4 w-4 text-gray-300" />
                         </div>
                       </TableHead>
-                      <TableHead>Contact</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Contact</TableHead>
                       <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-white/10 py-3"
                         onClick={() => handleSort('inquiryDate')}
                       >
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-white font-semibold">
                           Inquiry Date
-                          <ArrowUpDown className="h-4 w-4" />
+                          <ArrowUpDown className="h-4 w-4 text-gray-300" />
                         </div>
                       </TableHead>
-                      <TableHead>Follow Up</TableHead>
-                      <TableHead>Gender</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Follow Up</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Gender</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

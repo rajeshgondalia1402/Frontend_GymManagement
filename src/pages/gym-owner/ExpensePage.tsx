@@ -296,15 +296,15 @@ export function ExpensePage() {
 
   const SortableHeader = ({ column, label }: { column: string; label: string }) => (
     <TableHead
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-white/10 py-3"
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 text-white font-semibold">
         {label}
         {sortBy === column ? (
           sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
         ) : (
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-300" />
         )}
       </div>
     </TableHead>
@@ -515,15 +515,15 @@ export function ExpensePage() {
               <div className="rounded-md border overflow-x-auto">
                 <Table className="min-w-[800px]">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                       <SortableHeader column="expenseDate" label="Date" />
                       <SortableHeader column="name" label="Expense Name" />
-                      <TableHead>Expense Group</TableHead>
-                      <TableHead>Payment Mode</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Expense Group</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Payment Mode</TableHead>
                       <SortableHeader column="amount" label="Amount" />
-                      <TableHead>Attachments</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Attachments</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

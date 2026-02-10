@@ -579,15 +579,15 @@ export function MembersPage() {
 
   const SortableHeader = ({ column, label }: { column: string; label: string }) => (
     <TableHead
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-white/10 py-3"
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 text-white font-semibold">
         {label}
         {sortBy === column ? (
           sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
         ) : (
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-300" />
         )}
       </div>
     </TableHead>
@@ -784,17 +784,17 @@ export function MembersPage() {
               <div className="rounded-md border overflow-x-auto">
                 <Table className="min-w-[800px]">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">#</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                       <SortableHeader column="firstName" label="Member" />
                       <SortableHeader column="memberId" label="Member ID" />
-                      <TableHead>Type</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Type</TableHead>
                       <SortableHeader column="phone" label="Phone" />
                       <SortableHeader column="finalFees" label="Fees" />
                       <SortableHeader column="membershipEnd" label="Membership End" />
                       <SortableHeader column="membershipEnd" label="Remaining Days" />
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1651,14 +1651,14 @@ export function MembersPage() {
                     <div className="max-h-[180px] overflow-y-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="text-xs">Receipt</TableHead>
-                            {hasPTMembership && <TableHead className="text-xs">Type</TableHead>}
-                            <TableHead className="text-xs">Date</TableHead>
-                            <TableHead className="text-xs">Amount</TableHead>
-                            <TableHead className="text-xs">Mode</TableHead>
-                            <TableHead className="text-xs">Next Due</TableHead>
-                            {!isSelectedMemberExpired && <TableHead className="text-xs w-[50px]"></TableHead>}
+                          <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                            <TableHead className="text-xs py-2 text-white font-semibold">Receipt</TableHead>
+                            {hasPTMembership && <TableHead className="text-xs py-2 text-white font-semibold">Type</TableHead>}
+                            <TableHead className="text-xs py-2 text-white font-semibold">Date</TableHead>
+                            <TableHead className="text-xs py-2 text-white font-semibold">Amount</TableHead>
+                            <TableHead className="text-xs py-2 text-white font-semibold">Mode</TableHead>
+                            <TableHead className="text-xs py-2 text-white font-semibold">Next Due</TableHead>
+                            {!isSelectedMemberExpired && <TableHead className="text-xs w-[50px] py-2 text-white font-semibold"></TableHead>}
                           </TableRow>
                         </TableHeader>
                         <TableBody>

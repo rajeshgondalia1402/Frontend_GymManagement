@@ -529,15 +529,15 @@ export function TrainersPage() {
 
   const SortableHeader = ({ column, label }: { column: string; label: string }) => (
     <TableHead
-      className="cursor-pointer hover:bg-muted/50"
+      className="cursor-pointer hover:bg-white/10 py-3"
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 text-white font-semibold">
         {label}
         {sortBy === column ? (
           sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
         ) : (
-          <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+          <ArrowUpDown className="h-4 w-4 text-gray-300" />
         )}
       </div>
     </TableHead>
@@ -616,18 +616,18 @@ export function TrainersPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40px]"></TableHead>
-                      <TableHead className="w-[50px]">#</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="w-[40px] py-3 text-white font-semibold"></TableHead>
+                      <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                       <SortableHeader column="firstName" label="Trainer" />
                       <SortableHeader column="phone" label="Phone" />
                       <SortableHeader column="specialization" label="Specialization" />
                       <SortableHeader column="experience" label="Experience" />
                       <SortableHeader column="salary" label="Salary" />
                       <SortableHeader column="joiningDate" label="Joining Date" />
-                      <TableHead>PT Members</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">PT Members</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
