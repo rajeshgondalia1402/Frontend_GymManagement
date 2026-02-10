@@ -25,7 +25,8 @@ import {
   EyeOff,
   Package,
   Receipt,
-  Banknote
+  Banknote,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -71,9 +72,16 @@ function isSubmenuItem(item: NavEntry): item is NavItemWithSubmenu {
 const navItemsByRole: Record<Role, NavEntry[]> = {
   ADMIN: [
     { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { title: 'Gyms', href: '/admin/gyms', icon: Building2 },
-    { title: 'Gym Owners', href: '/admin/gym-owners', icon: Users },
     { title: 'Subscription Plans', href: '/admin/subscription-plans', icon: CreditCard },
+    {
+      title: 'Manage Gyms',
+      icon: Building2,
+      submenu: [
+        { title: 'Gym Inquiry', href: '/admin/gym-inquiry', icon: ClipboardCheck },
+        { title: 'New Gyms', href: '/admin/gyms', icon: Building2 },
+        { title: 'Gym Owners', href: '/admin/gym-owners', icon: Users },
+      ],
+    },
     {
       title: 'Master',
       icon: FolderCog,
@@ -93,8 +101,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
         { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users }, 
         { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
-        { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed },
-        { title: 'Assign Diet Plan', href: '/gym-owner/assign-diet', icon: UtensilsCrossed }, 
+        { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed }, 
       ],
     },
     {
@@ -113,8 +120,8 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
         { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
-        { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
-        { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
+        // { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
+        // { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
       ],
     },
   ],
@@ -122,6 +129,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Dashboard', href: '/trainer', icon: LayoutDashboard },
     { title: 'My PT Members', href: '/trainer/pt-members', icon: Users },
     { title: 'My Salary', href: '/trainer/salary-settlements', icon: Banknote },
+    { title: 'My Profile', href: '/trainer/profile', icon: User },
   ],
   MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
@@ -259,6 +267,18 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
     setOpenDropdown(openDropdown === title ? null : title);
   };
 
+  // Get the correct profile route based on user role
+  const getProfileRoute = () => {
+    const profileRoutes: Record<Role, string> = {
+      ADMIN: '/admin', // Admin doesn't have a separate profile page yet
+      GYM_OWNER: '/gym-owner', // Gym owner doesn't have a separate profile page yet
+      TRAINER: '/trainer/profile',
+      MEMBER: '/member',
+      PT_MEMBER: '/member',
+    };
+    return profileRoutes[user.role as Role] || '/';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Top Navigation Header */}
@@ -374,7 +394,7 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <DropdownMenuItem onClick={() => navigate(getProfileRoute())}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
@@ -494,7 +514,7 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                       variant="ghost"
                       className="w-full justify-start"
                       onClick={() => {
-                        navigate('/profile');
+                        navigate(getProfileRoute());
                         setMobileMenuOpen(false);
                       }}
                     >

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Users, MoreVertical, Power, Building2, Search, Edit, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Eye } from 'lucide-react';
+import { Plus, Users, MoreVertical, Power, Building2, Search, Edit, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Eye, KeyRound, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,8 +66,13 @@ export function GymOwnersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewGymDialogOpen, setViewGymDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordResultDialogOpen, setResetPasswordResultDialogOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<User | null>(null);
   const [selectedViewGym, setSelectedViewGym] = useState<Gym | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ email: string; temporaryPassword: string; message: string } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedOwnerPasswordId, setCopiedOwnerPasswordId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -114,6 +119,18 @@ export function GymOwnersPage() {
     );
   }, [owners]);
 
+  // Map owner IDs to their passwords from gyms data
+  const ownerPasswordMap = useMemo(() => {
+    const allGyms = gymsData?.items || [];
+    const map = new Map<string, string>();
+    allGyms.forEach((gym: any) => {
+      if (gym.ownerId && gym.ownerPassword) {
+        map.set(gym.ownerId, gym.ownerPassword);
+      }
+    });
+    return map;
+  }, [gymsData]);
+
   // Available gyms for assignment (not yet assigned to any owner)
   const availableGyms = useMemo(() => {
     const allGyms = gymsData?.items || [];
@@ -140,17 +157,18 @@ export function GymOwnersPage() {
     mutationFn: async (data: OwnerFormData) => {
       // First create the gym owner
       const newOwner = await adminService.createGymOwner(data);
-      
+
       // If a gym is selected (not 'none'), assign it to the new owner
+      // Pass the password so it gets stored in gym.ownerPassword for display
       if (selectedGymId && selectedGymId !== 'none' && newOwner.id) {
         try {
-          await adminService.assignGymOwner(selectedGymId, newOwner.id);
+          await adminService.assignGymOwner(selectedGymId, newOwner.id, data.password);
         } catch (error) {
           console.error('Failed to assign gym:', error);
           toast({ title: 'Owner created but gym assignment failed', variant: 'destructive' });
         }
       }
-      
+
       return newOwner;
     },
     onSuccess: () => {
@@ -215,6 +233,47 @@ export function GymOwnersPage() {
       toast({ title: message, variant: 'destructive' });
     },
   });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: adminService.resetGymOwnerPassword,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['gym-owners'] });
+      setResetPasswordDialogOpen(false);
+      setResetPasswordResult(data);
+      setResetPasswordResultDialogOpen(true);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || error?.message || 'Failed to reset password';
+      toast({ title: message, variant: 'destructive' });
+    },
+  });
+
+  const handleResetPasswordClick = (owner: User) => {
+    setSelectedOwner(owner);
+    setResetPasswordDialogOpen(true);
+  };
+
+  const handleConfirmResetPassword = () => {
+    if (selectedOwner) {
+      resetPasswordMutation.mutate(selectedOwner.id);
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (resetPasswordResult?.temporaryPassword) {
+      navigator.clipboard.writeText(resetPasswordResult.temporaryPassword);
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
+      toast({ title: 'Password copied to clipboard' });
+    }
+  };
+
+  const handleCopyOwnerPassword = (ownerId: string, password: string) => {
+    navigator.clipboard.writeText(password);
+    setCopiedOwnerPasswordId(ownerId);
+    setTimeout(() => setCopiedOwnerPasswordId(null), 2000);
+    toast({ title: 'Password copied to clipboard' });
+  };
 
   const onSubmit = (data: OwnerFormData) => {
     createMutation.mutate(data);
@@ -519,6 +578,12 @@ export function GymOwnersPage() {
                         </Button>
                       </TableHead>
                       <TableHead>
+                        <span className="text-xs">Password Hint</span>
+                      </TableHead>
+                      <TableHead>
+                        <span className="text-xs">Owner Password</span>
+                      </TableHead>
+                      <TableHead>
                         <Button variant="ghost" onClick={() => handleSort('ownedGym')} className="h-8 px-2 -ml-2">
                           Assigned Gym
                           {getSortIcon('ownedGym')}
@@ -550,6 +615,35 @@ export function GymOwnersPage() {
                           </div>
                         </TableCell>
                         <TableCell>{owner.email}</TableCell>
+                        <TableCell>
+                          {(owner as any).passwordHint ? (
+                            <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{(owner as any).passwordHint}</code>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {ownerPasswordMap.get(owner.id) ? (
+                            <div className="flex items-center gap-1">
+                              <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{ownerPasswordMap.get(owner.id)}</code>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleCopyOwnerPassword(owner.id, ownerPasswordMap.get(owner.id)!)}
+                              >
+                                {copiedOwnerPasswordId === owner.id ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {owner.ownedGym?.name || (owner as any).gymName ? (
                             <button
@@ -585,6 +679,10 @@ export function GymOwnersPage() {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleResetPasswordClick(owner)}>
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                Reset Password
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(owner.id)}>
                                 <Power className="mr-2 h-4 w-4" />
                                 {owner.isActive ? 'Deactivate' : 'Activate'}
@@ -595,7 +693,7 @@ export function GymOwnersPage() {
                       </TableRow>
                     )) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           No gym owners found
                         </TableCell>
                       </TableRow>
@@ -880,6 +978,106 @@ export function GymOwnersPage() {
                   Close
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Confirmation Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) setSelectedOwner(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-orange-500" />
+              Reset Password
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-sm text-orange-800">
+                Are you sure you want to reset the password for <strong>{selectedOwner?.name || selectedOwner?.email}</strong>?
+              </p>
+              <p className="text-xs text-orange-600 mt-2">
+                This will generate a new temporary password that must be shared securely with the gym owner.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => setResetPasswordDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="button" 
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+                onClick={handleConfirmResetPassword}
+                disabled={resetPasswordMutation.isPending}
+              >
+                {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Result Dialog */}
+      <Dialog open={resetPasswordResultDialogOpen} onOpenChange={(open) => {
+        setResetPasswordResultDialogOpen(open);
+        if (!open) {
+          setResetPasswordResult(null);
+          setCopiedPassword(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Check className="h-5 w-5" />
+              Password Reset Successful
+            </DialogTitle>
+          </DialogHeader>
+          {resetPasswordResult && (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-medium">{resetPasswordResult.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Temporary Password</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 px-3 py-2 bg-white border rounded font-mono text-lg tracking-wider">
+                      {resetPasswordResult.temporaryPassword}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopyPassword}
+                      className="shrink-0"
+                    >
+                      {copiedPassword ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800">
+                  <strong>Important:</strong> {resetPasswordResult.message}
+                </p>
+              </div>
+              <Button 
+                type="button" 
+                className="w-full"
+                onClick={() => setResetPasswordResultDialogOpen(false)}
+              >
+                Done
+              </Button>
             </div>
           )}
         </DialogContent>

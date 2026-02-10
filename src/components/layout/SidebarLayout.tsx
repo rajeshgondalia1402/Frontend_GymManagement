@@ -24,7 +24,8 @@ import {
   KeyRound,
   Eye,
   EyeOff,
-  Package
+  Package,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -70,9 +71,16 @@ function isSubmenuItem(item: NavEntry): item is NavItemWithSubmenu {
 const navItemsByRole: Record<Role, NavEntry[]> = {
   ADMIN: [
     { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { title: 'Gyms', href: '/admin/gyms', icon: Building2 },
-    { title: 'Gym Owners', href: '/admin/gym-owners', icon: Users },
     { title: 'Subscription Plans', href: '/admin/subscription-plans', icon: CreditCard },
+    {
+      title: 'Manage Gyms',
+      icon: Building2,
+      submenu: [
+        { title: 'Gym Inquiry', href: '/admin/gym-inquiry', icon: ClipboardCheck },
+        { title: 'New Gyms', href: '/admin/gyms', icon: Building2 },
+        { title: 'Gym Owners', href: '/admin/gym-owners', icon: Users },
+      ],
+    },
     {
       title: 'Master',
       icon: FolderCog,

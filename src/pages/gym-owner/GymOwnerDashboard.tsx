@@ -15,7 +15,8 @@ import {
   Trophy,
   Zap,
   ArrowRight,
-  Clock
+  Clock,
+  CreditCard
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,8 @@ export function GymOwnerDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['gym-owner-dashboard'],
     queryFn: gymOwnerService.getDashboard,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Live clock effect
@@ -75,9 +78,18 @@ export function GymOwnerDashboard() {
 
   if (!data) return null;
 
+  // Calculate subscription days remaining
+  // Logic: if end date is today or in the future, calculate days remaining
+  // Days = 0 means today is the last day (still valid)
+  // Days < 0 means expired (yesterday or before)
   const subscriptionDaysLeft = data.gym?.subscriptionEnd
-    ? Math.ceil((new Date(data.gym.subscriptionEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(data.gym.subscriptionEnd).setHours(23, 59, 59, 999) - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
+
+  // Determine if subscription is expired (negative days means yesterday or before)
+  const isExpired = subscriptionDaysLeft < 0;
+  // Today is valid (days = 0), but expiring soon
+  const isExpiringToday = subscriptionDaysLeft === 0;
 
   const memberPercentage = data.totalMembers > 0
     ? Math.round((data.activeMembers / data.totalMembers) * 100)
@@ -100,14 +112,26 @@ export function GymOwnerDashboard() {
             </div>
             <div className="flex flex-col items-end gap-2">
               <Badge
-                className={`text-sm px-4 py-2 ${subscriptionDaysLeft > 30
-                  ? 'bg-green-500/20 text-green-100 border-green-400/50'
-                  : subscriptionDaysLeft > 0
-                    ? 'bg-yellow-500/20 text-yellow-100 border-yellow-400/50'
-                    : 'bg-red-500/20 text-red-100 border-red-400/50'
+                className={`text-sm px-4 py-2 cursor-pointer hover:opacity-80 transition-opacity ${
+                  isExpired
+                    ? 'bg-red-500/20 text-red-100 border-red-400/50'
+                    : isExpiringToday
+                      ? 'bg-orange-500/20 text-orange-100 border-orange-400/50'
+                      : subscriptionDaysLeft > 30
+                        ? 'bg-green-500/20 text-green-100 border-green-400/50'
+                        : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/50'
                   }`}
+                onClick={() => navigate('/gym-owner/subscription')}
               >
+                <CreditCard className="h-3.5 w-3.5 mr-1.5 inline" />
                 {user?.subscriptionName || data.gym?.subscriptionPlan?.name || 'No Plan'}
+                {isExpired ? (
+                  <span className="ml-2 opacity-80 font-semibold">(Expired)</span>
+                ) : isExpiringToday ? (
+                  <span className="ml-2 opacity-80 font-semibold">(Expires Today!)</span>
+                ) : subscriptionDaysLeft > 0 ? (
+                  <span className="ml-2 opacity-80">({subscriptionDaysLeft} days)</span>
+                ) : null}
               </Badge>
               <div className="flex items-center gap-2 text-sm text-purple-200">
                 <Clock className="h-4 w-4" />
@@ -319,6 +343,14 @@ export function GymOwnerDashboard() {
             >
               <Users className="h-6 w-6" />
               <span>Member Inquiries</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 flex flex-col gap-2 bg-white hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-all duration-300"
+              onClick={() => navigate('/gym-owner/subscription')}
+            >
+              <CreditCard className="h-6 w-6" />
+              <span>My Subscription</span>
             </Button>
           </div>
         </CardContent>

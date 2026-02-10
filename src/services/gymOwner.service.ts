@@ -40,7 +40,10 @@ import type {
   TrainerSalarySettlement,
   CreateSalarySettlement,
   UpdateSalarySettlement,
-  SalarySlip
+  SalarySlip,
+  TrainerPTMembersResponse,
+  GymSubscriptionHistory,
+  GymCurrentSubscription
 } from '@/types';
 
 export const gymOwnerService = {
@@ -133,6 +136,40 @@ export const gymOwnerService = {
   async toggleTrainerStatus(id: string): Promise<Trainer> {
     const response = await api.patch<ApiResponse<Trainer>>(`/gym-owner/trainers/${id}/toggle-status`);
     return response.data.data;
+  },
+
+  async resetTrainerPassword(id: string): Promise<{
+    trainerId: string;
+    email: string;
+    temporaryPassword: string;
+    message: string;
+  }> {
+    const response = await api.post<ApiResponse<{
+      trainerId: string;
+      email: string;
+      temporaryPassword: string;
+      message: string;
+    }>>(`/gym-owner/trainers/${id}/reset-password`);
+    return response.data.data;
+  },
+
+  async getTrainerPTMembers(trainerId: string, params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  } = {}): Promise<TrainerPTMembersResponse> {
+    const { page = 1, limit = 10, search = '' } = params;
+    const queryParams: Record<string, any> = { page, limit };
+    if (search) queryParams.search = search;
+
+    const response = await api.get(`/gym-owner/trainers/${trainerId}/pt-members`, { params: queryParams });
+    const responseData = response.data;
+    console.debug('getTrainerPTMembers raw response:', responseData);
+
+    if (responseData.success !== undefined && responseData.data) {
+      return responseData.data;
+    }
+    return responseData;
   },
 
   // Members
@@ -263,6 +300,21 @@ export const gymOwnerService = {
 
   async toggleMemberStatus(id: string): Promise<Member> {
     const response = await api.patch<ApiResponse<Member>>(`/gym-owner/members/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  async resetMemberPassword(id: string): Promise<{
+    memberId: string;
+    email: string;
+    temporaryPassword: string;
+    message: string;
+  }> {
+    const response = await api.post<ApiResponse<{
+      memberId: string;
+      email: string;
+      temporaryPassword: string;
+      message: string;
+    }>>(`/gym-owner/members/${id}/reset-password`);
     return response.data.data;
   },
 
@@ -1125,6 +1177,59 @@ export const gymOwnerService = {
 
   async getSalarySlip(settlementId: string): Promise<SalarySlip> {
     const response = await api.get<ApiResponse<SalarySlip>>(`/gym-owner/salary-settlement/${settlementId}/slip`);
+    return response.data.data;
+  },
+
+  // =====================================================
+  // Subscription Management (Gym Owner)
+  // =====================================================
+
+  /**
+   * Get subscription history for the gym owner's own gym
+   * @param params - Query parameters for pagination and sorting
+   */
+  async getSubscriptionHistory(params: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<{ items: GymSubscriptionHistory[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParams: Record<string, any> = {
+      page: params.page || 1,
+      limit: params.limit || 10,
+    };
+    
+    if (params.sortBy) queryParams.sortBy = params.sortBy;
+    if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
+
+    console.debug('Fetching subscription history:', queryParams);
+    const response = await api.get<ApiResponse<GymSubscriptionHistory[] | { items: GymSubscriptionHistory[]; pagination: any }>>('/gym-owner/subscription-history', { params: queryParams });
+    console.debug('Subscription history response:', response.data);
+    
+    const data = response.data.data;
+    
+    // Handle both array and paginated response formats
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        pagination: (response.data as any).pagination || { page: 1, limit: 10, total: data.length, totalPages: 1 }
+      };
+    }
+    
+    return {
+      items: data.items || [],
+      pagination: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 }
+    };
+  },
+
+  /**
+   * Get current subscription details for the gym owner's gym
+   * Includes plan info, days remaining, and latest subscription history
+   */
+  async getCurrentSubscription(): Promise<GymCurrentSubscription> {
+    console.debug('Fetching current subscription');
+    const response = await api.get<ApiResponse<GymCurrentSubscription>>('/gym-owner/current-subscription');
+    console.debug('Current subscription response:', response.data);
     return response.data.data;
   },
 };
