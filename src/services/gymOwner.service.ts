@@ -43,7 +43,14 @@ import type {
   SalarySlip,
   TrainerPTMembersResponse,
   GymSubscriptionHistory,
-  GymCurrentSubscription
+  GymCurrentSubscription,
+  // Report types
+  ExpenseReportParams,
+  ExpenseReportResponse,
+  IncomeReportParams,
+  IncomeReportResponse,
+  MemberPaymentDetailParams,
+  MemberPaymentDetailResponse,
 } from '@/types';
 
 export const gymOwnerService = {
@@ -1231,5 +1238,69 @@ export const gymOwnerService = {
     const response = await api.get<ApiResponse<GymCurrentSubscription>>('/gym-owner/current-subscription');
     console.debug('Current subscription response:', response.data);
     return response.data.data;
+  },
+
+  // =====================================================
+  // Reports
+  // =====================================================
+
+  /**
+   * Get expense report (combined expenses + salary settlements)
+   */
+  async getExpenseReport(params: ExpenseReportParams = {}): Promise<ExpenseReportResponse> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+
+    // Add filters only if they have values
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    console.debug('Fetching expense report:', queryParams);
+    const response = await api.get<ExpenseReportResponse>('/gym-owner/reports/expenses', { params: queryParams });
+    console.debug('Expense report response:', response.data);
+    return response.data;
+  },
+
+  /**
+   * Get income report (members with total payments)
+   */
+  async getIncomeReport(params: IncomeReportParams = {}): Promise<IncomeReportResponse> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+
+    // Add filters only if they have values
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    console.debug('Fetching income report:', queryParams);
+    const response = await api.get<IncomeReportResponse>('/gym-owner/reports/income', { params: queryParams });
+    console.debug('Income report response:', response.data);
+    return response.data;
+  },
+
+  /**
+   * Get member payment details (for popup)
+   */
+  async getMemberPaymentDetails(memberId: string, params: MemberPaymentDetailParams = {}): Promise<MemberPaymentDetailResponse> {
+    const { page = 1, limit = 10, ...filters } = params;
+    const queryParams: Record<string, any> = { page, limit };
+
+    // Add filters only if they have values
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams[key] = value;
+      }
+    });
+
+    console.debug('Fetching member payment details:', memberId, queryParams);
+    const response = await api.get<MemberPaymentDetailResponse>(`/gym-owner/reports/income/${memberId}/payments`, { params: queryParams });
+    console.debug('Member payment details response:', response.data);
+    return response.data;
   },
 };

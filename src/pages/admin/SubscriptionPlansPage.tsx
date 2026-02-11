@@ -42,10 +42,10 @@ import type { GymSubscriptionPlan } from '@/types';
 
 // Plan categories as per requirements
 const PLAN_CATEGORIES = [
-  'Basic / Entry-Level Plans',
-  'Standard / Popular Plans',
-  'Premium / Advanced Plans',
-  'Duration-Based (Common in India)',
+  { label: 'HALF YEARLY - ₹2,999/year', value: 'HALFYEARLY' },
+  { label: 'STARTER — ₹4,999/year', value: 'STARTER' },
+  { label: 'PROFESSIONAL — ₹7,999/year ⭐ MOST POPULAR', value: 'PROFESSIONAL' },
+  { label: 'ENTERPRISE — ₹11,999/year', value: 'ENTERPRISE' },
 ] as const;
 
 // Currency options
@@ -156,7 +156,7 @@ export function SubscriptionPlansPage() {
     
     // Extract category from name if it contains " - "
     const nameParts = plan.name.split(' - ');
-    const category = nameParts.length > 1 ? nameParts[0] : PLAN_CATEGORIES[0];
+    const category = nameParts.length > 1 ? nameParts[0] : PLAN_CATEGORIES[0].value;
     const planName = nameParts.length > 1 ? nameParts.slice(1).join(' - ') : plan.name;
     
     setValue('planCategory', category);
@@ -264,8 +264,8 @@ export function SubscriptionPlansPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {PLAN_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
+                          <SelectItem key={category.value} value={category.value}>
+                            {category.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
