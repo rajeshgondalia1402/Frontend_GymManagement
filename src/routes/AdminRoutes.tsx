@@ -7,7 +7,6 @@ import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { GymsPage } from '@/pages/admin/GymsPage';
 import { GymOwnersPage } from '@/pages/admin/GymOwnersPage';
 import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
-import { OccupationMasterPage } from '@/pages/admin/OccupationMasterPage';
 import { GymSubscriptionHistoryPage } from '@/pages/admin/GymSubscriptionHistoryPage';
 import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
 
@@ -74,16 +73,6 @@ export const AdminRoutes = () => (
         <AdminGuard>
           <TopNavLayout>
             <SubscriptionPlansPage />
-          </TopNavLayout>
-        </AdminGuard>
-      }
-    />
-    <Route
-      path="/admin/master/occupations"
-      element={
-        <AdminGuard>
-          <TopNavLayout>
-            <OccupationMasterPage />
           </TopNavLayout>
         </AdminGuard>
       }

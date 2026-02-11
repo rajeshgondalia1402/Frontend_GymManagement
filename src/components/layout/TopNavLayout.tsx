@@ -15,7 +15,6 @@ import {
   X,
   ChevronDown,
   FolderCog,
-  Briefcase,
   MessageSquare,
   Wallet,
   BadgeCheck,
@@ -26,7 +25,9 @@ import {
   Package,
   Receipt,
   Banknote,
-  ClipboardCheck
+  ClipboardCheck,
+  FileSpreadsheet,
+  IndianRupee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -86,9 +87,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
       title: 'Master',
       icon: FolderCog,
       submenu: [
-        { title: 'Occupation Master', href: '/admin/master/occupations', icon: Briefcase },
         { title: 'Enquiry Master', href: '/admin/master/enquiry-types', icon: MessageSquare },
-        { title: 'Payment Type Master', href: '/admin/master/payment-types', icon: CreditCard },
       ],
     },
   ],
@@ -122,6 +121,14 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
         // { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
         // { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
+      ],
+    },
+    {
+      title: 'Reports',
+      icon: FileSpreadsheet,
+      submenu: [
+        { title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt },
+        { title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee },
       ],
     },
   ],

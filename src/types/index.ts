@@ -483,29 +483,9 @@ export interface TrainerProfileDetails {
   };
 }
 
-export interface Occupation {
-  id: string;
-  name?: string;
-  occupationName?: string;
-  description?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface EnquiryType {
   id: string;
   name: string;
-  description?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface PaymentType {
-  id: string;
-  name: string;
-  paymentTypeName?: string;
   description?: string;
   isActive?: boolean;
   createdAt?: string;
@@ -522,7 +502,7 @@ export interface ExpenseGroup {
   gymId?: string;
 }
 
-export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
 
 export interface Expense {
   id: string;
@@ -1269,5 +1249,173 @@ export interface GymInquiryParams {
   sortOrder?: 'asc' | 'desc';
   subscriptionPlanId?: string;
   isActive?: boolean;
+}
+
+// =====================================================
+// Expense Report Types
+// =====================================================
+
+export type ExpenseType = 'EXPENSE' | 'SALARY';
+
+export interface ExpenseReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  year?: number;
+  month?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  expenseType?: ExpenseType;
+  expenseGroupId?: string;
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseReportItem {
+  id: string;
+  date: string;
+  name: string;
+  description?: string;
+  category: string;
+  amount: number;
+  paymentMode: PaymentMode;
+  type: ExpenseType;
+  expenseGroupId?: string;
+  trainerId?: string;
+  trainerName?: string;
+  salaryMonth?: string;
+  attachments?: string[];
+  createdAt: string;
+}
+
+export interface ExpenseReportSummary {
+  totalExpenseAmount: number;
+  totalSalaryAmount: number;
+  grandTotal: number;
+  expenseCount: number;
+  salaryCount: number;
+}
+
+export interface ExpenseReportResponse {
+  success: boolean;
+  message: string;
+  data: ExpenseReportItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: ExpenseReportSummary;
+}
+
+// =====================================================
+// Income Report Types
+// =====================================================
+
+export interface IncomeReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  year?: number;
+  month?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  paymentStatus?: 'PAID' | 'PENDING' | 'PARTIAL';
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+}
+
+export interface MemberIncomeItem {
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  email?: string;
+  phone?: string;
+  memberPhoto?: string;
+  membershipStatus: string;
+  initialPayment: number;
+  renewalPayments: number;
+  balancePayments: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
+  lastPaymentDate?: string;
+  paymentCount: number;
+}
+
+export interface IncomeReportSummary {
+  totalInitialPayments: number;
+  totalRenewalPayments: number;
+  totalBalancePayments: number;
+  grandTotal: number;
+  totalPending: number;
+  memberCount: number;
+}
+
+export interface IncomeReportResponse {
+  success: boolean;
+  message: string;
+  data: MemberIncomeItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: IncomeReportSummary;
+}
+
+// Member Payment Detail Types (for popup)
+export type PaymentSource = 'INITIAL' | 'RENEWAL' | 'BALANCE_PAYMENT';
+// Note: PaymentFor is already defined above as 'REGULAR' | 'PT'
+
+export interface MemberPaymentDetailParams {
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
+  paymentFor?: PaymentFor;
+}
+
+export interface MemberPaymentDetailItem {
+  id: string;
+  paymentDate: string;
+  source: PaymentSource;
+  paymentFor: PaymentFor;
+  amount: number;
+  paymentMode?: string;
+  receiptNo?: string;
+  renewalNumber?: string;
+  notes?: string;
+  packageName?: string;
+  createdAt: string;
+}
+
+export interface MemberPaymentDetailSummary {
+  totalPaidAmount: number;
+  regularPayments: number;
+  ptPayments: number;
+  paymentCount: number;
+}
+
+export interface MemberPaymentDetailResponse {
+  success: boolean;
+  message: string;
+  data: {
+    memberId: string;
+    memberName: string;
+    memberCode: string;
+    payments: MemberPaymentDetailItem[];
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: MemberPaymentDetailSummary;
 }
 

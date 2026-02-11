@@ -14,9 +14,7 @@ import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { GymsPage } from '@/pages/admin/GymsPage';
 import { GymOwnersPage } from '@/pages/admin/GymOwnersPage';
 import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
-import { OccupationMasterPage } from '@/pages/admin/OccupationMasterPage';
 import { EnquiryMasterPage } from '@/pages/admin/EnquiryMasterPage';
-import { PaymentTypeMasterPage } from '@/pages/admin/PaymentTypeMasterPage';
 import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
 
 // Gym Owner Pages
@@ -38,6 +36,8 @@ import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
 import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
 import { TrainerSalarySettlementPage } from '@/pages/gym-owner/TrainerSalarySettlementPage';
+import { ExpenseReportPage } from '@/pages/gym-owner/ExpenseReportPage';
+import { IncomeReportPage } from '@/pages/gym-owner/IncomeReportPage';
 
 // Trainer Pages
 import { TrainerDashboard } from '@/pages/trainer/TrainerDashboard';
@@ -156,31 +156,11 @@ function App() {
           }
         />
         <Route
-          path="/admin/master/occupations"
-          element={
-            <RoleGuard allowedRoles={['ADMIN']}>
-              <TopNavLayout>
-                <OccupationMasterPage />
-              </TopNavLayout>
-            </RoleGuard>
-          }
-        />
-        <Route
           path="/admin/master/enquiry-types"
           element={
             <RoleGuard allowedRoles={['ADMIN']}>
               <TopNavLayout>
                 <EnquiryMasterPage />
-              </TopNavLayout>
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/admin/master/payment-types"
-          element={
-            <RoleGuard allowedRoles={['ADMIN']}>
-              <TopNavLayout>
-                <PaymentTypeMasterPage />
               </TopNavLayout>
             </RoleGuard>
           }
@@ -385,6 +365,26 @@ function App() {
             <RoleGuard allowedRoles={['GYM_OWNER']}>
               <TopNavLayout>
                 <TrainerSalarySettlementPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/reports/expenses"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <TopNavLayout>
+                <ExpenseReportPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/gym-owner/reports/income"
+          element={
+            <RoleGuard allowedRoles={['GYM_OWNER']}>
+              <TopNavLayout>
+                <IncomeReportPage />
               </TopNavLayout>
             </RoleGuard>
           }
