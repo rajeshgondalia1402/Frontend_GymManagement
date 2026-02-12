@@ -215,7 +215,7 @@ export function TrainersPage() {
         gender: undefined,
         dateOfBirth: '',
         joiningDate: getTodayDate(),
-        salary: '',
+        salary: '' as unknown as number,
         idProofType: '',
       });
     }
@@ -235,7 +235,7 @@ export function TrainersPage() {
         gender: editingTrainer.gender as any,
         dateOfBirth: editingTrainer.dateOfBirth ? format(new Date(editingTrainer.dateOfBirth), 'yyyy-MM-dd') : '',
         joiningDate: editingTrainer.joiningDate ? format(new Date(editingTrainer.joiningDate), 'yyyy-MM-dd') : '',
-        salary: editingTrainer.salary ? String(editingTrainer.salary) : '',
+        salary: (editingTrainer.salary ? String(editingTrainer.salary) : '') as unknown as number,
         idProofType: editingTrainer.idProofType || '',
       });
 
