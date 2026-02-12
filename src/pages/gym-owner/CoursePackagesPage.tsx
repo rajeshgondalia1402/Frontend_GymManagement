@@ -57,6 +57,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import type { CoursePackage } from '@/types';
 
 const ITEMS_PER_PAGE = 10;
@@ -101,6 +102,9 @@ export function CoursePackagesPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
     const queryClient = useQueryClient();
+
+    // Subscription features for conditional UI
+    const { hasPTPackagesAccess } = useSubscriptionFeatures();
 
     // Debounce search input
     useEffect(() => {
@@ -379,7 +383,10 @@ export function CoursePackagesPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
-                                                    <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                    {/* Only show PT option if subscription allows */}
+                                                    {hasPTPackagesAccess && (
+                                                        <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         )}
@@ -477,7 +484,10 @@ export function CoursePackagesPage() {
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="REGULAR">💪 Regular</SelectItem>
-                                <SelectItem value="PT">🏋️ PT</SelectItem>
+                                {/* Only show PT filter if subscription allows */}
+                                {hasPTPackagesAccess && (
+                                    <SelectItem value="PT">🏋️ PT</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -929,7 +939,10 @@ export function CoursePackagesPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
-                                                <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                {/* Only show PT option if subscription allows */}
+                                                {hasPTPackagesAccess && (
+                                                    <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     )}

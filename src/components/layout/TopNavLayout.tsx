@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MemberSearchDropdown } from './MemberSearchDropdown';
 import {
@@ -50,6 +50,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth.service';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import type { Role } from '@/types';
 
 interface NavItem {
@@ -70,7 +71,8 @@ function isSubmenuItem(item: NavEntry): item is NavItemWithSubmenu {
   return 'submenu' in item;
 }
 
-const navItemsByRole: Record<Role, NavEntry[]> = {
+// Static navigation items for non-GYM_OWNER roles
+const staticNavItemsByRole: Partial<Record<Role, NavEntry[]>> = {
   ADMIN: [
     { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { title: 'Subscription Plans', href: '/admin/subscription-plans', icon: CreditCard },
@@ -88,47 +90,6 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
       icon: FolderCog,
       submenu: [
         { title: 'Enquiry Master', href: '/admin/master/enquiry-types', icon: MessageSquare },
-      ],
-    },
-  ],
-  GYM_OWNER: [
-    { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
-    {
-      title: 'Members',
-      icon: Users,
-      submenu: [
-        { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
-        { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users }, 
-        { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
-        { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed }, 
-      ],
-    },
-    {
-      title: 'Expenses',
-      icon: Receipt,
-      submenu: [
-        { title: 'Manage Expenses', href: '/gym-owner/expenses', icon: Receipt },
-        { title: 'Salary Settlement', href: '/gym-owner/salary-settlement', icon: Banknote },
-      ],
-    },
-    {
-      title: 'Master',
-      icon: FolderCog,
-      submenu: [
-        { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
-        { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
-        { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
-        { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
-        // { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
-        // { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
-      ],
-    },
-    {
-      title: 'Reports',
-      icon: FileSpreadsheet,
-      submenu: [
-        { title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt },
-        { title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee },
       ],
     },
   ],
@@ -153,6 +114,80 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
   ],
 };
+
+// Import FeatureCode type for the navigation function
+import type { FeatureCode } from '@/config/subscriptionFeatures';
+
+/**
+ * Generate dynamic GYM_OWNER navigation based on subscription features
+ */
+function getGymOwnerNavItems(canAccess: (feature: FeatureCode) => boolean): NavEntry[] {
+  const items: NavEntry[] = [
+    { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
+  ];
+
+  // Members submenu - always visible but content varies based on subscription
+  const membersSubmenu: NavItem[] = [
+    { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+    { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users },
+    { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
+  ];
+
+  // Only add Diet Templates if plan allows
+  if (canAccess('DIET_TEMPLATES') || canAccess('DIET_PLANS')) {
+    membersSubmenu.push({ title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed });
+  }
+
+  items.push({ title: 'Members', icon: Users, submenu: membersSubmenu });
+
+  // Expenses submenu
+  const expensesSubmenu: NavItem[] = [
+    { title: 'Manage Expenses', href: '/gym-owner/expenses', icon: Receipt },
+  ];
+
+  // Only add Salary Settlement if plan allows
+  if (canAccess('SALARY_SETTLEMENT')) {
+    expensesSubmenu.push({ title: 'Salary Settlement', href: '/gym-owner/salary-settlement', icon: Banknote });
+  }
+
+  items.push({ title: 'Expenses', icon: Receipt, submenu: expensesSubmenu });
+
+  // Master submenu
+  const masterSubmenu: NavItem[] = [
+    { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
+    { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
+  ];
+
+  // Only add Exercise Plans if plan allows
+  if (canAccess('EXERCISE_PLANS')) {
+    masterSubmenu.push({ title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList });
+  }
+
+  // Only add Designation Master if plan allows
+  if (canAccess('MASTER_DESIGNATION')) {
+    masterSubmenu.push({ title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck });
+  }
+
+  items.push({ title: 'Master', icon: FolderCog, submenu: masterSubmenu });
+
+  // Reports submenu - only if plan allows any reports
+  if (canAccess('REPORT_EXPENSE') || canAccess('REPORT_INCOME')) {
+    const reportsSubmenu: NavItem[] = [];
+
+    if (canAccess('REPORT_EXPENSE')) {
+      reportsSubmenu.push({ title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt });
+    }
+    if (canAccess('REPORT_INCOME')) {
+      reportsSubmenu.push({ title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee });
+    }
+
+    if (reportsSubmenu.length > 0) {
+      items.push({ title: 'Reports', icon: FileSpreadsheet, submenu: reportsSubmenu });
+    }
+  }
+
+  return items;
+}
 
 interface TopNavLayoutProps {
   children: React.ReactNode;
@@ -179,6 +214,9 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   const { user, logout } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Get subscription feature access for dynamic navigation
+  const { canAccess } = useSubscriptionFeatures();
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -197,9 +235,20 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
     setOpenDropdown(null);
   }, [location.pathname]);
 
+  // Memoize GYM_OWNER nav items to prevent unnecessary re-renders
+  const gymOwnerNavItems = useMemo(() => {
+    if (user?.role === 'GYM_OWNER') {
+      return getGymOwnerNavItems(canAccess);
+    }
+    return [];
+  }, [user?.role, canAccess]);
+
   if (!user) return null;
 
-  const navItems = navItemsByRole[user.role as Role] || [];
+  // Get nav items - use dynamic items for GYM_OWNER, static for others
+  const navItems = user.role === 'GYM_OWNER'
+    ? gymOwnerNavItems
+    : (staticNavItemsByRole[user.role as Role] || []);
 
   const handleLogout = () => {
     logout();

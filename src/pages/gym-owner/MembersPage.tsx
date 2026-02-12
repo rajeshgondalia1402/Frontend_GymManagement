@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
@@ -36,6 +37,10 @@ const PAY_MODES = ['Cash', 'Card', 'UPI', 'Online', 'Cheque', 'Other'];
 export function MembersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Subscription features for conditional UI
+  const { hasPTAccess } = useSubscriptionFeatures();
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(ITEMS_PER_PAGE);
   const [showFilters, setShowFilters] = useState(false);
@@ -913,8 +918,8 @@ export function MembersPage() {
                                 >
                                   <RefreshCw className="mr-2 h-4 w-4" />Renew Membership
                                 </DropdownMenuItem>
-                                {/* PT Membership Actions */}
-                                {member.memberType === 'REGULAR' && (
+                                {/* PT Membership Actions - Only show if subscription allows */}
+                                {hasPTAccess && member.memberType === 'REGULAR' && (
                                   <DropdownMenuItem
                                     onClick={() => navigate(`/gym-owner/members/${member.id}/add-pt`)}
                                     className="text-purple-600"
@@ -923,7 +928,7 @@ export function MembersPage() {
                                     <Dumbbell className="mr-2 h-4 w-4" />Add PT Membership
                                   </DropdownMenuItem>
                                 )}
-                                {member.memberType === 'REGULAR_PT' && (
+                                {hasPTAccess && member.memberType === 'REGULAR_PT' && (
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => navigate(`/gym-owner/members/${member.id}/edit-pt`)}
