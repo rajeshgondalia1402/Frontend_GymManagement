@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -74,24 +74,36 @@ import {
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { BACKEND_BASE_URL } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
+import { LimitReachedBanner } from '@/components/common/UpgradeBanner';
 import type { Trainer, TrainerPTMember, TrainerPTMembersResponse } from '@/types';
 
 const getTodayDate = () => format(new Date(), 'yyyy-MM-dd');
 
+// Base trainer schema - password is always optional in the schema
+// We handle required validation conditionally in the component
 const trainerSchema = z.object({
   firstName: z.string().min(2, 'First name is required'),
   lastName: z.string().min(2, 'Last name is required'),
   email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  password: z.string().optional(),
   phone: z.string().min(10, 'Phone must be at least 10 digits'),
   specialization: z.string().optional(),
   experience: z.coerce.number().int().min(0).optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
   dateOfBirth: z.string().optional(),
-  joiningDate: z.string().optional(),
-  salary: z.coerce.number().min(0).optional(),
+  joiningDate: z.string().min(1, 'Joining date is required'),
+  salary: z.string().min(1, 'Monthly salary is required').pipe(z.coerce.number().min(0, 'Salary must be 0 or more')),
   idProofType: z.string().optional(),
 });
+
+// Schema with password required (for subscriptions that allow trainer login)
+const trainerSchemaWithPassword = trainerSchema.extend({
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+// Schema without password required (for subscriptions that don't allow trainer login)
+const trainerSchemaWithoutPassword = trainerSchema;
 
 type TrainerFormData = z.infer<typeof trainerSchema>;
 
@@ -148,6 +160,9 @@ export function TrainersPage() {
 
   const queryClient = useQueryClient();
 
+  // Subscription features for conditional UI
+  const { canCreateTrainerPassword, trainerLimit, currentPlan, isTrainerLimitReached } = useSubscriptionFeatures();
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -162,8 +177,18 @@ export function TrainersPage() {
     queryFn: gymOwnerService.getTrainers,
   });
 
+  // Dynamic schema based on subscription - password required only if subscription allows trainer login AND not editing
+  const currentSchema = useMemo(() => {
+    // When editing, password is always optional (leave blank to keep current)
+    if (editingTrainer) {
+      return trainerSchemaWithoutPassword;
+    }
+    // For new trainers, require password only if subscription allows trainer login
+    return canCreateTrainerPassword ? trainerSchemaWithPassword : trainerSchemaWithoutPassword;
+  }, [canCreateTrainerPassword, editingTrainer]);
+
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<TrainerFormData>({
-    resolver: zodResolver(trainerSchema),
+    resolver: zodResolver(currentSchema),
     defaultValues: {
       joiningDate: getTodayDate(),
     },
@@ -190,7 +215,7 @@ export function TrainersPage() {
         gender: undefined,
         dateOfBirth: '',
         joiningDate: getTodayDate(),
-        salary: undefined,
+        salary: '',
         idProofType: '',
       });
     }
@@ -210,7 +235,7 @@ export function TrainersPage() {
         gender: editingTrainer.gender as any,
         dateOfBirth: editingTrainer.dateOfBirth ? format(new Date(editingTrainer.dateOfBirth), 'yyyy-MM-dd') : '',
         joiningDate: editingTrainer.joiningDate ? format(new Date(editingTrainer.joiningDate), 'yyyy-MM-dd') : '',
-        salary: editingTrainer.salary || undefined,
+        salary: editingTrainer.salary ? String(editingTrainer.salary) : '',
         idProofType: editingTrainer.idProofType || '',
       });
 
@@ -549,12 +574,32 @@ export function TrainersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Trainers</h1>
-          <p className="text-muted-foreground">Manage gym trainers and their profiles</p>
+          <p className="text-muted-foreground">
+            Manage gym trainers and their profiles
+            {trainerLimit !== Infinity && (
+              <span className="ml-2 text-sm">
+                ({trainersList.length} / {trainerLimit} trainers)
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button
+          onClick={() => setDialogOpen(true)}
+          disabled={isTrainerLimitReached(trainersList.length)}
+        >
           <Plus className="mr-2 h-4 w-4" /> Add New Trainer
         </Button>
       </div>
+
+      {/* Trainer Limit Warning */}
+      {isTrainerLimitReached(trainersList.length) && (
+        <LimitReachedBanner
+          limitType="trainer"
+          currentCount={trainersList.length}
+          maxLimit={trainerLimit}
+          currentPlan={currentPlan}
+        />
+      )}
 
       {/* Filters & Table Card */}
       <Card>
@@ -716,9 +761,12 @@ export function TrainersPage() {
                                   <DropdownMenuItem onClick={() => handleEdit(trainer)}>
                                     <Edit className="mr-2 h-4 w-4" />Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleResetPassword(trainer)}>
-                                    <KeyRound className="mr-2 h-4 w-4" />Reset Password
-                                  </DropdownMenuItem>
+                                  {/* Only show Reset Password if subscription allows trainer login */}
+                                  {canCreateTrainerPassword && (
+                                    <DropdownMenuItem onClick={() => handleResetPassword(trainer)}>
+                                      <KeyRound className="mr-2 h-4 w-4" />Reset Password
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={() => handleToggleStatus(trainer)}>
                                     {trainer.isActive ? (
                                       <><ToggleLeft className="mr-2 h-4 w-4" />Deactivate</>
@@ -1129,28 +1177,44 @@ export function TrainersPage() {
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
               </div>
 
-              <div>
-                <Label htmlFor="password">
-                  Password {!isEditMode && <span className="text-red-500">*</span>}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    {...register('password')}
-                    className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
-                    placeholder={isEditMode ? 'Leave blank to keep current' : 'Min 6 characters'}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+              {/* Password field - Only show if subscription allows trainer login */}
+              {canCreateTrainerPassword ? (
+                <div>
+                  <Label htmlFor="password">
+                    Password {!isEditMode && <span className="text-red-500">*</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      {...register('password')}
+                      className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
+                      placeholder={isEditMode ? 'Leave blank to keep current' : 'Min 6 characters'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>}
                 </div>
-                {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>}
-              </div>
+              ) : (
+                <div className="col-span-1">
+                  <Label className="text-sm text-muted-foreground">Trainer Login</Label>
+                  <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                      <Lock className="h-4 w-4" />
+                      <span className="text-sm font-medium">Not Available</span>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Trainer portal access is not included in your current plan. Trainers will be managed without login credentials.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
@@ -1217,16 +1281,19 @@ export function TrainersPage() {
               </div>
 
               <div>
-                <Label htmlFor="joiningDate">Joining Date</Label>
+                <Label htmlFor="joiningDate">Joining Date <span className="text-red-500">*</span></Label>
                 <Input
                   id="joiningDate"
                   type="date"
                   {...register('joiningDate')}
                 />
+                {errors.joiningDate && (
+                  <p className="text-sm text-red-500 mt-1">{errors.joiningDate.message}</p>
+                )}
               </div>
 
               <div>
-                <Label htmlFor="salary">Monthly Salary (₹)</Label>
+                <Label htmlFor="salary">Monthly Salary (₹) <span className="text-red-500">*</span></Label>
                 <Input
                   id="salary"
                   type="number"
@@ -1234,6 +1301,9 @@ export function TrainersPage() {
                   {...register('salary')}
                   placeholder="Monthly salary"
                 />
+                {errors.salary && (
+                  <p className="text-sm text-red-500 mt-1">{errors.salary.message}</p>
+                )}
               </div>
 
               <div>

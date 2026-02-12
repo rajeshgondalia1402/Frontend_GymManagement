@@ -384,8 +384,6 @@ A: Cash, Card, UPI, Bank Transfer, Cheque, Net Banking (all already implemented 
 *Document generated from codebase analysis on Feb 2026. Update when new modules are added.*
 
 HALFYEARLY - Small Gym Setup
-- 500 Member
-- 5 Trainer
 - Export Excel Features Removed
 STARTER - Starter
 PROFESSIONAL - Most Popular (Silver)
