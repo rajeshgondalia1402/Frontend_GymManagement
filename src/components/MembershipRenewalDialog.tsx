@@ -150,7 +150,7 @@ export function MembershipRenewalDialog({ open, onOpenChange, member, onSuccess 
         }
     }, [member, open]);
 
-    // Update end date and fees when package changes
+    // Update end date and fees when package or start date changes
     useEffect(() => {
         if (selectedPackageId && coursePackages.length > 0) {
             const pkg = coursePackages.find((p: CoursePackage) => p.id === selectedPackageId);
@@ -159,12 +159,15 @@ export function MembershipRenewalDialog({ open, onOpenChange, member, onSuccess 
                 setMaxDiscount(pkg.maxDiscount || 0);
 
                 // Calculate end date based on package duration
-                if (newStartDate && pkg.durationInDays) {
-                    const endDate = addDays(new Date(newStartDate), pkg.durationInDays - 1);
-                    setNewEndDate(format(endDate, 'yyyy-MM-dd'));
-                } else if (newStartDate && pkg.durationInMonths) {
-                    const endDate = addMonths(new Date(newStartDate), pkg.durationInMonths);
-                    setNewEndDate(format(addDays(endDate, -1), 'yyyy-MM-dd'));
+                if (newStartDate) {
+                    const months = pkg.Months || pkg.months || pkg.durationInMonths || 0;
+                    if (months > 0) {
+                        const endDate = addDays(addMonths(new Date(newStartDate), months), -1);
+                        setNewEndDate(format(endDate, 'yyyy-MM-dd'));
+                    } else if (pkg.durationInDays) {
+                        const endDate = addDays(new Date(newStartDate), pkg.durationInDays - 1);
+                        setNewEndDate(format(endDate, 'yyyy-MM-dd'));
+                    }
                 }
             }
         }
@@ -336,10 +339,13 @@ export function MembershipRenewalDialog({ open, onOpenChange, member, onSuccess 
                                         </SelectTrigger>
                                         <SelectContent>
                                             {coursePackages.map((pkg: CoursePackage) => {
-                                                const durationDays = pkg.durationInDays || (pkg.durationInMonths ? pkg.durationInMonths * 30 : null);
+                                                const months = pkg.Months || pkg.months || pkg.durationInMonths || 0;
+                                                const durationLabel = months > 0
+                                                    ? `${months} ${months === 1 ? 'Month' : 'Months'}`
+                                                    : pkg.durationInDays ? `${pkg.durationInDays} Days` : '';
                                                 return (
                                                     <SelectItem key={pkg.id} value={pkg.id}>
-                                                        {pkg.packageName} - ₹{pkg.fees?.toLocaleString('en-IN')} {durationDays ? `(${durationDays} days)` : ''}
+                                                        {pkg.packageName} - ₹{pkg.fees?.toLocaleString('en-IN')} {durationLabel ? `(${durationLabel})` : ''}
                                                     </SelectItem>
                                                 );
                                             })}
