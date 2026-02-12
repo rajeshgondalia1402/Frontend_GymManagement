@@ -365,14 +365,67 @@ export interface AdminDashboard {
 }
 
 export interface GymOwnerDashboard {
-  totalMembers: number;
-  activeMembers: number;
-  expiredMembers: number;
-  expiringMembers: number;
-  totalTrainers: number;
-  dietPlans: number;
-  exercisePlans: number;
+  totalActiveMembers: number;
+  totalActiveTrainers: number;
+  todayFollowUpInquiries: number;
+  expiringRegularMembers: number;
+  expiringPTMembers: number;
+  expensesLastMonth: number;
+  expensesCurrentMonth: number;
   gym: Gym;
+}
+
+// Dashboard Report Item Types
+export interface DashboardMemberItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  memberType: MemberType;
+  membershipEnd?: string;
+  memberPhoto?: string;
+}
+
+export interface DashboardTrainerItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  specialization?: string;
+  trainerPhoto?: string;
+  ptMemberCount: number;
+}
+
+export interface DashboardFollowUpInquiryItem {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  followUpDate: string;
+  comments?: string;
+  heardAbout?: string;
+}
+
+export interface DashboardExpenseItem {
+  id: string;
+  expenseDate: string;
+  name: string;
+  amount: number;
+  expenseGroupName?: string;
+  paymentMode: PaymentMode;
+}
+
+export interface DashboardRenewalItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  membershipEnd: string;
+  memberType: MemberType;
+  memberPhoto?: string;
 }
 
 export interface MemberDashboard {
