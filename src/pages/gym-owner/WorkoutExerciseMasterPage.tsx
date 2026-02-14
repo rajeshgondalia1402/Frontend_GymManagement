@@ -688,14 +688,14 @@ export function WorkoutExerciseMasterPage() {
                       <CollapsibleContent>
                         <Table>
                           <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[50px]">#</TableHead>
-                              <TableHead>Exercise Name</TableHead>
-                              <TableHead>Short Code</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Created At</TableHead>
-                              <TableHead className="w-[80px]">Actions</TableHead>
+                            <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                              <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
+                              <TableHead className="py-3 text-white font-semibold">Exercise Name</TableHead>
+                              <TableHead className="py-3 text-white font-semibold">Short Code</TableHead>
+                              <TableHead className="py-3 text-white font-semibold">Description</TableHead>
+                              <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                              <TableHead className="py-3 text-white font-semibold">Created At</TableHead>
+                              <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>

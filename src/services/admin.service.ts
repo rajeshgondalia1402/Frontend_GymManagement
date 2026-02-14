@@ -5,9 +5,7 @@ import type {
   Gym,
   GymSubscriptionPlan,
   User,
-  Occupation,
   EnquiryType,
-  PaymentType,
   GymSubscriptionHistory,
   RenewGymSubscriptionRequest,
   GymSubscriptionHistoryParams,
@@ -300,51 +298,6 @@ export const adminService = {
     return response.data.data;
   },
 
-  // Occupation Master
-  async getOccupations(): Promise<Occupation[]> {
-    const response = await api.get<ApiResponse<Occupation[] | { items: Occupation[] }>>('/admin/occupations');
-    console.debug('Occupations API response:', response.data);
-    const data = response.data.data;
-
-    // Handle different response structures
-    let occupations: Occupation[] = [];
-
-    if (Array.isArray(data)) {
-      occupations = data;
-    } else if (data && typeof data === 'object') {
-      if ('items' in data) {
-        occupations = (data as { items: Occupation[] }).items;
-      } else if ('occupations' in data) {
-        occupations = (data as { occupations: Occupation[] }).occupations;
-      } else if ('data' in data) {
-        occupations = (data as { data: Occupation[] }).data;
-      }
-    }
-
-    console.debug('Parsed occupations:', occupations);
-    return occupations;
-  },
-
-  async createOccupation(data: { occupationName: string; description?: string }): Promise<Occupation> {
-    const response = await api.post<ApiResponse<Occupation>>('/admin/occupations', data);
-    return response.data.data;
-  },
-
-  async updateOccupation(id: string, data: { occupationName?: string; description?: string; isActive?: boolean }): Promise<Occupation> {
-    const response = await api.put<ApiResponse<Occupation>>(`/admin/occupations/${id}`, data);
-    return response.data.data;
-  },
-
-  async deleteOccupation(id: string): Promise<Occupation> {
-    const response = await api.delete<ApiResponse<Occupation>>(`/admin/occupations/${id}`);
-    return response.data.data;
-  },
-
-  async getOccupationUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
-    const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean }>>(`/admin/occupations/${id}/usage`);
-    return response.data.data;
-  },
-
   // Enquiry Type Master
   async getEnquiryTypes(): Promise<EnquiryType[]> {
     const response = await api.get<ApiResponse<EnquiryType[] | { items: EnquiryType[] }>>('/admin/enquiry-types');
@@ -387,50 +340,6 @@ export const adminService = {
 
   async getEnquiryTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
     const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean }>>(`/admin/enquiry-types/${id}/usage`);
-    return response.data.data;
-  },
-
-  // Payment Type Master
-  async getPaymentTypes(): Promise<PaymentType[]> {
-    const response = await api.get<ApiResponse<PaymentType[] | { items: PaymentType[] }>>('/admin/payment-types');
-    console.debug('Payment Types API response:', response.data);
-    const data = response.data.data;
-
-    let paymentTypes: PaymentType[] = [];
-
-    if (Array.isArray(data)) {
-      paymentTypes = data;
-    } else if (data && typeof data === 'object') {
-      if ('items' in data) {
-        paymentTypes = (data as { items: PaymentType[] }).items;
-      } else if ('paymentTypes' in data) {
-        paymentTypes = (data as { paymentTypes: PaymentType[] }).paymentTypes;
-      } else if ('data' in data) {
-        paymentTypes = (data as { data: PaymentType[] }).data;
-      }
-    }
-
-    console.debug('Parsed payment types:', paymentTypes);
-    return paymentTypes;
-  },
-
-  async createPaymentType(data: { paymentTypeName: string; description?: string }): Promise<PaymentType> {
-    const response = await api.post<ApiResponse<PaymentType>>('/admin/payment-types', data);
-    return response.data.data;
-  },
-
-  async updatePaymentType(id: string, data: { paymentTypeName?: string; description?: string; isActive?: boolean }): Promise<PaymentType> {
-    const response = await api.put<ApiResponse<PaymentType>>(`/admin/payment-types/${id}`, data);
-    return response.data.data;
-  },
-
-  async deletePaymentType(id: string): Promise<PaymentType> {
-    const response = await api.delete<ApiResponse<PaymentType>>(`/admin/payment-types/${id}`);
-    return response.data.data;
-  },
-
-  async getPaymentTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }> {
-    const response = await api.get<ApiResponse<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }>>(`/admin/payment-types/${id}/usage`);
     return response.data.data;
   },
 
@@ -558,5 +467,49 @@ export const adminService = {
   async createGymInquiryFollowup(id: string, data: { followupDate?: string; note?: string }): Promise<GymInquiryFollowup> {
     const response = await api.post<ApiResponse<GymInquiryFollowup>>(`/admin/gym-inquiries/${id}/followups`, data);
     return response.data.data;
+  },
+
+  // =====================================================
+  // Members (for gym owner accordion report)
+  // =====================================================
+
+  /**
+   * Get members with optional filters (for admin accordion report)
+   * @param params - Query parameters including gymId for filtering by gym
+   */
+  async getMembers(params: {
+    gymId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  } = {}): Promise<{ items: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
+    const queryParams: Record<string, any> = {
+      page: params.page || 1,
+      limit: params.limit || 100,
+    };
+
+    if (params.gymId) queryParams.gymId = params.gymId;
+    if (params.search) queryParams.search = params.search;
+    if (params.membershipStatus) queryParams.membershipStatus = params.membershipStatus;
+
+    console.debug('Fetching members with params:', queryParams);
+    const response = await api.get<ApiResponse<any>>('/admin/members', { params: queryParams });
+    console.debug('Members response:', response.data);
+
+    const data = response.data.data;
+
+    // Handle both array and paginated response formats
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        pagination: (response.data as any).pagination || { page: 1, limit: 100, total: data.length, totalPages: 1 }
+      };
+    }
+
+    return {
+      items: data.items || data.members || [],
+      pagination: data.pagination || { page: 1, limit: 100, total: 0, totalPages: 1 }
+    };
   },
 };

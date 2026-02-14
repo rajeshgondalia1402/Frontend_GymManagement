@@ -57,6 +57,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import type { CoursePackage } from '@/types';
 
 const ITEMS_PER_PAGE = 10;
@@ -101,6 +102,9 @@ export function CoursePackagesPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
     const queryClient = useQueryClient();
+
+    // Subscription features for conditional UI
+    const { hasPTPackagesAccess } = useSubscriptionFeatures();
 
     // Debounce search input
     useEffect(() => {
@@ -379,7 +383,10 @@ export function CoursePackagesPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
-                                                    <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                    {/* Only show PT option if subscription allows */}
+                                                    {hasPTPackagesAccess && (
+                                                        <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         )}
@@ -477,7 +484,10 @@ export function CoursePackagesPage() {
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="REGULAR">💪 Regular</SelectItem>
-                                <SelectItem value="PT">🏋️ PT</SelectItem>
+                                {/* Only show PT filter if subscription allows */}
+                                {hasPTPackagesAccess && (
+                                    <SelectItem value="PT">🏋️ PT</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
@@ -502,10 +512,10 @@ export function CoursePackagesPage() {
                             <div className="rounded-md border">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px]">#</TableHead>
+                                        <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                                            <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'packageName') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -516,17 +526,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Package Name
                                                     {sortBy === 'packageName' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'description') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -537,17 +547,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Description
                                                     {sortBy === 'description' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'fees') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -558,17 +568,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Fees
                                                     {sortBy === 'fees' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'maxDiscount') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -579,17 +589,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Max Discount
                                                     {sortBy === 'maxDiscount' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'discountType') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -600,17 +610,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Discount Type
                                                     {sortBy === 'discountType' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'coursePackageType') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -621,17 +631,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Package Type
                                                     {sortBy === 'coursePackageType' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'months') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -642,17 +652,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Months
                                                     {sortBy === 'months' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'isActive') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -663,17 +673,17 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Status
                                                     {sortBy === 'isActive' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
                                             <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
+                                                className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
                                                     if (sortBy === 'createdAt') {
                                                         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -684,16 +694,16 @@ export function CoursePackagesPage() {
                                                     setPage(1);
                                                 }}
                                             >
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-white font-semibold">
                                                     Created At
                                                     {sortBy === 'createdAt' ? (
                                                         sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                                                     ) : (
-                                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
                                                     )}
                                                 </div>
                                             </TableHead>
-                                            <TableHead className="w-[80px]">Actions</TableHead>
+                                            <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -929,7 +939,10 @@ export function CoursePackagesPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="REGULAR">💪 Regular Membership</SelectItem>
-                                                <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                {/* Only show PT option if subscription allows */}
+                                                {hasPTPackagesAccess && (
+                                                    <SelectItem value="PT">🏋️ PT (Personal Training)</SelectItem>
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     )}

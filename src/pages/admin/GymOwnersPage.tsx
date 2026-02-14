@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Users, MoreVertical, Power, Building2, Search, Edit, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Eye, KeyRound, Copy, Check } from 'lucide-react';
+import { Plus, Users, MoreVertical, Power, Building2, Search, Edit, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, FileText, Eye, KeyRound, Copy, Check, ChevronDown, ChevronUp, Mail, Phone, Calendar, CreditCard, Dumbbell, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -82,6 +82,7 @@ export function GymOwnersPage() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedGymId, setSelectedGymId] = useState<string>('');
   const [editSelectedGymId, setEditSelectedGymId] = useState<string>('');
+  const [expandedOwnerIds, setExpandedOwnerIds] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
   // Debounce search input
@@ -321,6 +322,18 @@ export function GymOwnersPage() {
     }
   };
 
+  const toggleOwnerExpansion = (ownerId: string) => {
+    setExpandedOwnerIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ownerId)) {
+        newSet.delete(ownerId);
+      } else {
+        newSet.add(ownerId);
+      }
+      return newSet;
+    });
+  };
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -410,6 +423,733 @@ export function GymOwnersPage() {
   const availableOwners = Array.isArray(owners) ? owners.filter((o: User) => !o.ownedGym && !(o as any).gymName).length : 0;
   const activeOwners = Array.isArray(owners) ? owners.filter((o: User) => o.isActive).length : 0;
 
+  // Member Accordion Row Component
+  const MemberAccordionRow = ({ owner }: { owner: User }) => {
+    const gymId = owner.ownedGym?.id || (owner as any).gymId;
+    const isExpanded = expandedOwnerIds.has(owner.id);
+    const [selectedMember, setSelectedMember] = useState<any>(null);
+    const [memberDetailsOpen, setMemberDetailsOpen] = useState(false);
+    const [memberSearch, setMemberSearch] = useState('');
+    const [debouncedMemberSearch, setDebouncedMemberSearch] = useState('');
+
+    // Debounce member search input
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setDebouncedMemberSearch(memberSearch);
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [memberSearch]);
+
+    const { data: membersData, isLoading: membersLoading, isFetching } = useQuery({
+      queryKey: ['gym-owner-members', gymId, debouncedMemberSearch],
+      queryFn: () => adminService.getMembers({
+        gymId,
+        limit: 100,
+        search: debouncedMemberSearch || undefined
+      }),
+      enabled: isExpanded && !!gymId,
+      staleTime: 30000,
+    });
+
+    const members = membersData?.items || [];
+
+    const formatDate = (dateStr: string | undefined | null) => {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const getMemberStatusColor = (status: string) => {
+      switch (status) {
+        case 'ACTIVE': return 'bg-green-100 text-green-800';
+        case 'EXPIRED': return 'bg-red-100 text-red-800';
+        case 'CANCELLED': return 'bg-gray-100 text-gray-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const getPaymentStatusColor = (status: string) => {
+      switch (status?.toUpperCase()) {
+        case 'PAID': return 'bg-green-100 text-green-800';
+        case 'PARTIAL': return 'bg-yellow-100 text-yellow-800';
+        case 'PENDING': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const handleViewDetails = (member: any) => {
+      setSelectedMember(member);
+      setMemberDetailsOpen(true);
+    };
+
+    const exportMembersToExcel = () => {
+      if (!members || members.length === 0) return;
+      const gymName = owner.ownedGym?.name || (owner as any).gymName || 'Gym';
+      const safeGymName = gymName.replace(/[^a-zA-Z0-9]/g, '_');
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8"/>
+          <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+          <x:Name>Members</x:Name>
+          <x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal>
+          <x:TopRowBottomPane>1</x:TopRowBottomPane></x:WorksheetOptions>
+          </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+          <style>
+            td, th { padding: 6px 10px; border: 1px solid #D1D5DB; font-family: Calibri, Arial; font-size: 11pt; }
+            th { background-color: #4F46E5; color: #FFFFFF; font-weight: bold; text-align: center; }
+            .alt { background-color: #F3F4F6; }
+            .green { color: #166534; font-weight: bold; }
+            .red { color: #DC2626; font-weight: bold; }
+            .orange { color: #EA580C; font-weight: bold; }
+            .amount { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <table>
+            <thead><tr>
+              <th>S.No</th><th>Member Name</th><th>Member ID</th><th>Email</th><th>Phone</th>
+              <th>Package</th><th>Package Fees</th><th>Membership Start</th><th>Membership End</th>
+              <th>Days Remaining</th><th>Total Amount</th><th>Total Paid</th><th>Pending Amount</th>
+              <th>Payment Status</th><th>Trainer</th><th>Membership Status</th>
+            </tr></thead>
+            <tbody>
+              ${members.map((m: any, i: number) => {
+                const rowClass = i % 2 === 1 ? ' class="alt"' : '';
+                const payStatus = m.payment?.paymentStatus || 'N/A';
+                const payClass = payStatus === 'PAID' ? 'green' : payStatus === 'PARTIAL' ? 'orange' : payStatus === 'PENDING' ? 'red' : '';
+                const memStatus = m.subscription?.membershipStatus || 'N/A';
+                const memClass = memStatus === 'ACTIVE' ? 'green' : memStatus === 'EXPIRED' ? 'red' : '';
+                return `<tr${rowClass}>
+                  <td>${i + 1}</td>
+                  <td>${m.name || m.user?.name || '-'}</td>
+                  <td>${m.memberId || m.id?.slice(0, 8) || '-'}</td>
+                  <td>${m.email || m.user?.email || '-'}</td>
+                  <td>${m.phone || '-'}</td>
+                  <td>${m.package?.coursePackageName || '-'}</td>
+                  <td class="amount">${m.package?.finalFees ? '₹' + m.package.finalFees.toLocaleString() : '-'}</td>
+                  <td>${formatDate(m.subscription?.membershipStart)}</td>
+                  <td>${formatDate(m.subscription?.membershipEnd)}</td>
+                  <td>${m.subscription?.daysRemaining !== undefined ? m.subscription.daysRemaining : '-'}</td>
+                  <td class="amount">${m.payment?.totalAmount ? '₹' + m.payment.totalAmount.toLocaleString() : '-'}</td>
+                  <td class="amount">${m.payment?.totalPaid ? '₹' + m.payment.totalPaid.toLocaleString() : '-'}</td>
+                  <td class="amount ${m.payment?.totalPending > 0 ? 'red' : ''}">${m.payment?.totalPending ? '₹' + m.payment.totalPending.toLocaleString() : '₹0'}</td>
+                  <td class="${payClass}">${payStatus}</td>
+                  <td>${m.trainer?.name || 'Not assigned'}</td>
+                  <td class="${memClass}">${memStatus}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeGymName}_Members_${dateStr}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    if (!gymId) {
+      return null;
+    }
+
+    return (
+      <>
+        <TableRow className="bg-gradient-to-r from-slate-50 to-blue-50 hover:from-slate-50 hover:to-blue-50 animate-in slide-in-from-top-2 duration-200">
+          <TableCell colSpan={7} className="p-0">
+            <div className="px-6 py-4 border-t border-blue-100">
+              {/* Header with Search */}
+              <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-sm flex items-center gap-2 text-white">
+                  <div className="p-1.5 bg-white/20 rounded-md">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <span>Members</span>
+                  {(membersData?.pagination?.total !== undefined || members.length > 0) && (
+                    <Badge className="bg-white/20 text-white hover:bg-white/30 border-0 ml-1">
+                      {membersData?.pagination?.total ?? members.length}
+                    </Badge>
+                  )}
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={(e) => { e.stopPropagation(); exportMembersToExcel(); }}
+                    disabled={members.length === 0}
+                    className="h-9 px-3 text-xs bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md border-0 font-medium"
+                    size="sm"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Export
+                  </Button>
+                  <div className="relative w-[280px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name, email, phone..."
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      className="pl-9 h-9 text-sm bg-white/95 border-0 shadow-sm focus:ring-2 focus:ring-white/50"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  {memberSearch && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMemberSearch('');
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                  </div>
+                </div>
+              </div>
+
+              {membersLoading || isFetching ? (
+                <div className="flex items-center justify-center py-8 bg-white rounded-lg border">
+                  <Spinner />
+                  <span className="ml-2 text-muted-foreground">Loading members...</span>
+                </div>
+              ) : members.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground bg-white rounded-lg border">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>{debouncedMemberSearch ? `No members found matching "${debouncedMemberSearch}"` : 'No members found for this gym'}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                          <TableHead className="text-xs font-semibold text-white py-3">Member</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Contact</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Package</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Membership</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Payment</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Trainer</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3">Status</TableHead>
+                          <TableHead className="text-xs font-semibold text-white py-3 w-[100px]">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {members.map((member: any, index: number) => (
+                          <TableRow
+                            key={member.id}
+                            className={`text-xs transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50`}
+                          >
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8 border-2 border-indigo-100">
+                                  <AvatarFallback className="text-xs bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold">
+                                    {getInitials(member.name || member.user?.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-semibold text-gray-800">
+                                    {member.name || member.user?.name || 'Unknown'}
+                                  </p>
+                                  <p className="text-gray-500 text-[10px]">
+                                    ID: {member.memberId || member.id?.slice(0, 8)}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="space-y-0.5">
+                                {(member.email || member.user?.email) && (
+                                  <div className="flex items-center gap-1.5 text-gray-600">
+                                    <Mail className="h-3 w-3 text-indigo-400" />
+                                    <span className="truncate max-w-[140px]">{member.email || member.user?.email}</span>
+                                  </div>
+                                )}
+                                {member.phone && (
+                                  <div className="flex items-center gap-1.5 text-gray-600">
+                                    <Phone className="h-3 w-3 text-green-500" />
+                                    <span>{member.phone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div>
+                                <p className="font-semibold text-gray-800">{member.package?.coursePackageName || '-'}</p>
+                                {member.package?.finalFees && (
+                                  <p className="text-gray-500 text-[11px]">₹{member.package.finalFees?.toLocaleString()}</p>
+                                )}
+                                {member.ptAddon?.hasPTAddon && (
+                                  <Badge variant="outline" className="text-[10px] mt-1 bg-purple-50 text-purple-700 border-purple-200 font-medium">
+                                    <Dumbbell className="h-2.5 w-2.5 mr-1" />
+                                    PT: {member.ptAddon.ptPackageName}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-3 w-3 text-blue-500" />
+                                  <span className="text-gray-700">{formatDate(member.subscription?.membershipStart)}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500 ml-4">
+                                  <span>to</span>
+                                  <span>{formatDate(member.subscription?.membershipEnd)}</span>
+                                </div>
+                                {member.subscription?.daysRemaining !== undefined && (
+                                  <p className={`text-[10px] font-medium ml-4 ${member.subscription.daysRemaining <= 7 ? 'text-red-600' : member.subscription.daysRemaining <= 30 ? 'text-orange-500' : 'text-green-600'}`}>
+                                    {member.subscription.daysRemaining > 0 ? `${member.subscription.daysRemaining} days left` : 'Expired'}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <CreditCard className="h-3 w-3 text-emerald-500" />
+                                  <span className="text-gray-700 font-medium">₹{(member.payment?.totalPaid || 0).toLocaleString()}</span>
+                                  <span className="text-gray-400">/</span>
+                                  <span className="text-gray-500">₹{(member.payment?.totalAmount || 0).toLocaleString()}</span>
+                                </div>
+                                {member.payment?.totalPending > 0 && (
+                                  <p className="text-red-600 text-[10px] font-medium ml-4">Pending: ₹{member.payment.totalPending?.toLocaleString()}</p>
+                                )}
+                                <Badge className={`text-[10px] font-medium ${getPaymentStatusColor(member.payment?.paymentStatus)}`}>
+                                  {member.payment?.paymentStatus || 'N/A'}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {member.trainer ? (
+                                <div>
+                                  <p className="font-semibold text-gray-800">{member.trainer.name || '-'}</p>
+                                  {member.trainer.specialization && (
+                                    <p className="text-gray-500 text-[10px]">{member.trainer.specialization}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">Not assigned</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <Badge className={`text-[10px] font-medium shadow-sm ${getMemberStatusColor(member.subscription?.membershipStatus)}`}>
+                                {member.subscription?.membershipStatus || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-700 hover:from-indigo-100 hover:to-purple-100 hover:border-indigo-300 font-medium shadow-sm"
+                                onClick={() => handleViewDetails(member)}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                Details
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+
+        {/* Member Details Dialog */}
+        <Dialog open={memberDetailsOpen} onOpenChange={setMemberDetailsOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Member Details
+              </DialogTitle>
+            </DialogHeader>
+            {selectedMember && (
+              <div className="space-y-6">
+                {/* Basic Info Section */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div className="col-span-2 md:col-span-4 flex items-center gap-4 pb-3 border-b">
+                    <Avatar className="h-16 w-16">
+                      <AvatarFallback className="text-xl">
+                        {getInitials(selectedMember.name || selectedMember.user?.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="text-xl font-bold">{selectedMember.name || selectedMember.user?.name}</h3>
+                      <p className="text-muted-foreground">ID: {selectedMember.memberId}</p>
+                      <div className="flex gap-2 mt-1">
+                        <Badge className={getMemberStatusColor(selectedMember.subscription?.membershipStatus)}>
+                          {selectedMember.subscription?.membershipStatus}
+                        </Badge>
+                        <Badge variant="outline">{selectedMember.memberType}</Badge>
+                        {selectedMember.isActive ? (
+                          <Badge className="bg-green-100 text-green-800">Active</Badge>
+                        ) : (
+                          <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Email</span>
+                    <p className="font-medium text-sm">{selectedMember.email || selectedMember.user?.email || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Phone</span>
+                    <p className="font-medium text-sm">{selectedMember.phone || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Date of Birth</span>
+                    <p className="font-medium text-sm">{formatDate(selectedMember.dateOfBirth)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Gender</span>
+                    <p className="font-medium text-sm">{selectedMember.gender || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Blood Group</span>
+                    <p className="font-medium text-sm">{selectedMember.bloodGroup || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Occupation</span>
+                    <p className="font-medium text-sm">{selectedMember.occupation || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-xs text-muted-foreground">Address</span>
+                    <p className="font-medium text-sm">{selectedMember.address || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Password Hint</span>
+                    <p className="font-medium text-sm font-mono">{selectedMember.user?.passwordHint || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Subscription Section */}
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Subscription Details
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Start Date</span>
+                      <p className="font-medium text-sm">{formatDate(selectedMember.subscription?.membershipStart)}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">End Date</span>
+                      <p className="font-medium text-sm">{formatDate(selectedMember.subscription?.membershipEnd)}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Days Remaining</span>
+                      <p className={`font-medium text-sm ${(selectedMember.subscription?.daysRemaining || 0) <= 7 ? 'text-red-600' : ''}`}>
+                        {selectedMember.subscription?.daysRemaining !== undefined ?
+                          (selectedMember.subscription.daysRemaining > 0 ? `${selectedMember.subscription.daysRemaining} days` : 'Expired')
+                          : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Status</span>
+                      <div className="mt-0.5">
+                        <Badge className={getMemberStatusColor(selectedMember.subscription?.membershipStatus)}>
+                          {selectedMember.subscription?.membershipStatus}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package & Fees Section */}
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Package & Fees
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Course Package</span>
+                      <p className="font-medium text-sm">{selectedMember.package?.coursePackageName || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Package Fees</span>
+                      <p className="font-medium text-sm">₹{(selectedMember.package?.packageFees || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Max Discount</span>
+                      <p className="font-medium text-sm">₹{(selectedMember.package?.maxDiscount || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">After Discount</span>
+                      <p className="font-medium text-sm">₹{(selectedMember.package?.afterDiscount || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Extra Discount</span>
+                      <p className="font-medium text-sm">₹{(selectedMember.package?.extraDiscount || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Final Fees</span>
+                      <p className="font-bold text-sm text-primary">₹{(selectedMember.package?.finalFees || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PT Addon Section */}
+                {selectedMember.ptAddon?.hasPTAddon && (
+                  <div className="p-4 border rounded-lg border-purple-200 bg-purple-50/30">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-purple-700">
+                      <Dumbbell className="h-4 w-4" />
+                      PT Addon
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <span className="text-xs text-muted-foreground">PT Package</span>
+                        <p className="font-medium text-sm">{selectedMember.ptAddon.ptPackageName}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">PT Fees</span>
+                        <p className="font-medium text-sm">₹{(selectedMember.ptAddon.ptPackageFees || 0).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">PT Final Fees</span>
+                        <p className="font-bold text-sm text-purple-700">₹{(selectedMember.ptAddon.ptFinalFees || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Section */}
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Summary
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Total Amount</span>
+                      <p className="font-bold text-sm">₹{(selectedMember.payment?.totalAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Total Paid</span>
+                      <p className="font-medium text-sm text-green-600">₹{(selectedMember.payment?.totalPaid || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Total Pending</span>
+                      <p className="font-medium text-sm text-red-600">₹{(selectedMember.payment?.totalPending || 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Payment Status</span>
+                      <div className="mt-0.5">
+                        <Badge className={getPaymentStatusColor(selectedMember.payment?.paymentStatus)}>
+                          {selectedMember.payment?.paymentStatus}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="col-span-2 md:col-span-4">
+                      <span className="text-xs text-muted-foreground">Last Payment Date</span>
+                      <p className="font-medium text-sm">{formatDate(selectedMember.payment?.lastPaymentDate)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trainer Section */}
+                {selectedMember.trainer && (
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Dumbbell className="h-4 w-4" />
+                      Assigned Trainer
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Name</span>
+                        <p className="font-medium text-sm">{selectedMember.trainer.name}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Email</span>
+                        <p className="font-medium text-sm">{selectedMember.trainer.email || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Phone</span>
+                        <p className="font-medium text-sm">{selectedMember.trainer.phone || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Specialization</span>
+                        <p className="font-medium text-sm">{selectedMember.trainer.specialization || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* PT Details Section */}
+                {selectedMember.ptDetails && (
+                  <div className="p-4 border rounded-lg border-blue-200 bg-blue-50/30">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                      <Dumbbell className="h-4 w-4" />
+                      PT Details
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Package</span>
+                        <p className="font-medium text-sm">{selectedMember.ptDetails.packageName}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Sessions Total</span>
+                        <p className="font-medium text-sm">{selectedMember.ptDetails.sessionsTotal}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Sessions Used</span>
+                        <p className="font-medium text-sm">{selectedMember.ptDetails.sessionsUsed}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Sessions Remaining</span>
+                        <p className="font-medium text-sm text-blue-700">{selectedMember.ptDetails.sessionsRemaining}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Start Date</span>
+                        <p className="font-medium text-sm">{formatDate(selectedMember.ptDetails.startDate)}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">End Date</span>
+                        <p className="font-medium text-sm">{formatDate(selectedMember.ptDetails.endDate)}</p>
+                      </div>
+                      {selectedMember.ptDetails.goals && (
+                        <div className="col-span-2">
+                          <span className="text-xs text-muted-foreground">Goals</span>
+                          <p className="font-medium text-sm">{selectedMember.ptDetails.goals}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Diet Plan Section */}
+                {selectedMember.dietPlan && (
+                  <div className="p-4 border rounded-lg border-green-200 bg-green-50/30">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-green-700">
+                      <FileText className="h-4 w-4" />
+                      Diet Plan
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Template</span>
+                        <p className="font-medium text-sm">{selectedMember.dietPlan.templateName}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Start Date</span>
+                        <p className="font-medium text-sm">{formatDate(selectedMember.dietPlan.startDate)}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">End Date</span>
+                        <p className="font-medium text-sm">{formatDate(selectedMember.dietPlan.endDate)}</p>
+                      </div>
+                    </div>
+                    {selectedMember.dietPlan.meals && selectedMember.dietPlan.meals.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-muted-foreground font-semibold">Meals</span>
+                        <div className="space-y-2">
+                          {selectedMember.dietPlan.meals.map((meal: any, index: number) => (
+                            <div key={index} className="p-3 bg-white rounded border">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-sm">{meal.mealNo}. {meal.title}</span>
+                                <span className="text-xs text-muted-foreground">{meal.time}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{meal.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Close Button */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button variant="outline" onClick={() => setMemberDetailsOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  };
+
+  const exportOwnersToExcel = () => {
+    if (!filteredAndSortedOwners || filteredAndSortedOwners.length === 0) return;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fmtDate = (d: string | undefined | null) => {
+      if (!d) return '-';
+      return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8"/>
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>Gym Owners</x:Name>
+        <x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal>
+        <x:TopRowBottomPane>1</x:TopRowBottomPane></x:WorksheetOptions>
+        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+        <style>
+          td, th { padding: 6px 10px; border: 1px solid #D1D5DB; font-family: Calibri, Arial; font-size: 11pt; }
+          th { background-color: #4F46E5; color: #FFFFFF; font-weight: bold; text-align: center; }
+          .alt { background-color: #F3F4F6; }
+          .green { color: #166534; font-weight: bold; }
+          .red { color: #DC2626; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead><tr>
+            <th>S.No</th><th>Owner Name</th><th>Email</th><th>Phone</th><th>Password Hint</th>
+            <th>Owner Password</th><th>Status</th><th>Assigned Gym</th><th>Gym Address</th>
+            <th>Gym City</th><th>Gym State</th><th>Gym Mobile</th><th>Gym Email</th><th>Created At</th>
+          </tr></thead>
+          <tbody>
+            ${filteredAndSortedOwners.map((owner: User, i: number) => {
+              const rowClass = i % 2 === 1 ? ' class="alt"' : '';
+              const status = owner.isActive ? 'Active' : 'Inactive';
+              const statusClass = owner.isActive ? 'green' : 'red';
+              const gym = owner.ownedGym as any;
+              return `<tr${rowClass}>
+                <td>${i + 1}</td>
+                <td>${owner.name || '-'}</td>
+                <td>${owner.email || '-'}</td>
+                <td>${(owner as any).phone || '-'}</td>
+                <td>${(owner as any).passwordHint || '-'}</td>
+                <td>${ownerPasswordMap.get(owner.id) || '-'}</td>
+                <td class="${statusClass}">${status}</td>
+                <td>${gym?.name || (owner as any).gymName || '-'}</td>
+                <td>${gym?.address1 || '-'}</td>
+                <td>${gym?.city || '-'}</td>
+                <td>${gym?.state || '-'}</td>
+                <td>${gym?.mobileNo || '-'}</td>
+                <td>${gym?.email || '-'}</td>
+                <td>${fmtDate(owner.createdAt)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Gym_Owners_${dateStr}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -417,6 +1157,15 @@ export function GymOwnersPage() {
           <h1 className="text-3xl font-bold">Gym Owners</h1>
           <p className="text-muted-foreground">Manage gym owner accounts</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={exportOwnersToExcel}
+            disabled={filteredAndSortedOwners.length === 0}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export to Excel
+          </Button>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
@@ -480,6 +1229,7 @@ export function GymOwnersPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -561,137 +1311,175 @@ export function GymOwnersPage() {
             </div>
           ) : (
             <>
-              <div className="rounded-md border">
+              <div className="rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>
-                        <Button variant="ghost" onClick={() => handleSort('name')} className="h-8 px-2 -ml-2">
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="py-3">
+                        <Button variant="ghost" onClick={() => handleSort('name')} className="h-8 px-2 -ml-2 text-white hover:text-white hover:bg-white/10">
                           Owner
                           {getSortIcon('name')}
                         </Button>
                       </TableHead>
-                      <TableHead>
-                        <Button variant="ghost" onClick={() => handleSort('email')} className="h-8 px-2 -ml-2">
+                      <TableHead className="py-3">
+                        <Button variant="ghost" onClick={() => handleSort('email')} className="h-8 px-2 -ml-2 text-white hover:text-white hover:bg-white/10">
                           Email
                           {getSortIcon('email')}
                         </Button>
                       </TableHead>
-                      <TableHead>
-                        <span className="text-xs">Password Hint</span>
+                      <TableHead className="py-3">
+                        <span className="text-xs font-semibold text-white">Password Hint</span>
                       </TableHead>
-                      <TableHead>
-                        <span className="text-xs">Owner Password</span>
+                      <TableHead className="py-3">
+                        <span className="text-xs font-semibold text-white">Owner Password</span>
                       </TableHead>
-                      <TableHead>
-                        <Button variant="ghost" onClick={() => handleSort('ownedGym')} className="h-8 px-2 -ml-2">
+                      <TableHead className="py-3">
+                        <Button variant="ghost" onClick={() => handleSort('ownedGym')} className="h-8 px-2 -ml-2 text-white hover:text-white hover:bg-white/10">
                           Assigned Gym
                           {getSortIcon('ownedGym')}
                         </Button>
                       </TableHead>
-                      <TableHead>
-                        <Button variant="ghost" onClick={() => handleSort('isActive')} className="h-8 px-2 -ml-2">
+                      <TableHead className="py-3">
+                        <Button variant="ghost" onClick={() => handleSort('isActive')} className="h-8 px-2 -ml-2 text-white hover:text-white hover:bg-white/10">
                           Status
                           {getSortIcon('isActive')}
                         </Button>
                       </TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedOwners.length > 0 ? paginatedOwners.map((owner: User) => (
-                      <TableRow key={owner.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback>{getInitials(owner.name)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{owner.name || 'Unknown'}</p>
-                              {(owner as any).phone && (
-                                <p className="text-sm text-muted-foreground">{(owner as any).phone}</p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{owner.email}</TableCell>
-                        <TableCell>
-                          {(owner as any).passwordHint ? (
-                            <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{(owner as any).passwordHint}</code>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {ownerPasswordMap.get(owner.id) ? (
-                            <div className="flex items-center gap-1">
-                              <code className="px-2 py-1 bg-muted rounded text-xs font-mono">{ownerPasswordMap.get(owner.id)}</code>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => handleCopyOwnerPassword(owner.id, ownerPasswordMap.get(owner.id)!)}
-                              >
-                                {copiedOwnerPasswordId === owner.id ? (
-                                  <Check className="h-3 w-3 text-green-600" />
-                                ) : (
-                                  <Copy className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {owner.ownedGym?.name || (owner as any).gymName ? (
-                            <button
-                              type="button"
-                              className="flex items-center gap-2 hover:bg-muted px-2 py-1 rounded-md transition-colors cursor-pointer"
-                              onClick={() => handleViewGymClick(owner)}
-                            >
-                              <Building2 className="h-4 w-4 text-primary" />
-                              <span className="font-medium text-primary hover:underline">{owner.ownedGym?.name || (owner as any).gymName}</span>
-                              <Eye className="h-3 w-3 text-muted-foreground" />
-                            </button>
-                          ) : (
-                            <span className="text-muted-foreground">Not assigned</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={owner.isActive ? 'default' : 'secondary'}
-                            className={owner.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-gray-100 text-gray-800'}
+                    {paginatedOwners.length > 0 ? paginatedOwners.map((owner: User, index: number) => {
+                      const hasGym = owner.ownedGym?.id || (owner as any).gymId;
+                      const isExpanded = expandedOwnerIds.has(owner.id);
+
+                      return (
+                        <React.Fragment key={owner.id}>
+                          <TableRow
+                            className={`transition-colors ${hasGym ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-indigo-50/50 border-b-0' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${hasGym ? 'hover:bg-blue-50/50' : ''}`}
+                            onClick={() => hasGym && toggleOwnerExpansion(owner.id)}
                           >
-                            {owner.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditClick(owner)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleResetPasswordClick(owner)}>
-                                <KeyRound className="mr-2 h-4 w-4" />
-                                Reset Password
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(owner.id)}>
-                                <Power className="mr-2 h-4 w-4" />
-                                {owner.isActive ? 'Deactivate' : 'Activate'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )) : (
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-3">
+                                {hasGym ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={`h-7 w-7 shrink-0 rounded-full ${isExpanded ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100'}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleOwnerExpansion(owner.id);
+                                    }}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <div className="w-7" />
+                                )}
+                                <Avatar className="h-9 w-9 border-2 border-indigo-100">
+                                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold text-sm">
+                                    {getInitials(owner.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-semibold text-gray-800">{owner.name || 'Unknown'}</p>
+                                  {(owner as any).phone && (
+                                    <p className="text-sm text-gray-500">{(owner as any).phone}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 text-gray-700">{owner.email}</TableCell>
+                            <TableCell className="py-3">
+                              {(owner as any).passwordHint ? (
+                                <code className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700">{(owner as any).passwordHint}</code>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {ownerPasswordMap.get(owner.id) ? (
+                                <div className="flex items-center gap-1">
+                                  <code className="px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs font-mono text-amber-700">{ownerPasswordMap.get(owner.id)}</code>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-amber-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyOwnerPassword(owner.id, ownerPasswordMap.get(owner.id)!);
+                                    }}
+                                  >
+                                    {copiedOwnerPasswordId === owner.id ? (
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-3 w-3 text-amber-600" />
+                                    )}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {owner.ownedGym?.name || (owner as any).gymName ? (
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-2 hover:bg-indigo-50 px-2 py-1.5 rounded-md transition-colors cursor-pointer border border-transparent hover:border-indigo-200"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewGymClick(owner);
+                                  }}
+                                >
+                                  <Building2 className="h-4 w-4 text-indigo-600" />
+                                  <span className="font-semibold text-indigo-600 hover:underline">{owner.ownedGym?.name || (owner as any).gymName}</span>
+                                  <Eye className="h-3 w-3 text-indigo-400" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-400 italic">Not assigned</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <Badge
+                                variant={owner.isActive ? 'default' : 'secondary'}
+                                className={`font-medium shadow-sm ${owner.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-gray-100 text-gray-600'}`}
+                              >
+                                {owner.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="hover:bg-gray-100 rounded-full" onClick={(e) => e.stopPropagation()}>
+                                    <MoreVertical className="h-4 w-4 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="shadow-lg">
+                                  <DropdownMenuItem onClick={() => handleEditClick(owner)} className="cursor-pointer">
+                                    <Edit className="mr-2 h-4 w-4 text-blue-500" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleResetPasswordClick(owner)} className="cursor-pointer">
+                                    <KeyRound className="mr-2 h-4 w-4 text-orange-500" />
+                                    Reset Password
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(owner.id)} className="cursor-pointer">
+                                    <Power className="mr-2 h-4 w-4 text-red-500" />
+                                    {owner.isActive ? 'Deactivate' : 'Activate'}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                          {hasGym && isExpanded && <MemberAccordionRow owner={owner} />}
+                        </React.Fragment>
+                      );
+                    }) : (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                           No gym owners found

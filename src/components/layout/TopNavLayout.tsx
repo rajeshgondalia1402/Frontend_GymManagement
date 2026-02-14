@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { MemberSearchDropdown } from './MemberSearchDropdown';
+import { memberService } from '@/services/member.service';
 import {
   LayoutDashboard,
   Building2,
@@ -15,7 +17,6 @@ import {
   X,
   ChevronDown,
   FolderCog,
-  Briefcase,
   MessageSquare,
   Wallet,
   BadgeCheck,
@@ -26,11 +27,13 @@ import {
   Package,
   Receipt,
   Banknote,
-  ClipboardCheck
+  ClipboardCheck,
+  FileSpreadsheet,
+  IndianRupee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +52,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth.service';
 import { toast } from '@/hooks/use-toast';
+import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import type { Role } from '@/types';
 
 interface NavItem {
@@ -69,7 +73,8 @@ function isSubmenuItem(item: NavEntry): item is NavItemWithSubmenu {
   return 'submenu' in item;
 }
 
-const navItemsByRole: Record<Role, NavEntry[]> = {
+// Static navigation items for non-GYM_OWNER roles
+const staticNavItemsByRole: Partial<Record<Role, NavEntry[]>> = {
   ADMIN: [
     { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { title: 'Subscription Plans', href: '/admin/subscription-plans', icon: CreditCard },
@@ -86,42 +91,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
       title: 'Master',
       icon: FolderCog,
       submenu: [
-        { title: 'Occupation Master', href: '/admin/master/occupations', icon: Briefcase },
         { title: 'Enquiry Master', href: '/admin/master/enquiry-types', icon: MessageSquare },
-        { title: 'Payment Type Master', href: '/admin/master/payment-types', icon: CreditCard },
-      ],
-    },
-  ],
-  GYM_OWNER: [
-    { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
-    {
-      title: 'Members',
-      icon: Users,
-      submenu: [
-        { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
-        { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users }, 
-        { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
-        { title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed }, 
-      ],
-    },
-    {
-      title: 'Expenses',
-      icon: Receipt,
-      submenu: [
-        { title: 'Manage Expenses', href: '/gym-owner/expenses', icon: Receipt },
-        { title: 'Salary Settlement', href: '/gym-owner/salary-settlement', icon: Banknote },
-      ],
-    },
-    {
-      title: 'Master',
-      icon: FolderCog,
-      submenu: [
-        { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
-        { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
-        { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
-        { title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck },
-        // { title: 'Body Part Master', href: '/gym-owner/master/body-parts', icon: Users },
-        // { title: 'Workout Exercise Master', href: '/gym-owner/master/workout-exercises', icon: Dumbbell },
       ],
     },
   ],
@@ -133,19 +103,91 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
   ],
   MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
   ],
   PT_MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
   ],
 };
+
+// Import FeatureCode type for the navigation function
+import type { FeatureCode } from '@/config/subscriptionFeatures';
+
+/**
+ * Generate dynamic GYM_OWNER navigation based on subscription features
+ */
+function getGymOwnerNavItems(canAccess: (feature: FeatureCode) => boolean): NavEntry[] {
+  const items: NavEntry[] = [
+    { title: 'Dashboard', href: '/gym-owner', icon: LayoutDashboard },
+  ];
+
+  // Members submenu - always visible but content varies based on subscription
+  const membersSubmenu: NavItem[] = [
+    { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
+    { title: 'Regular/PT Member', href: '/gym-owner/members', icon: Users },
+    { title: 'Manage Trainers', href: '/gym-owner/trainers', icon: Dumbbell },
+  ];
+
+  // Only add Diet Templates if plan allows
+  if (canAccess('DIET_TEMPLATES') || canAccess('DIET_PLANS')) {
+    membersSubmenu.push({ title: 'Diet Templates', href: '/gym-owner/diet-templates', icon: UtensilsCrossed });
+  }
+
+  items.push({ title: 'Members', icon: Users, submenu: membersSubmenu });
+
+  // Expenses submenu
+  const expensesSubmenu: NavItem[] = [
+    { title: 'Manage Expenses', href: '/gym-owner/expenses', icon: Receipt },
+  ];
+
+  // Only add Salary Settlement if plan allows
+  if (canAccess('SALARY_SETTLEMENT')) {
+    expensesSubmenu.push({ title: 'Salary Settlement', href: '/gym-owner/salary-settlement', icon: Banknote });
+  }
+
+  items.push({ title: 'Expenses', icon: Receipt, submenu: expensesSubmenu });
+
+  // Master submenu
+  const masterSubmenu: NavItem[] = [
+    { title: 'Course Packages', href: '/gym-owner/course-packages', icon: Package },
+    { title: 'Expense Group Master', href: '/gym-owner/master/expense-groups', icon: Wallet },
+  ];
+
+  // Only add Exercise Plans if plan allows
+  if (canAccess('EXERCISE_PLANS')) {
+    masterSubmenu.push({ title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList });
+  }
+
+  // Only add Designation Master if plan allows
+  if (canAccess('MASTER_DESIGNATION')) {
+    masterSubmenu.push({ title: 'Designation Master', href: '/gym-owner/master/designations', icon: BadgeCheck });
+  }
+
+  items.push({ title: 'Master', icon: FolderCog, submenu: masterSubmenu });
+
+  // Reports submenu - only if plan allows any reports
+  if (canAccess('REPORT_EXPENSE') || canAccess('REPORT_INCOME')) {
+    const reportsSubmenu: NavItem[] = [];
+
+    if (canAccess('REPORT_EXPENSE')) {
+      reportsSubmenu.push({ title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt });
+    }
+    if (canAccess('REPORT_INCOME')) {
+      reportsSubmenu.push({ title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee });
+    }
+
+    if (reportsSubmenu.length > 0) {
+      items.push({ title: 'Reports', icon: FileSpreadsheet, submenu: reportsSubmenu });
+    }
+  }
+
+  return items;
+}
 
 interface TopNavLayoutProps {
   children: React.ReactNode;
@@ -172,6 +214,20 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   const { user, logout } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Fetch member photo for MEMBER/PT_MEMBER users
+  const isMemberUser = user?.role === 'MEMBER' || user?.role === 'PT_MEMBER';
+  const { data: memberDashboard } = useQuery({
+    queryKey: ['member-dashboard-photo'],
+    queryFn: memberService.getComprehensiveDashboard,
+    enabled: isMemberUser,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const memberPhoto = isMemberUser ? memberDashboard?.memberInfo?.memberPhoto : null;
+
+  // Get subscription feature access for dynamic navigation
+  const { canAccess } = useSubscriptionFeatures();
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -190,9 +246,20 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
     setOpenDropdown(null);
   }, [location.pathname]);
 
+  // Memoize GYM_OWNER nav items to prevent unnecessary re-renders
+  const gymOwnerNavItems = useMemo(() => {
+    if (user?.role === 'GYM_OWNER') {
+      return getGymOwnerNavItems(canAccess);
+    }
+    return [];
+  }, [user?.role, canAccess]);
+
   if (!user) return null;
 
-  const navItems = navItemsByRole[user.role as Role] || [];
+  // Get nav items - use dynamic items for GYM_OWNER, static for others
+  const navItems = user.role === 'GYM_OWNER'
+    ? gymOwnerNavItems
+    : (staticNavItemsByRole[user.role as Role] || []);
 
   const handleLogout = () => {
     logout();
@@ -382,6 +449,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="hidden lg:flex items-center gap-2 h-10">
                     <Avatar className="h-8 w-8">
+                      {memberPhoto && (
+                        <AvatarImage
+                          src={memberPhoto}
+                          alt={user?.name || 'User'}
+                          className="object-cover"
+                        />
+                      )}
                       <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
                         {getInitials(user?.name)}
                       </AvatarFallback>
@@ -500,6 +574,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 <div className="border-t mt-4 pt-4 px-4">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="h-10 w-10">
+                      {memberPhoto && (
+                        <AvatarImage
+                          src={memberPhoto}
+                          alt={user?.name || 'User'}
+                          className="object-cover"
+                        />
+                      )}
                       <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
                         {getInitials(user?.name)}
                       </AvatarFallback>

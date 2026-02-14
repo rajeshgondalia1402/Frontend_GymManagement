@@ -317,7 +317,50 @@ export interface ExercisePlan {
   gymId: string;
   dayOfWeek?: number;
   _count?: { assignments: number };
+  assignedMembers?: AssignedExerciseMember[];
   createdAt: string;
+}
+
+// Assigned member for exercise plan
+export interface AssignedExerciseMember {
+  memberExerciseId: string;
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  memberEmail: string;
+  mobileNo: string;
+  memberType: MemberType;
+  hasPTAddon: boolean;
+  startDate: string;
+  endDate?: string;
+}
+
+// Bulk Exercise Plan Assignment Types
+export interface BulkExerciseAssignmentRequest {
+  memberIds: string[];
+  exercisePlanId: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+}
+
+export interface BulkExerciseAssignmentResult {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  exercisePlanId: string;
+  exercisePlanName: string;
+  startDate: string;
+  endDate?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface BulkExerciseAssignmentResponse {
+  success: boolean;
+  message: string;
+  data: BulkExerciseAssignmentResult[];
 }
 
 export interface TrainerAssignment {
@@ -365,14 +408,67 @@ export interface AdminDashboard {
 }
 
 export interface GymOwnerDashboard {
-  totalMembers: number;
-  activeMembers: number;
-  expiredMembers: number;
-  expiringMembers: number;
-  totalTrainers: number;
-  dietPlans: number;
-  exercisePlans: number;
+  totalActiveMembers: number;
+  totalActiveTrainers: number;
+  todayFollowUpInquiries: number;
+  expiringRegularMembers: number;
+  expiringPTMembers: number;
+  expensesLastMonth: number;
+  expensesCurrentMonth: number;
   gym: Gym;
+}
+
+// Dashboard Report Item Types
+export interface DashboardMemberItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  memberType: MemberType;
+  membershipEnd?: string;
+  memberPhoto?: string;
+}
+
+export interface DashboardTrainerItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  specialization?: string;
+  trainerPhoto?: string;
+  ptMemberCount: number;
+}
+
+export interface DashboardFollowUpInquiryItem {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  followUpDate: string;
+  comments?: string;
+  heardAbout?: string;
+}
+
+export interface DashboardExpenseItem {
+  id: string;
+  expenseDate: string;
+  name: string;
+  amount: number;
+  expenseGroupName?: string;
+  paymentMode: PaymentMode;
+}
+
+export interface DashboardRenewalItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  membershipEnd: string;
+  memberType: MemberType;
+  memberPhoto?: string;
 }
 
 export interface MemberDashboard {
@@ -483,29 +579,9 @@ export interface TrainerProfileDetails {
   };
 }
 
-export interface Occupation {
-  id: string;
-  name?: string;
-  occupationName?: string;
-  description?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface EnquiryType {
   id: string;
   name: string;
-  description?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface PaymentType {
-  id: string;
-  name: string;
-  paymentTypeName?: string;
   description?: string;
   isActive?: boolean;
   createdAt?: string;
@@ -522,7 +598,7 @@ export interface ExpenseGroup {
   gymId?: string;
 }
 
-export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
 
 export interface Expense {
   id: string;
@@ -941,6 +1017,49 @@ export interface BulkDietAssignmentResponse {
   data: BulkDietAssignmentResult[];
 }
 
+// Member My-Diet-Plan List Types
+export interface MyDietPlanMeal {
+  id: string;
+  mealNo: number;
+  title: string;
+  description: string;
+  time: string;
+}
+
+export interface MyDietPlanItem {
+  id: string;
+  dietTemplateId: string;
+  dietTemplateName: string;
+  dietTemplateDescription: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  notes: string | null;
+  assignedBy: string;
+  meals: MyDietPlanMeal[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MyDietPlanListResponse {
+  items: MyDietPlanItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface MyDietPlanListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  isActive?: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -1269,5 +1388,398 @@ export interface GymInquiryParams {
   sortOrder?: 'asc' | 'desc';
   subscriptionPlanId?: string;
   isActive?: boolean;
+}
+
+// =====================================================
+// Expense Report Types
+// =====================================================
+
+export type ExpenseType = 'EXPENSE' | 'SALARY';
+
+export interface ExpenseReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  year?: number;
+  month?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  expenseType?: ExpenseType;
+  expenseGroupId?: string;
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseReportItem {
+  id: string;
+  date: string;
+  name: string;
+  description?: string;
+  category: string;
+  amount: number;
+  paymentMode: PaymentMode;
+  type: ExpenseType;
+  expenseGroupId?: string;
+  trainerId?: string;
+  trainerName?: string;
+  salaryMonth?: string;
+  attachments?: string[];
+  createdAt: string;
+}
+
+export interface ExpenseReportSummary {
+  totalExpenseAmount: number;
+  totalSalaryAmount: number;
+  grandTotal: number;
+  expenseCount: number;
+  salaryCount: number;
+}
+
+export interface ExpenseReportResponse {
+  success: boolean;
+  message: string;
+  data: ExpenseReportItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: ExpenseReportSummary;
+}
+
+// =====================================================
+// Income Report Types
+// =====================================================
+
+export interface IncomeReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  year?: number;
+  month?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  paymentStatus?: 'PAID' | 'PENDING' | 'PARTIAL';
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+}
+
+export interface MemberIncomeItem {
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  email?: string;
+  phone?: string;
+  memberPhoto?: string;
+  membershipStatus: string;
+  initialPayment: number;
+  renewalPayments: number;
+  balancePayments: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
+  lastPaymentDate?: string;
+  paymentCount: number;
+}
+
+export interface IncomeReportSummary {
+  totalInitialPayments: number;
+  totalRenewalPayments: number;
+  totalBalancePayments: number;
+  grandTotal: number;
+  totalPending: number;
+  memberCount: number;
+}
+
+export interface IncomeReportResponse {
+  success: boolean;
+  message: string;
+  data: MemberIncomeItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: IncomeReportSummary;
+}
+
+// Member Payment Detail Types (for popup)
+export type PaymentSource = 'INITIAL' | 'RENEWAL' | 'BALANCE_PAYMENT';
+// Note: PaymentFor is already defined above as 'REGULAR' | 'PT'
+
+export interface MemberPaymentDetailParams {
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
+  paymentFor?: PaymentFor;
+}
+
+export interface MemberPaymentDetailItem {
+  id: string;
+  paymentDate: string;
+  source: PaymentSource;
+  paymentFor: PaymentFor;
+  amount: number;
+  paymentMode?: string;
+  receiptNo?: string;
+  renewalNumber?: string;
+  notes?: string;
+  packageName?: string;
+  createdAt: string;
+}
+
+export interface MemberPaymentDetailSummary {
+  totalPaidAmount: number;
+  regularPayments: number;
+  ptPayments: number;
+  paymentCount: number;
+}
+
+export interface MemberPaymentDetailResponse {
+  success: boolean;
+  message: string;
+  data: {
+    memberId: string;
+    memberName: string;
+    memberCode: string;
+    payments: MemberPaymentDetailItem[];
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  summary: MemberPaymentDetailSummary;
+}
+
+// Member Complete Details Types (my-complete-details API)
+export interface MemberCompleteInfo {
+  id: string;
+  memberId: string;
+  name: string;
+  email: string;
+  phone: string;
+  altContactNo?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  anniversaryDate?: string | null;
+  emergencyContact?: string;
+  healthNotes?: string;
+  memberPhoto?: string;
+  memberType: 'REGULAR' | 'PT_MEMBER' | 'REGULAR_PT';
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface MemberCompleteGym {
+  id: string;
+  name: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  mobileNo?: string;
+  email?: string;
+}
+
+export interface MemberCompleteTrainer {
+  id: string;
+  name: string;
+  email?: string;
+  specialization?: string;
+}
+
+export interface MemberCompleteMembership {
+  startDate: string;
+  endDate: string;
+  status: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+  daysRemaining: number;
+  daysSinceExpiry: number;
+  isExpired: boolean;
+  expiryStatus: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+}
+
+export interface MemberCompletePackage {
+  id: string;
+  packageName: string;
+  description?: string;
+  packageFees: number;
+  durationMonths: number;
+  packageType: string;
+}
+
+export interface MemberCompleteFees {
+  packageFees: number;
+  maxDiscount: number;
+  afterDiscount: number;
+  extraDiscount: number;
+  finalFees: number;
+  packageName?: string;
+}
+
+export interface MemberCompletePaymentSection {
+  finalFees: number;
+  totalPaid: number;
+  pendingAmount: number;
+  paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+  paymentCount: number;
+}
+
+export interface MemberCompletePaymentSummary {
+  regular: MemberCompletePaymentSection;
+  pt: MemberCompletePaymentSection | null;
+  grandTotal: {
+    totalFees: number;
+    totalPaid: number;
+    totalPending: number;
+    overallStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+  };
+}
+
+export interface MemberCompletePaymentHistoryItem {
+  id: string;
+  receiptNo: string;
+  paymentFor: 'REGULAR' | 'PT';
+  paymentDate: string;
+  paidAmount: number;
+  paymentMode: string;
+  nextPaymentDate?: string | null;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface MemberCompleteRenewalHistoryItem {
+  id: string;
+  renewalNumber: string;
+  renewalDate: string;
+  renewalType: string;
+  previousMembershipStart: string;
+  previousMembershipEnd: string;
+  newMembershipStart: string;
+  newMembershipEnd: string;
+  package: {
+    id: string;
+    packageName: string;
+    durationMonths: number;
+  };
+  fees: {
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+  };
+  payment: {
+    paidAmount: number;
+    pendingAmount: number;
+    paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+    paymentMode: string;
+  };
+  createdAt: string;
+}
+
+export interface MemberCompleteDetails {
+  memberInfo: MemberCompleteInfo;
+  gym: MemberCompleteGym;
+  trainer: MemberCompleteTrainer | null;
+  membership: MemberCompleteMembership;
+  currentPackage: MemberCompletePackage | null;
+  regularFees: MemberCompleteFees | null;
+  ptFees: MemberCompleteFees | null;
+  paymentSummary: MemberCompletePaymentSummary;
+  paymentHistory: MemberCompletePaymentHistoryItem[];
+  renewalHistory: MemberCompleteRenewalHistoryItem[];
+}
+
+// Comprehensive Member Dashboard Types
+export interface MemberComprehensiveDashboard {
+  memberInfo: {
+    id: string;
+    memberId: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    memberPhoto: string | null;
+    memberType: string;
+  };
+
+  membership: {
+    packageName: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    status: string;
+    daysRemaining: number;
+    isExpired: boolean;
+    expiryStatus: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED';
+  };
+
+  fees: {
+    totalFees: number;
+    paidAmount: number;
+    pendingAmount: number;
+    paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+  };
+
+  nextPayment: {
+    date: string | null;
+    isToday: boolean;
+    isPastDue: boolean;
+    daysUntilDue: number | null;
+  } | null;
+
+  trainer: {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    specialization: string | null;
+  } | null;
+
+  todayExercise: {
+    id: string;
+    name: string;
+    description: string | null;
+    type: string | null;
+    exercises: ExerciseItem[];
+  } | null;
+
+  dietPlan: {
+    id: string;
+    name: string;
+    description: string | null;
+    meals: {
+      mealNo: number;
+      title: string;
+      description: string | null;
+      time: string | null;
+    }[];
+    startDate: string | null;
+    endDate: string | null;
+  } | null;
+
+  gym: {
+    id: string;
+    name: string;
+    address: string | null;
+    mobileNo: string | null;
+    email: string | null;
+  };
+}
+
+interface ExerciseItem {
+  name?: string;
+  sets?: number;
+  reps?: number;
+  duration?: string;
+  notes?: string;
 }
 

@@ -41,7 +41,6 @@ const gymOwnerNavItems: NavItem[] = [
 const memberNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/member', icon: <LayoutDashboard className="h-5 w-5" /> },
   { label: 'My Profile', path: '/member/profile', icon: <User className="h-5 w-5" /> },
-  { label: 'My Trainer', path: '/member/trainer', icon: <UserCog className="h-5 w-5" /> },
   { label: 'Diet Plan', path: '/member/diet-plan', icon: <UtensilsCrossed className="h-5 w-5" /> },
   { label: 'Exercise Plans', path: '/member/exercise-plans', icon: <Dumbbell className="h-5 w-5" /> },
   { label: 'Membership', path: '/member/membership', icon: <Calendar className="h-5 w-5" /> },

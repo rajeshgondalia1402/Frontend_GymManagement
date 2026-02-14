@@ -60,7 +60,7 @@ export function MemberDetailPage() {
 
   const { data: exercisePlans } = useQuery({
     queryKey: ['exercise-plans'],
-    queryFn: gymOwnerService.getExercisePlans,
+    queryFn: () => gymOwnerService.getExercisePlans(),
   });
 
   const assignTrainerMutation = useMutation({

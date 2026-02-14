@@ -6,7 +6,7 @@ import { z } from 'zod';
 import {
   Plus, Search, Edit, Eye, MoreVertical, ChevronLeft, ChevronRight,
   MessageSquarePlus, Phone, Building2, Calendar, User, ClipboardCheck,
-  CheckCircle, XCircle, Power,
+  CheckCircle, XCircle, Power, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { ExportButton } from '@/components/ui/export-button';
 import { adminService } from '@/services/admin.service';
 import type { GymInquiry, GymInquiryFollowup, GymSubscriptionPlan, EnquiryType } from '@/types';
 
@@ -308,6 +307,87 @@ export function GymInquiryPage() {
 
   const isFormDialogOpen = createDialogOpen || !!editingInquiry;
 
+  // Export to Excel
+  const exportToExcel = () => {
+    if (!inquiries || inquiries.length === 0) {
+      toast({ title: 'No data to export', variant: 'destructive' });
+      return;
+    }
+
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8">';
+    html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+    html += '<x:Name>Gym Inquiries Report</x:Name>';
+    html += '<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane><x:ActivePane>2</x:ActivePane></x:WorksheetOptions>';
+    html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    html += '<style>';
+    html += 'table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }';
+    html += 'th { background-color: #4F46E5; color: white; font-weight: bold; padding: 12px 8px; border: 1px solid #3730A3; text-align: left; }';
+    html += 'td { border: 1px solid #E5E7EB; padding: 8px; }';
+    html += 'tr:nth-child(even) { background-color: #F9FAFB; }';
+    html += 'tr:hover { background-color: #F3F4F6; }';
+    html += '.active { color: #059669; font-weight: bold; }';
+    html += '.inactive { color: #DC2626; font-weight: bold; }';
+    html += '</style></head><body>';
+
+    html += '<table><thead><tr>';
+    html += '<th>S.No</th>';
+    html += '<th>Gym Name</th>';
+    html += '<th>Mobile No</th>';
+    html += '<th>Email</th>';
+    html += '<th>Address 1</th>';
+    html += '<th>Address 2</th>';
+    html += '<th>City</th>';
+    html += '<th>State</th>';
+    html += '<th>Plan</th>';
+    html += '<th>Enquiry Type</th>';
+    html += '<th>Member Size</th>';
+    html += '<th>Seller Name</th>';
+    html += '<th>Seller Mobile</th>';
+    html += '<th>Next Followup</th>';
+    html += '<th>Followups</th>';
+    html += '<th>Status</th>';
+    html += '<th>Note</th>';
+    html += '<th>Created At</th>';
+    html += '</tr></thead><tbody>';
+
+    inquiries.forEach((inquiry: GymInquiry, index: number) => {
+      const statusClass = inquiry.isActive ? 'active' : 'inactive';
+      html += '<tr>';
+      html += `<td>${index + 1}</td>`;
+      html += `<td>${inquiry.gymName || '-'}</td>`;
+      html += `<td>${inquiry.mobileNo || '-'}</td>`;
+      html += `<td>${inquiry.email || '-'}</td>`;
+      html += `<td>${inquiry.address1 || '-'}</td>`;
+      html += `<td>${inquiry.address2 || '-'}</td>`;
+      html += `<td>${inquiry.city || '-'}</td>`;
+      html += `<td>${inquiry.state || '-'}</td>`;
+      html += `<td>${inquiry.subscriptionPlan?.name || '-'}</td>`;
+      html += `<td>${inquiry.enquiryType?.name || '-'}</td>`;
+      html += `<td>${inquiry.memberSize || '-'}</td>`;
+      html += `<td>${inquiry.sellerName || '-'}</td>`;
+      html += `<td>${inquiry.sellerMobileNo || '-'}</td>`;
+      html += `<td>${formatDate(inquiry.nextFollowupDate)}</td>`;
+      html += `<td>${inquiry._count?.followups || 0}</td>`;
+      html += `<td class="${statusClass}">${inquiry.isActive ? 'Active' : 'Inactive'}</td>`;
+      html += `<td>${inquiry.note || '-'}</td>`;
+      html += `<td>${formatDate(inquiry.createdAt)}</td>`;
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></body></html>';
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const timestamp = new Date().toISOString().split('T')[0];
+    a.download = `gym_inquiries_report_${timestamp}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Gym inquiries report exported successfully' });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -317,29 +397,14 @@ export function GymInquiryPage() {
           <p className="text-muted-foreground">Manage gym inquiry records and followups</p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportButton
-            data={inquiries}
-            filename="gym-inquiries"
-            columns={[
-              { key: 'gymName', label: 'Gym Name' },
-              { key: 'mobileNo', label: 'Mobile No' },
-              { key: 'email', label: 'Email', format: (v) => v || '' },
-              { key: 'address1', label: 'Address 1', format: (v) => v || '' },
-              { key: 'address2', label: 'Address 2', format: (v) => v || '' },
-              { key: 'city', label: 'City', format: (v) => v || '' },
-              { key: 'state', label: 'State', format: (v) => v || '' },
-              { key: 'subscriptionPlan', label: 'Plan', format: (_v, row) => row.subscriptionPlan?.name || '' },
-              { key: 'enquiryType', label: 'Enquiry Type', format: (_v, row) => row.enquiryType?.name || '' },
-              { key: 'memberSize', label: 'Member Size', format: (v) => v ? String(v) : '' },
-              { key: 'sellerName', label: 'Seller Name', format: (v) => v || '' },
-              { key: 'sellerMobileNo', label: 'Seller Mobile', format: (v) => v || '' },
-              { key: 'nextFollowupDate', label: 'Next Followup', format: (v) => v ? formatDate(v) : '' },
-              { key: '_count', label: 'Followups', format: (_v, row) => String(row._count?.followups || 0) },
-              { key: 'isActive', label: 'Status', format: (v) => v ? 'Active' : 'Inactive' },
-              { key: 'note', label: 'Note', format: (v) => v || '' },
-              { key: 'createdAt', label: 'Created At', format: (v) => formatDate(v) },
-            ]}
-          />
+          <Button
+            onClick={exportToExcel}
+            disabled={!inquiries || inquiries.length === 0}
+            className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </Button>
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Add Inquiry
@@ -441,17 +506,17 @@ export function GymInquiryPage() {
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Gym</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Enquiry Type</TableHead>
-                      <TableHead>Member Size</TableHead>
-                      <TableHead>Seller</TableHead>
-                      <TableHead>Next Followup</TableHead>
-                      <TableHead>Followups</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                    <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
+                      <TableHead className="py-3 text-white font-semibold">Gym</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Contact</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Plan</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Enquiry Type</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Member Size</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Seller</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Next Followup</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Followups</TableHead>
+                      <TableHead className="py-3 text-white font-semibold">Status</TableHead>
+                      <TableHead className="w-[80px] py-3 text-white font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
