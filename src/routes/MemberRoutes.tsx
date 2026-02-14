@@ -4,7 +4,6 @@ import { TopNavLayout } from '@/components/layout/TopNavLayout';
 
 // Member Pages
 import { MemberDashboard } from '@/pages/member/MemberDashboard';
-import { MyTrainerPage } from '@/pages/member/MyTrainerPage';
 import { MyDietPlanPage } from '@/pages/member/MyDietPlanPage';
 import { MyExercisePlansPage } from '@/pages/member/MyExercisePlansPage';
 import { MembershipPage } from '@/pages/member/MembershipPage';
@@ -35,16 +34,6 @@ export const MemberRoutes = () => (
         <MemberGuard>
           <TopNavLayout>
             <MemberDashboard />
-          </TopNavLayout>
-        </MemberGuard>
-      }
-    />
-    <Route
-      path="/member/trainer"
-      element={
-        <MemberGuard>
-          <TopNavLayout>
-            <MyTrainerPage />
           </TopNavLayout>
         </MemberGuard>
       }

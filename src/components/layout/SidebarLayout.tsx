@@ -116,14 +116,12 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
   ],
   MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
   ],
   PT_MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },

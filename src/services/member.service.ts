@@ -1,11 +1,15 @@
 import api from './api';
-import type { 
-  ApiResponse, 
-  MemberDashboard, 
+import type {
+  ApiResponse,
+  MemberDashboard,
   Member,
-  Trainer, 
+  Trainer,
   DietPlan,
-  ExercisePlan
+  ExercisePlan,
+  MyDietPlanListResponse,
+  MyDietPlanListParams,
+  MemberCompleteDetails,
+  MemberComprehensiveDashboard
 } from '@/types';
 
 interface MembershipStatusResponse {
@@ -48,9 +52,15 @@ export const memberService = {
     return memberService.getTrainer();
   },
 
-  // Diet Plan
+  // Diet Plan (legacy single plan)
   async getDietPlan(): Promise<DietPlan | null> {
     const response = await api.get<ApiResponse<DietPlan | null>>('/member/diet-plan');
+    return response.data.data;
+  },
+
+  // Diet Plan List (new paginated endpoint)
+  async getMyDietPlanList(params?: MyDietPlanListParams): Promise<MyDietPlanListResponse> {
+    const response = await api.get<ApiResponse<MyDietPlanListResponse>>('/member/my-diet-plan/list', { params });
     return response.data.data;
   },
 
@@ -68,6 +78,18 @@ export const memberService = {
   // Membership Status
   async getMembershipStatus(): Promise<MembershipStatusResponse> {
     const response = await api.get<ApiResponse<MembershipStatusResponse>>('/member/membership');
+    return response.data.data;
+  },
+
+  // Complete Member Details
+  async getMyCompleteDetails(): Promise<MemberCompleteDetails> {
+    const response = await api.get<ApiResponse<MemberCompleteDetails>>('/member/my-complete-details');
+    return response.data.data;
+  },
+
+  // Comprehensive Dashboard
+  async getComprehensiveDashboard(): Promise<MemberComprehensiveDashboard> {
+    const response = await api.get<ApiResponse<MemberComprehensiveDashboard>>('/member/dashboard-details');
     return response.data.data;
   },
 };
