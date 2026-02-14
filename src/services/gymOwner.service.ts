@@ -34,6 +34,8 @@ import type {
   UpdateMemberDiet,
   BulkDietAssignmentRequest,
   BulkDietAssignmentResponse,
+  BulkExerciseAssignmentRequest,
+  BulkExerciseAssignmentResponse,
   TrainerDropdownItem,
   SalaryCalculationRequest,
   SalaryCalculationResponse,
@@ -516,11 +518,20 @@ export const gymOwnerService = {
   },
 
   // Exercise Plans
-  async getExercisePlans(): Promise<ExercisePlan[]> {
-    const response = await api.get('/gym-owner/exercise-plans');
+  async getExercisePlans(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+  }): Promise<ExercisePlan[]> {
+    const response = await api.get('/gym-owner/exercise-plans', { params });
     const responseData = response.data;
     console.debug('getExercisePlans raw response:', responseData);
 
+    // Handle paginated response: { success, data: { items: [...], pagination: {...} } }
+    if (responseData.data?.items && Array.isArray(responseData.data.items)) {
+      return responseData.data.items;
+    }
     // Handle wrapped response: { success, data: [...] }
     if (responseData.success !== undefined && Array.isArray(responseData.data)) {
       return responseData.data;
@@ -549,6 +560,25 @@ export const gymOwnerService = {
 
   async deleteExercisePlan(id: string): Promise<void> {
     await api.delete(`/gym-owner/exercise-plans/${id}`);
+  },
+
+  async toggleExercisePlanStatus(id: string): Promise<ExercisePlan> {
+    const response = await api.patch<ApiResponse<ExercisePlan>>(`/gym-owner/exercise-plans/${id}/toggle-status`);
+    return response.data.data;
+  },
+
+  async bulkAssignExercisePlan(data: BulkExerciseAssignmentRequest): Promise<BulkExerciseAssignmentResponse> {
+    const response = await api.post<BulkExerciseAssignmentResponse>('/gym-owner/exercise-plans/bulk-assign', data);
+    console.debug('bulkAssignExercisePlan raw response:', response.data);
+    return response.data;
+  },
+
+  async bulkRemoveExercisePlanAssignments(memberExerciseIds: string[]): Promise<{ status: string; message: string; data: { deletedCount: number; deletedIds: string[] } }> {
+    const response = await api.delete('/gym-owner/exercise-plans/bulk-remove', {
+      data: { memberExerciseIds },
+    });
+    console.debug('bulkRemoveExercisePlanAssignments raw response:', response.data);
+    return response.data;
   },
 
   // Assignments

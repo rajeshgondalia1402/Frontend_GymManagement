@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { MemberSearchDropdown } from './MemberSearchDropdown';
+import { memberService } from '@/services/member.service';
 import {
   LayoutDashboard,
   Building2,
@@ -31,7 +33,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,14 +103,12 @@ const staticNavItemsByRole: Partial<Record<Role, NavEntry[]>> = {
   ],
   MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
   ],
   PT_MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
-    { title: 'My Trainer', href: '/member/trainer', icon: Dumbbell },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
@@ -213,6 +213,17 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch member photo for MEMBER/PT_MEMBER users
+  const isMemberUser = user?.role === 'MEMBER' || user?.role === 'PT_MEMBER';
+  const { data: memberDashboard } = useQuery({
+    queryKey: ['member-dashboard-photo'],
+    queryFn: memberService.getComprehensiveDashboard,
+    enabled: isMemberUser,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const memberPhoto = isMemberUser ? memberDashboard?.memberInfo?.memberPhoto : null;
 
   // Get subscription feature access for dynamic navigation
   const { canAccess } = useSubscriptionFeatures();
@@ -438,6 +449,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="hidden lg:flex items-center gap-2 h-10">
                     <Avatar className="h-8 w-8">
+                      {memberPhoto && (
+                        <AvatarImage
+                          src={memberPhoto}
+                          alt={user?.name || 'User'}
+                          className="object-cover"
+                        />
+                      )}
                       <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
                         {getInitials(user?.name)}
                       </AvatarFallback>
@@ -556,6 +574,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 <div className="border-t mt-4 pt-4 px-4">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="h-10 w-10">
+                      {memberPhoto && (
+                        <AvatarImage
+                          src={memberPhoto}
+                          alt={user?.name || 'User'}
+                          className="object-cover"
+                        />
+                      )}
                       <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
                         {getInitials(user?.name)}
                       </AvatarFallback>

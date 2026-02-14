@@ -49,7 +49,6 @@ import { TrainerProfilePage } from '@/pages/trainer/TrainerProfilePage';
 
 // Member Pages
 import { MemberDashboard } from '@/pages/member/MemberDashboard';
-import { MyTrainerPage } from '@/pages/member/MyTrainerPage';
 import { MyDietPlanPage } from '@/pages/member/MyDietPlanPage';
 import { MyExercisePlansPage } from '@/pages/member/MyExercisePlansPage';
 import { MembershipPage } from '@/pages/member/MembershipPage';
@@ -472,16 +471,6 @@ function App() {
             <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
               <TopNavLayout>
                 <MemberDashboard />
-              </TopNavLayout>
-            </RoleGuard>
-          }
-        />
-        <Route
-          path="/member/trainer"
-          element={
-            <RoleGuard allowedRoles={['MEMBER', 'PT_MEMBER']}>
-              <TopNavLayout>
-                <MyTrainerPage />
               </TopNavLayout>
             </RoleGuard>
           }
