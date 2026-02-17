@@ -17,6 +17,8 @@ import { GymOwnersPage } from '@/pages/admin/GymOwnersPage';
 import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
 import { EnquiryMasterPage } from '@/pages/admin/EnquiryMasterPage';
 import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
+import { AdminExpenseGroupMasterPage } from '@/pages/admin/AdminExpenseGroupMasterPage';
+import { AdminExpensePage } from '@/pages/admin/AdminExpensePage';
 
 // Gym Owner Pages
 import { GymOwnerDashboard } from '@/pages/gym-owner/GymOwnerDashboard';
@@ -171,6 +173,26 @@ function App() {
             <RoleGuard allowedRoles={['ADMIN']}>
               <TopNavLayout>
                 <GymInquiryPage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/expenses"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']}>
+              <TopNavLayout>
+                <AdminExpensePage />
+              </TopNavLayout>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/master/expense-groups"
+          element={
+            <RoleGuard allowedRoles={['ADMIN']}>
+              <TopNavLayout>
+                <AdminExpenseGroupMasterPage />
               </TopNavLayout>
             </RoleGuard>
           }

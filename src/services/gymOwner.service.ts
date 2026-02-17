@@ -59,6 +59,9 @@ import type {
   DashboardFollowUpInquiryItem,
   DashboardExpenseItem,
   DashboardRenewalItem,
+  // Profile types
+  GymOwnerProfile,
+  UpdateGymOwnerProfile,
 } from '@/types';
 
 export const gymOwnerService = {
@@ -1486,5 +1489,17 @@ export const gymOwnerService = {
     const response = await api.get<MemberPaymentDetailResponse>(`/gym-owner/reports/income/${memberId}/payments`, { params: queryParams });
     console.debug('Member payment details response:', response.data);
     return response.data;
+  },
+
+  // ================== GYM OWNER PROFILE ==================
+
+  async getProfile(): Promise<GymOwnerProfile> {
+    const response = await api.get<ApiResponse<GymOwnerProfile>>('/gym-owner/profile');
+    return response.data.data;
+  },
+
+  async updateProfile(data: UpdateGymOwnerProfile): Promise<GymOwnerProfile> {
+    const response = await api.put<ApiResponse<GymOwnerProfile>>('/gym-owner/profile', data);
+    return response.data.data;
   },
 };

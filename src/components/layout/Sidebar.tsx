@@ -13,6 +13,8 @@ import {
   User,
   Calendar,
   UserPlus,
+  Wallet,
+  Receipt,
 } from 'lucide-react';
 
 interface NavItem {
@@ -26,6 +28,8 @@ const adminNavItems: NavItem[] = [
   { label: 'Gyms', path: '/admin/gyms', icon: <Building2 className="h-5 w-5" /> },
   { label: 'Gym Owners', path: '/admin/gym-owners', icon: <Users className="h-5 w-5" /> },
   { label: 'Subscription Plans', path: '/admin/subscription-plans', icon: <CreditCard className="h-5 w-5" /> },
+  { label: 'Expenses', path: '/admin/expenses', icon: <Receipt className="h-5 w-5" /> },
+  { label: 'Expense Groups', path: '/admin/master/expense-groups', icon: <Wallet className="h-5 w-5" /> },
 ];
 
 const gymOwnerNavItems: NavItem[] = [

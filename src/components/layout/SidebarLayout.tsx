@@ -22,6 +22,7 @@ import {
   BadgeCheck,
   UserPlus,
   KeyRound,
+  Receipt,
   Eye,
   EyeOff,
   Package,
@@ -48,6 +49,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth.service';
 import { toast } from '@/hooks/use-toast';
+import { GymOwnerProfileDialog } from '@/components/GymOwnerProfileDialog';
 import type { Role } from '@/types';
 
 interface NavItem {
@@ -72,6 +74,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
   ADMIN: [
     { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { title: 'Subscription Plans', href: '/admin/subscription-plans', icon: CreditCard },
+    { title: 'Expenses', href: '/admin/expenses', icon: Receipt },
     {
       title: 'Manage Gyms',
       icon: Building2,
@@ -88,6 +91,7 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
         { title: 'Occupation Master', href: '/admin/master/occupations', icon: Briefcase },
         { title: 'Enquiry Master', href: '/admin/master/enquiry-types', icon: MessageSquare },
         { title: 'Payment Type Master', href: '/admin/master/payment-types', icon: CreditCard },
+        { title: 'Expense Group Master', href: '/admin/master/expense-groups', icon: Wallet },
       ],
     },
   ],
@@ -136,6 +140,8 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [showMyProfile, setShowMyProfile] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -375,7 +381,7 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
 
           {/* User section */}
           <div className="p-4 border-t">
-            <DropdownMenu>
+            <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-2">
                   <Avatar className="h-8 w-8">
@@ -389,16 +395,36 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setUserMenuOpen(false);
+                    setTimeout(() => setShowMyProfile(true), 150);
+                  }}
+                >
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setUserMenuOpen(false);
+                    setTimeout(() => setChangePasswordOpen(true), 150);
+                  }}
+                >
                   <KeyRound className="mr-2 h-4 w-4" />
                   Change Password
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                <DropdownMenuItem
+                  className="cursor-pointer text-red-600"
+                  onSelect={() => {
+                    setUserMenuOpen(false);
+                    handleLogout();
+                  }}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
@@ -553,6 +579,14 @@ export function SidebarLayout({ children }: SidebarLayoutProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Gym Owner Profile Dialog */}
+      {showMyProfile && (
+        <GymOwnerProfileDialog
+          open={showMyProfile}
+          onOpenChange={setShowMyProfile}
+        />
+      )}
     </div>
   );
 }

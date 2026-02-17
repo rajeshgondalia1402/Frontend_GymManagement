@@ -2,6 +2,8 @@ import api, { BACKEND_BASE_URL } from './api';
 import type {
   ApiResponse,
   AdminDashboard,
+  AdminDashboardV2Counts,
+  AdminDashboardDetailParams,
   Gym,
   GymSubscriptionPlan,
   User,
@@ -13,12 +15,85 @@ import type {
   GymInquiryFollowup,
   CreateGymInquiryRequest,
   GymInquiryParams,
+  ExpenseGroup,
+  Expense,
 } from '@/types';
 
 export const adminService = {
-  // Dashboard
+  // Dashboard (legacy)
   async getDashboard(): Promise<AdminDashboard> {
     const response = await api.get<ApiResponse<AdminDashboard>>('/admin/dashboard');
+    return response.data.data;
+  },
+
+  // Dashboard V2
+  async getDashboardV2Counts(): Promise<AdminDashboardV2Counts> {
+    const response = await api.get<ApiResponse<AdminDashboardV2Counts>>('/admin/dashboard-v2/counts');
+    return response.data.data;
+  },
+
+  async getDashboardActiveGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/active-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardActiveGymInquiries(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/active-gym-inquiries', { params });
+    return response.data.data;
+  },
+
+  async getDashboardTodaysFollowupInquiries(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/todays-followup-inquiries', { params });
+    return response.data.data;
+  },
+
+  async getDashboardExpiringGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/expiring-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardExpiredGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/expired-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardRenewalGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/renewal-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardMembers(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/members', { params });
+    return response.data.data;
+  },
+
+  async getDashboardPopularPlanGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/popular-plan-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardRecentGyms(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/recent-gyms', { params });
+    return response.data.data;
+  },
+
+  async getDashboardTotalIncome(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/total-income', { params });
+    return response.data.data;
+  },
+
+  async getDashboardTotalExpense(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/total-expense', { params });
+    return response.data.data;
+  },
+
+  async getDashboardThisMonthIncome(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/this-month-income', { params });
+    return response.data.data;
+  },
+
+  async getDashboardThisMonthExpense(params?: AdminDashboardDetailParams) {
+    const response = await api.get('/admin/dashboard-v2/this-month-expense', { params });
     return response.data.data;
   },
 
@@ -511,5 +586,82 @@ export const adminService = {
       items: data.items || data.members || [],
       pagination: data.pagination || { page: 1, limit: 100, total: 0, totalPages: 1 }
     };
+  },
+
+  // =====================================================
+  // Admin Expense Groups
+  // =====================================================
+
+  async getExpenseGroups(): Promise<ExpenseGroup[]> {
+    const response = await api.get<ApiResponse<ExpenseGroup[] | { items: ExpenseGroup[] }>>('/admin/expense-groups');
+    const data = response.data.data;
+
+    if (Array.isArray(data)) {
+      return data;
+    } else if (data && typeof data === 'object') {
+      if ('items' in data) {
+        return (data as { items: ExpenseGroup[] }).items;
+      } else if ('expenseGroups' in data) {
+        return (data as { expenseGroups: ExpenseGroup[] }).expenseGroups;
+      } else if ('data' in data) {
+        return (data as { data: ExpenseGroup[] }).data;
+      }
+    }
+    return [];
+  },
+
+  async getExpenseGroup(id: string): Promise<ExpenseGroup> {
+    const response = await api.get<ApiResponse<ExpenseGroup>>(`/admin/expense-groups/${id}`);
+    return response.data.data;
+  },
+
+  async createExpenseGroup(data: { expenseGroupName: string }): Promise<ExpenseGroup> {
+    const response = await api.post<ApiResponse<ExpenseGroup>>('/admin/expense-groups', data);
+    return response.data.data;
+  },
+
+  async updateExpenseGroup(id: string, data: { expenseGroupName: string }): Promise<ExpenseGroup> {
+    const response = await api.put<ApiResponse<ExpenseGroup>>(`/admin/expense-groups/${id}`, data);
+    return response.data.data;
+  },
+
+  async deleteExpenseGroup(id: string): Promise<void> {
+    await api.delete(`/admin/expense-groups/${id}`);
+  },
+
+  // =====================================================
+  // Admin Expenses
+  // =====================================================
+
+  async getExpenses(params?: Record<string, any>): Promise<{ data: Expense[]; pagination: any; summary?: any }> {
+    const response = await api.get<ApiResponse<Expense[]>>('/admin/expenses', { params });
+    return {
+      data: response.data.data as any,
+      pagination: (response.data as any).pagination,
+      summary: (response.data as any).summary,
+    };
+  },
+
+  async getExpense(id: string): Promise<Expense> {
+    const response = await api.get<ApiResponse<Expense>>(`/admin/expenses/${id}`);
+    return response.data.data;
+  },
+
+  async createExpense(data: FormData): Promise<Expense> {
+    const response = await api.post<ApiResponse<Expense>>('/admin/expenses', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async updateExpense(id: string, data: FormData): Promise<Expense> {
+    const response = await api.put<ApiResponse<Expense>>(`/admin/expenses/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async deleteExpense(id: string): Promise<void> {
+    await api.delete(`/admin/expenses/${id}`);
   },
 };
