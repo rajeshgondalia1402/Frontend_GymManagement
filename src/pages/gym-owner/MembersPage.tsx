@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
@@ -816,10 +817,30 @@ export function MembersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                {photoUrl ? <AvatarImage src={photoUrl} /> : null}
-                                <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
-                              </Avatar>
+                              {photoUrl ? (
+                                <HoverCard openDelay={200} closeDelay={100}>
+                                  <HoverCardTrigger asChild>
+                                    <Avatar className="h-8 w-8 cursor-pointer">
+                                      <AvatarImage src={photoUrl} />
+                                      <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
+                                    </Avatar>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-auto p-2" side="right" align="start">
+                                    <div className="flex flex-col items-center gap-2">
+                                      <img
+                                        src={photoUrl}
+                                        alt={memberName}
+                                        className="w-48 h-48 object-cover rounded-lg shadow-lg"
+                                      />
+                                      <p className="text-sm font-medium text-center">{memberName}</p>
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
+                              ) : (
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
+                                </Avatar>
+                              )}
                               <div>
                                 <p className="font-medium text-sm">{memberName}</p>
                                 <p className="text-xs text-muted-foreground">{member.email || member.user?.email}</p>

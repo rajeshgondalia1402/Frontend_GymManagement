@@ -407,6 +407,229 @@ export interface AdminDashboard {
   recentGyms?: Gym[];
 }
 
+// Admin Dashboard V2 Types
+export interface AdminDashboardV2Counts {
+  totalActiveGyms: number;
+  totalActiveGymInquiries: number;
+  todaysFollowupGymInquiries: number;
+  twoDaysLeftExpiredGyms: number;
+  totalExpiredGyms: number;
+  totalRenewalGyms: number;
+  totalMembers: number;
+  mostPopularSubscriptionPlan: {
+    planId: string;
+    planName: string;
+    activeGymCount: number;
+  } | null;
+  recentRegisteredGyms: number;
+  totalIncome: number;
+  totalExpense: number;
+  thisMonthsIncome: number;
+  thisMonthsExpense: number;
+}
+
+export interface AdminDashboardActiveGym {
+  id: string;
+  name: string;
+  email: string;
+  mobileNo: string;
+  city: string;
+  state: string;
+  isActive: boolean;
+  subscriptionPlanName: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  ownerName: string;
+  ownerEmail: string;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface AdminDashboardGymInquiry {
+  id: string;
+  gymName: string;
+  mobileNo: string;
+  email: string;
+  city: string;
+  state: string;
+  subscriptionPlanName: string;
+  enquiryTypeName: string;
+  sellerName: string;
+  nextFollowupDate: string;
+  memberSize: number;
+  note: string;
+  followupCount: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminDashboardExpiringGym {
+  id: string;
+  name: string;
+  email: string;
+  mobileNo: string;
+  city: string;
+  state: string;
+  subscriptionPlanName: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  daysLeft: number;
+  ownerName: string;
+  ownerEmail: string;
+}
+
+export interface AdminDashboardExpiredGym {
+  id: string;
+  name: string;
+  email: string;
+  mobileNo: string;
+  city: string;
+  state: string;
+  subscriptionPlanName: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  expiredDaysAgo: number;
+  ownerName: string;
+  ownerEmail: string;
+}
+
+export interface AdminDashboardRenewalGym {
+  id: string;
+  subscriptionNumber: string;
+  gymName: string;
+  subscriptionPlanName: string;
+  renewalType: string;
+  renewalDate: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  paymentStatus: string;
+  paymentMode: string;
+}
+
+export interface AdminDashboardMember {
+  id: string;
+  memberId: string;
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  memberType: string;
+  membershipStatus: string;
+  membershipStart: string;
+  membershipEnd: string;
+  gymName: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminDashboardPopularPlanGym {
+  id: string;
+  name: string;
+  email: string;
+  mobileNo: string;
+  city: string;
+  state: string;
+  subscriptionStart: string;
+  subscriptionEnd: string;
+  ownerName: string;
+}
+
+export interface AdminDashboardIncomeDetail {
+  id: string;
+  subscriptionNumber: string;
+  gymName: string;
+  subscriptionPlanName: string;
+  amount: number;
+  paidAmount: number;
+  paymentMode: string;
+  paymentStatus: string;
+  renewalType: string;
+  renewalDate: string;
+}
+
+export interface AdminDashboardExpenseDetail {
+  id: string;
+  name: string;
+  expenseGroupName: string;
+  description: string;
+  amount: number;
+  paymentMode: string;
+  expenseDate: string;
+  createdAt: string;
+}
+
+export interface AdminDashboardDetailParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface AdminDashboardPaginatedResponse<T> {
+  success: boolean;
+  message: string;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminDashboardIncomeResponse {
+  success: boolean;
+  message: string;
+  data: {
+    items: AdminDashboardIncomeDetail[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    summary: {
+      totalAmount: number;
+    };
+  };
+}
+
+export interface AdminDashboardExpenseResponse {
+  success: boolean;
+  message: string;
+  data: {
+    items: AdminDashboardExpenseDetail[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    summary: {
+      totalAmount: number;
+    };
+  };
+}
+
+export interface AdminDashboardPopularPlanResponse {
+  success: boolean;
+  message: string;
+  data: {
+    planName: string;
+    items: AdminDashboardPopularPlanGym[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
 export interface GymOwnerDashboard {
   totalActiveMembers: number;
   totalActiveTrainers: number;
@@ -1781,5 +2004,55 @@ interface ExerciseItem {
   reps?: number;
   duration?: string;
   notes?: string;
+}
+
+// Gym Owner Profile Types
+export interface GymOwnerProfile {
+  userId: string;
+  email: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  gym: {
+    id: string;
+    name: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    memberSize?: number;
+    note?: string;
+    gymLogo?: string;
+    isActive: boolean;
+    createdAt: string;
+    subscriptionPlan?: {
+      id: string;
+      name: string;
+      description?: string;
+    };
+    subscriptionStart?: string;
+    subscriptionEnd?: string;
+  };
+}
+
+export interface UpdateGymOwnerProfile {
+  name?: string;
+  gymName?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  phoneNo?: string;
+  gstRegNo?: string;
+  website?: string;
+  memberSize?: number;
+  note?: string;
 }
 
