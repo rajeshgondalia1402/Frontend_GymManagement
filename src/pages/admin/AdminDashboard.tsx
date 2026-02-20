@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '@/services/admin.service';
+import { openWhatsApp, replaceTemplatePlaceholders, getTemplateById } from '@/utils/whatsapp';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
@@ -154,6 +157,65 @@ export function AdminDashboard() {
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  // WhatsApp helper for expired/expiring gyms
+  const handleGymWhatsApp = (gym: any, templateId: 'GYM_SUBSCRIPTION_EXPIRED' | 'GYM_SUBSCRIPTION_EXPIRING') => {
+    const template = getTemplateById(templateId);
+    if (!template) return;
+
+    const messageData = {
+      memberName: gym.name,
+      memberPhone: gym.mobileNo || '',
+      gymName: gym.name,
+      planName: gym.subscriptionPlanName || 'N/A',
+      planPrice: gym.subscriptionPlanPrice?.toLocaleString('en-IN') || 'N/A',
+      amountPaid: gym.subscriptionPlanPrice?.toLocaleString('en-IN') || 'N/A',
+      expiryDate: formatDate(gym.subscriptionEnd),
+    };
+
+    const message = replaceTemplatePlaceholders(template.message, messageData);
+    const result = openWhatsApp(gym.mobileNo, message);
+
+    if (!result.success) {
+      toast({
+        title: 'Error',
+        description: result.error || 'Failed to open WhatsApp',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // WhatsApp helper for gym inquiry followup
+  const handleInquiryWhatsApp = (inquiry: any) => {
+    const template = getTemplateById('GYM_INQUIRY_FOLLOWUP');
+    if (!template) return;
+
+    // Calculate duration in months from days if available
+    const durationMonths = inquiry.subscriptionPlanDurationDays
+      ? Math.round(inquiry.subscriptionPlanDurationDays / 30)
+      : 0;
+
+    const messageData = {
+      memberName: inquiry.gymName,
+      memberPhone: inquiry.mobileNo || '',
+      gymName: inquiry.gymName,
+      planName: inquiry.subscriptionPlanName || 'N/A',
+      planDuration: durationMonths > 0 ? durationMonths.toString() : 'N/A',
+      planPrice: inquiry.subscriptionPlanPrice?.toLocaleString('en-IN') || 'N/A',
+      discountText: '',
+    };
+
+    const message = replaceTemplatePlaceholders(template.message, messageData);
+    const result = openWhatsApp(inquiry.mobileNo, message);
+
+    if (!result.success) {
+      toast({
+        title: 'Error',
+        description: result.error || 'Failed to open WhatsApp',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleCardClick = (cardType: CardType) => {
@@ -438,11 +500,12 @@ export function AdminDashboard() {
                   <TableHead className="hidden lg:table-cell">Enquiry Type</TableHead>
                   <TableHead className="hidden md:table-cell">Follow-up</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-16">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {detailInfo.data.map((inq: any, i: number) => (
-                  <TableRow key={inq.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/admin/gym-inquiry')}>
+                  <TableRow key={inq.id} className="hover:bg-gray-50">
                     <TableCell className="text-gray-500">{(detailPage - 1) * REPORT_LIMIT + i + 1}</TableCell>
                     <TableCell>
                       <div>
@@ -459,6 +522,20 @@ export function AdminDashboard() {
                     <TableCell className="hidden md:table-cell text-gray-600">{formatDate(inq.nextFollowupDate)}</TableCell>
                     <TableCell>
                       <Badge className={inq.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>{inq.isActive ? 'Active' : 'Closed'}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-green-50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInquiryWhatsApp(inq);
+                        }}
+                        title={`Send WhatsApp to ${inq.gymName}`}
+                      >
+                        <WhatsAppFilledIcon size={16} className="text-green-600" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -480,6 +557,7 @@ export function AdminDashboard() {
                   <TableHead className="hidden md:table-cell">Plan</TableHead>
                   <TableHead className="hidden md:table-cell">Sub. End</TableHead>
                   <TableHead>Days Left</TableHead>
+                  <TableHead className="w-16">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -501,6 +579,17 @@ export function AdminDashboard() {
                     <TableCell>
                       <Badge className="bg-orange-100 text-orange-700">{gym.daysLeft}d left</Badge>
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-green-50"
+                        onClick={() => handleGymWhatsApp(gym, 'GYM_SUBSCRIPTION_EXPIRING')}
+                        title={`Send WhatsApp to ${gym.name}`}
+                      >
+                        <WhatsAppFilledIcon size={16} className="text-green-600" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -521,6 +610,7 @@ export function AdminDashboard() {
                   <TableHead className="hidden md:table-cell">Plan</TableHead>
                   <TableHead className="hidden md:table-cell">Expired On</TableHead>
                   <TableHead>Expired</TableHead>
+                  <TableHead className="w-16">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -541,6 +631,17 @@ export function AdminDashboard() {
                     <TableCell className="hidden md:table-cell text-gray-600">{formatDate(gym.subscriptionEnd)}</TableCell>
                     <TableCell>
                       <Badge className="bg-red-100 text-red-700">{gym.expiredDaysAgo}d ago</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-green-50"
+                        onClick={() => handleGymWhatsApp(gym, 'GYM_SUBSCRIPTION_EXPIRED')}
+                        title={`Send WhatsApp to ${gym.name}`}
+                      >
+                        <WhatsAppFilledIcon size={16} className="text-green-600" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

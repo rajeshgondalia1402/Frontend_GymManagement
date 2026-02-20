@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { adminService } from '@/services/admin.service';
+import { openWhatsApp, replaceTemplatePlaceholders, getTemplateById } from '@/utils/whatsapp';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
 import type { GymInquiry, GymInquiryFollowup, GymSubscriptionPlan, EnquiryType } from '@/types';
 
 // Zod schemas
@@ -75,6 +77,37 @@ const getFollowupDateStyle = (dateStr: string | null | undefined) => {
   if (diff < 0) return 'text-red-600 font-semibold';
   if (diff <= 3 * 24 * 60 * 60 * 1000) return 'text-green-600 font-semibold';
   return '';
+};
+
+// Helper to send WhatsApp message for gym inquiry
+const handleGymInquiryWhatsApp = (inquiry: GymInquiry) => {
+  const plan = inquiry.subscriptionPlan;
+  const template = getTemplateById('GYM_INQUIRY_FOLLOWUP');
+  if (!template) return;
+
+  // Calculate duration in months from days
+  const durationMonths = plan?.durationDays ? Math.round(plan.durationDays / 30) : 0;
+
+  const messageData = {
+    memberName: inquiry.gymName,
+    memberPhone: inquiry.mobileNo,
+    gymName: inquiry.gymName,
+    planName: plan?.name || 'N/A',
+    planDuration: durationMonths > 0 ? durationMonths.toString() : 'N/A',
+    planPrice: plan?.price?.toLocaleString('en-IN') || 'N/A',
+    discountText: '',
+  };
+
+  const message = replaceTemplatePlaceholders(template.message, messageData);
+  const result = openWhatsApp(inquiry.mobileNo, message);
+
+  if (!result.success) {
+    toast({
+      title: 'Error',
+      description: result.error || 'Failed to open WhatsApp',
+      variant: 'destructive',
+    });
+  }
 };
 
 export function GymInquiryPage() {
@@ -579,28 +612,39 @@ export function GymInquiryPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEdit(inquiry)}>
-                                <Edit className="h-4 w-4 mr-2" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openNewFollowup(inquiry.id)}>
-                                <MessageSquarePlus className="h-4 w-4 mr-2" /> New Followup
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openViewFollowups(inquiry)}>
-                                <Eye className="h-4 w-4 mr-2" /> View Followups
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(inquiry.id)}>
-                                <Power className="h-4 w-4 mr-2" />
-                                {inquiry.isActive ? 'Deactivate' : 'Activate'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-green-50"
+                              onClick={() => handleGymInquiryWhatsApp(inquiry)}
+                              title={`Send WhatsApp to ${inquiry.gymName}`}
+                            >
+                              <WhatsAppFilledIcon size={16} className="text-green-600" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEdit(inquiry)}>
+                                  <Edit className="h-4 w-4 mr-2" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openNewFollowup(inquiry.id)}>
+                                  <MessageSquarePlus className="h-4 w-4 mr-2" /> New Followup
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openViewFollowups(inquiry)}>
+                                  <Eye className="h-4 w-4 mr-2" /> View Followups
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(inquiry.id)}>
+                                  <Power className="h-4 w-4 mr-2" />
+                                  {inquiry.isActive ? 'Deactivate' : 'Activate'}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
