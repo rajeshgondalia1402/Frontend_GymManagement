@@ -40,6 +40,8 @@ import { gymOwnerService } from '@/services/gymOwner.service';
 import { useAuthStore } from '@/store/authStore';
 import { BalancePaymentDialog } from '@/components/BalancePaymentDialog';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
+import type { WhatsAppTemplateType } from '@/utils/whatsapp';
 import type {
   Member,
   Trainer,
@@ -52,7 +54,7 @@ import type {
 
 type CardType = 'activeMembers' | 'activeTrainers' | 'followUpInquiries' | 'expiringRegular' | 'expiringPT' | 'expenses';
 type MemberStatusTab = 'all' | 'active' | 'inactive' | 'expired' | 'expiring';
-type TrainerStatusTab = 'all' | 'active' | 'inactive';
+type TrainerStatusTab = 'active' | 'inactive';
 
 const MEMBER_STATUS_TABS: { key: MemberStatusTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -63,7 +65,6 @@ const MEMBER_STATUS_TABS: { key: MemberStatusTab; label: string }[] = [
 ];
 
 const TRAINER_STATUS_TABS: { key: TrainerStatusTab; label: string }[] = [
-  { key: 'all', label: 'All' },
   { key: 'active', label: 'Active' },
   { key: 'inactive', label: 'Inactive' },
 ];
@@ -79,7 +80,7 @@ export function GymOwnerDashboard() {
   const [leftReportPage, setLeftReportPage] = useState(1);
   const [rightReportPage, setRightReportPage] = useState(1);
   const [memberStatusTab, setMemberStatusTab] = useState<MemberStatusTab>('all');
-  const [trainerStatusTab, setTrainerStatusTab] = useState<TrainerStatusTab>('all');
+  const [trainerStatusTab, setTrainerStatusTab] = useState<TrainerStatusTab>('active');
 
   // Balance Payment Dialog state
   const [balancePaymentDialogOpen, setBalancePaymentDialogOpen] = useState(false);
@@ -136,7 +137,7 @@ export function GymOwnerDashboard() {
   const filteredTrainers = (allTrainersRaw || []).filter((t: Trainer) => {
     if (trainerStatusTab === 'active') return t.isActive;
     if (trainerStatusTab === 'inactive') return !t.isActive;
-    return true; // 'all'
+    return t.isActive; // default to active
   });
   const trainersTotalPages = Math.ceil(filteredTrainers.length / REPORT_LIMIT) || 1;
   const paginatedTrainers = filteredTrainers.slice((leftReportPage - 1) * REPORT_LIMIT, leftReportPage * REPORT_LIMIT);
@@ -224,7 +225,7 @@ export function GymOwnerDashboard() {
     setLeftReportPage(1);
     // Reset tab filters when switching cards
     if (cardType === 'activeMembers') setMemberStatusTab('all');
-    if (cardType === 'activeTrainers') setTrainerStatusTab('all');
+    if (cardType === 'activeTrainers') setTrainerStatusTab('active');
   };
 
   const handleMemberTabChange = (tab: MemberStatusTab) => {
@@ -547,7 +548,7 @@ export function GymOwnerDashboard() {
                             <TableHead>Phone</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead>End Date</TableHead>
-                            <TableHead className="w-[70px]">Actions</TableHead>
+                            <TableHead className="w-[100px]">Actions</TableHead>
                           </>
                         ) : selectedCard === 'expiringRegular' || selectedCard === 'expiringPT' ? (
                           <>
@@ -555,6 +556,7 @@ export function GymOwnerDashboard() {
                             <TableHead>Phone</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead>End Date</TableHead>
+                            <TableHead className="w-[70px]">Action</TableHead>
                           </>
                         ) : selectedCard === 'activeTrainers' ? (
                           <>
@@ -562,13 +564,14 @@ export function GymOwnerDashboard() {
                             <TableHead>Phone</TableHead>
                             <TableHead>Specialization</TableHead>
                             <TableHead>PT Members</TableHead>
+                            {trainerStatusTab === 'active' && <TableHead className="w-[70px]">Action</TableHead>}
                           </>
                         ) : selectedCard === 'followUpInquiries' ? (
                           <>
                             <TableHead>Name</TableHead>
                             <TableHead>Contact</TableHead>
                             <TableHead>Source</TableHead>
-                            <TableHead>Comments</TableHead>
+                            <TableHead className="w-[70px]">Action</TableHead>
                           </>
                         ) : selectedCard === 'expenses' ? (
                           <>
@@ -583,7 +586,7 @@ export function GymOwnerDashboard() {
                     <TableBody>
                       {leftReport.data.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={selectedCard === 'activeMembers' ? 5 : 4} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={selectedCard === 'activeMembers' || selectedCard === 'expiringRegular' || selectedCard === 'expiringPT' || (selectedCard === 'activeTrainers' && trainerStatusTab === 'active') ? 5 : 4} className="text-center py-8 text-gray-500">
                             No data available
                           </TableCell>
                         </TableRow>
@@ -592,6 +595,17 @@ export function GymOwnerDashboard() {
                           if (selectedCard === 'activeMembers') {
                             const member = item as Member;
                             const endDate = member.membershipEnd || member.membershipEndDate;
+                            // Determine WhatsApp template based on member status tab
+                            const getWhatsAppTemplate = (): WhatsAppTemplateType => {
+                              switch (memberStatusTab) {
+                                case 'inactive': return 'INACTIVE_MEMBER';
+                                case 'expired': return 'EXPIRED_MEMBER';
+                                case 'expiring': return 'EXPIRING_MEMBER';
+                                default: return 'EXPIRY_REMINDER';
+                              }
+                            };
+                            // Show WhatsApp only for Inactive, Expired, and Expiring tabs
+                            const showWhatsApp = memberStatusTab === 'inactive' || memberStatusTab === 'expired' || memberStatusTab === 'expiring';
                             return (
                               <TableRow key={member.id} className="hover:bg-gray-50">
                                 <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
@@ -603,37 +617,50 @@ export function GymOwnerDashboard() {
                                 </TableCell>
                                 <TableCell>{formatDate(endDate)}</TableCell>
                                 <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => navigate(`/gym-owner/members/${member.id}/edit`)}>
-                                        <Eye className="mr-2 h-4 w-4" />View Details
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => { setSelectedMemberForPayment(member); setBalancePaymentDialogOpen(true); }}
-                                        className="text-blue-600"
-                                      >
-                                        <Wallet className="mr-2 h-4 w-4" />Balance Payment
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => { setSelectedMemberForRenewal(member); setRenewalDialogOpen(true); }}
-                                        className="text-green-600"
-                                      >
-                                        <RefreshCw className="mr-2 h-4 w-4" />Renew Membership
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  <div className="flex items-center gap-1">
+                                    {showWhatsApp && (
+                                      <WhatsAppButton
+                                        memberName={`${member.firstName} ${member.lastName}`}
+                                        memberPhone={member.phone}
+                                        gymName={data?.gym?.name || 'Our Gym'}
+                                        expiryDate={formatDate(endDate)}
+                                        defaultTemplate={getWhatsAppTemplate()}
+                                        variant="icon"
+                                      />
+                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => navigate(`/gym-owner/members/${member.id}/edit`)}>
+                                          <Eye className="mr-2 h-4 w-4" />View Details
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => { setSelectedMemberForPayment(member); setBalancePaymentDialogOpen(true); }}
+                                          className="text-blue-600"
+                                        >
+                                          <Wallet className="mr-2 h-4 w-4" />Balance Payment
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => { setSelectedMemberForRenewal(member); setRenewalDialogOpen(true); }}
+                                          className="text-green-600"
+                                        >
+                                          <RefreshCw className="mr-2 h-4 w-4" />Renew Membership
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
                           } else if (selectedCard === 'expiringRegular' || selectedCard === 'expiringPT') {
                             const member = item as DashboardMemberItem;
+                            const whatsAppTemplate: WhatsAppTemplateType = selectedCard === 'expiringPT' ? 'PT_EXPIRING' : 'EXPIRING_MEMBER';
                             return (
-                              <TableRow key={member.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/gym-owner/members`)}>
+                              <TableRow key={member.id} className="hover:bg-gray-50">
                                 <TableCell className="font-medium">{member.firstName} {member.lastName}</TableCell>
                                 <TableCell>{member.phone || '-'}</TableCell>
                                 <TableCell>
@@ -642,28 +669,58 @@ export function GymOwnerDashboard() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{formatDate(member.membershipEnd)}</TableCell>
+                                <TableCell>
+                                  <WhatsAppButton
+                                    memberName={`${member.firstName} ${member.lastName}`}
+                                    memberPhone={member.phone}
+                                    gymName={data?.gym?.name || 'Our Gym'}
+                                    expiryDate={formatDate(member.membershipEnd)}
+                                    defaultTemplate={whatsAppTemplate}
+                                    variant="icon"
+                                  />
+                                </TableCell>
                               </TableRow>
                             );
                           } else if (selectedCard === 'activeTrainers') {
                             const trainer = item as Trainer;
                             return (
-                              <TableRow key={trainer.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/gym-owner/trainers`)}>
-                                <TableCell className="font-medium">{trainer.firstName} {trainer.lastName}</TableCell>
+                              <TableRow key={trainer.id} className="hover:bg-gray-50">
+                                <TableCell className="font-medium cursor-pointer" onClick={() => navigate(`/gym-owner/trainers`)}>{trainer.firstName} {trainer.lastName}</TableCell>
                                 <TableCell>{trainer.phone || '-'}</TableCell>
                                 <TableCell>{trainer.specialization || '-'}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline">{trainer.ptMemberCount || trainer._count?.members || 0}</Badge>
                                 </TableCell>
+                                {trainerStatusTab === 'active' && (
+                                  <TableCell>
+                                    <WhatsAppButton
+                                      memberName={`${trainer.firstName} ${trainer.lastName}`}
+                                      memberPhone={trainer.phone}
+                                      gymName={data?.gym?.name || 'Our Gym'}
+                                      defaultTemplate="TRAINER_GREETING"
+                                      variant="icon"
+                                      showTemplateSelector={false}
+                                    />
+                                  </TableCell>
+                                )}
                               </TableRow>
                             );
                           } else if (selectedCard === 'followUpInquiries') {
                             const inquiry = item as DashboardFollowUpInquiryItem;
                             return (
-                              <TableRow key={inquiry.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/gym-owner/member-inquiries`)}>
+                              <TableRow key={inquiry.id} className="hover:bg-gray-50">
                                 <TableCell className="font-medium">{inquiry.fullName}</TableCell>
                                 <TableCell>{inquiry.contactNo}</TableCell>
                                 <TableCell>{inquiry.heardAbout || '-'}</TableCell>
-                                <TableCell className="max-w-[150px] truncate">{inquiry.comments || '-'}</TableCell>
+                                <TableCell>
+                                  <WhatsAppButton
+                                    memberName={inquiry.fullName}
+                                    memberPhone={inquiry.contactNo}
+                                    gymName={data?.gym?.name || 'Our Gym'}
+                                    defaultTemplate="FOLLOW_UP_INQUIRY"
+                                    variant="icon"
+                                  />
+                                </TableCell>
                               </TableRow>
                             );
                           } else if (selectedCard === 'expenses') {
@@ -736,7 +793,7 @@ export function GymOwnerDashboard() {
                         <TableHead>Member</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead>Action</TableHead>
+                        <TableHead className="w-[120px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -757,14 +814,24 @@ export function GymOwnerDashboard() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={() => navigate(`/gym-owner/members`)}
-                              >
-                                Renew
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <WhatsAppButton
+                                  memberName={`${member.firstName} ${member.lastName}`}
+                                  memberPhone={member.phone}
+                                  gymName={data?.gym?.name || 'Our Gym'}
+                                  expiryDate={formatDate(member.membershipEnd)}
+                                  defaultTemplate="TODAY_RENEWAL"
+                                  variant="icon"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={() => navigate(`/gym-owner/members`)}
+                                >
+                                  Renew
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))

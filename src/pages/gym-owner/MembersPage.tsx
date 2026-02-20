@@ -27,6 +27,7 @@ import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -70,6 +71,15 @@ export function MembersPage() {
     queryKey: ['activeCoursePackages'],
     queryFn: () => gymOwnerService.getActiveCoursePackages(),
   });
+
+  // Fetch gym owner profile to get gym name for WhatsApp messages
+  const { data: gymProfile } = useQuery({
+    queryKey: ['gymOwnerProfile'],
+    queryFn: () => gymOwnerService.getProfile(),
+  });
+
+  // Get gym name from profile
+  const gymName = gymProfile?.gym?.name || 'Our Gym';
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
@@ -866,7 +876,21 @@ export function MembersPage() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm">{member.phone || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm">{member.phone || '-'}</span>
+                              {member.phone && (
+                                <WhatsAppButton
+                                  memberName={memberName}
+                                  memberPhone={member.phone}
+                                  gymName={gymName}
+                                  expiryDate={(member.membershipEnd || member.membershipEndDate) ? format(new Date(member.membershipEnd || member.membershipEndDate!), 'dd/MM/yyyy') : undefined}
+                                  variant="icon"
+                                  showTemplateSelector={true}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {member.memberType === 'REGULAR_PT' ? (
                               <div className="flex flex-col gap-0.5">
