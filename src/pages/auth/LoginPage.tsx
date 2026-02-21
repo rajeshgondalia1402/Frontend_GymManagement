@@ -60,7 +60,7 @@ export function LoginPage() {
       let errorMessage = 'Login failed. Please try again.';
       
       if (error.code === 'ERR_NETWORK') {
-        errorMessage = 'Cannot connect to server. Please ensure the backend is running at http://localhost:5000';
+        errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
