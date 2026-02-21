@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { TopNavLayout } from '@/components/layout/TopNavLayout';
 import { RoleGuard } from '@/guards/RoleGuard';
 import { FeatureGuard } from '@/guards/FeatureGuard';
 import { Toaster } from '@/components/ui/toaster';
+import { UpdateBanner } from '@/components/UpdateBanner';
+import { useVersionCheck } from '@/hooks/useVersionCheck';
 import type { Role } from '@/types';
 
 // Auth
@@ -98,13 +100,29 @@ function RoleBasedRedirect() {
 
 function App() {
   const { setLoading, isAuthenticated } = useAuthStore();
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+
+  const handleNewVersion = useCallback(() => {
+    setShowUpdateBanner(true);
+  }, []);
+
+  useVersionCheck({ onNewVersion: handleNewVersion });
 
   useEffect(() => {
     setLoading(false);
   }, [setLoading]);
 
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   return (
     <>
+      <UpdateBanner
+        visible={showUpdateBanner}
+        onRefresh={handleRefresh}
+        onDismiss={() => setShowUpdateBanner(false)}
+      />
       <Routes>
         {/* ==================== PUBLIC ROUTES ==================== */}
         <Route
@@ -538,3 +556,4 @@ function App() {
 }
 
 export default App;
+

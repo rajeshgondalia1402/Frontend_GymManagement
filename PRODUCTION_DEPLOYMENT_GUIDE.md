@@ -78,12 +78,26 @@ server {
     root /var/www/gympro/frontend/dist;
     index index.html;
 
+    # ─── CRITICAL: Never cache index.html & version.json ───
+    # These must always be fetched fresh so users get new deploys instantly
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    location = /version.json {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
     # Handle SPA routing — all routes go to index.html
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Cache static assets
+    # Cache hashed static assets aggressively (they have unique hashes per build)
     location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
