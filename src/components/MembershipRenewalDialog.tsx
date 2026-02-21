@@ -16,7 +16,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Member, CoursePackage, MembershipRenewal, CreateMembershipRenewal } from '@/types';
 
@@ -284,7 +284,7 @@ export function MembershipRenewalDialog({ open, onOpenChange, member, onSuccess 
                     {/* Member Info Header */}
                     <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl mb-4">
                         <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                            {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
+                            {member.memberPhoto ? <AvatarImage src={getImageUrl(member.memberPhoto)} /> : null}
                             <AvatarFallback className="text-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
                                 {getInitials(memberName)}
                             </AvatarFallback>

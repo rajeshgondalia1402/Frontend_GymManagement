@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/authStore';
 import { BMICalculator } from '@/components/BMICalculator';
@@ -340,7 +340,7 @@ export function EditPTMembershipPage() {
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border p-4">
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
-              {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
+              {member.memberPhoto ? <AvatarImage src={getImageUrl(member.memberPhoto)} /> : null}
               <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                 {getInitials(memberName)}
               </AvatarFallback>

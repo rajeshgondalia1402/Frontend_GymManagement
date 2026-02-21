@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from '@/hooks/use-toast';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import type { UpdateGymOwnerProfile } from '@/types';
 
 interface GymOwnerProfileDialogProps {
@@ -126,7 +126,7 @@ export function GymOwnerProfileDialog({ open, onOpenChange }: GymOwnerProfileDia
             <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
               {profile.gym.gymLogo ? (
                 <img
-                  src={`${BACKEND_BASE_URL}${profile.gym.gymLogo}`}
+                  src={getImageUrl(profile.gym.gymLogo)}
                   alt="Gym Logo"
                   className="w-20 h-20 object-cover rounded-lg border-2 border-white shadow"
                 />

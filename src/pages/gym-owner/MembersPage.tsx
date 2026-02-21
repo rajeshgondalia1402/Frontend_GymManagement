@@ -22,7 +22,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
@@ -816,7 +816,7 @@ export function MembersPage() {
                   <TableBody>
                     {members.map((member: Member, index: number) => {
                       const status = getMembershipStatus(member);
-                      const photoUrl = member.memberPhoto ? `${BACKEND_BASE_URL}${member.memberPhoto}` : '';
+                      const photoUrl = member.memberPhoto ? getImageUrl(member.memberPhoto) : '';
                       const memberName = member.firstName && member.lastName
                         ? `${member.firstName} ${member.lastName}`
                         : member.user?.name || 'Unknown';
@@ -1048,7 +1048,7 @@ export function MembersPage() {
               {/* Member Header - Always Visible */}
               <div className="flex gap-4">
                 <Avatar className="h-20 w-20 border-4 border-purple-200">
-                  {viewingMember.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${viewingMember.memberPhoto}`} /> : null}
+                  {viewingMember.memberPhoto ? <AvatarImage src={getImageUrl(viewingMember.memberPhoto)} /> : null}
                   <AvatarFallback className="text-xl bg-gradient-to-br from-purple-500 to-blue-500 text-white">
                     {getInitials(viewingMember.firstName && viewingMember.lastName ? `${viewingMember.firstName} ${viewingMember.lastName}` : viewingMember.user?.name || '')}
                   </AvatarFallback>
@@ -1095,7 +1095,7 @@ export function MembersPage() {
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() => window.open(`${BACKEND_BASE_URL}${viewingMember.idProofDocument}`, '_blank')}
+                      onClick={() => window.open(getImageUrl(viewingMember.idProofDocument), '_blank')}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download
@@ -1395,7 +1395,7 @@ export function MembersPage() {
               {/* Member Info Header */}
               <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl">
                 <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${selectedMemberForPayment.memberPhoto}`} /> : null}
+                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={getImageUrl(selectedMemberForPayment.memberPhoto)} /> : null}
                   <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                     {getInitials(selectedMemberForPayment.firstName && selectedMemberForPayment.lastName ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}` : selectedMemberForPayment.user?.name || '')}
                   </AvatarFallback>

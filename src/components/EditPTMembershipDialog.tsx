@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Member, Trainer, CreatePTAddon, CoursePackage } from '@/types';
 
@@ -179,7 +179,7 @@ export function EditPTMembershipDialog({ open, onOpenChange, member, onSuccess }
                     {/* Member Info Header */}
                     <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl">
                         <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                            {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
+                            {member.memberPhoto ? <AvatarImage src={getImageUrl(member.memberPhoto)} /> : null}
                             <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                                 {getInitials(memberName)}
                             </AvatarFallback>
