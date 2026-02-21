@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { IncomeReportParams, MemberIncomeItem, MemberPaymentDetailItem } from '@/types';
 
@@ -423,7 +423,7 @@ export function IncomeReportPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={member.memberPhoto ? `${BACKEND_BASE_URL}${member.memberPhoto}` : undefined} />
+                            <AvatarImage src={getImageUrl(member.memberPhoto) || undefined} />
                             <AvatarFallback>{getInitials(member.memberName)}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -555,7 +555,7 @@ export function IncomeReportPage() {
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={selectedMember.memberPhoto ? `${BACKEND_BASE_URL}${selectedMember.memberPhoto}` : undefined} />
+                      <AvatarImage src={getImageUrl(selectedMember.memberPhoto) || undefined} />
                       <AvatarFallback>{getInitials(selectedMember.memberName)}</AvatarFallback>
                     </Avatar>
                     <div>

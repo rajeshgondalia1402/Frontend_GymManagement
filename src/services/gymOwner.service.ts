@@ -1502,4 +1502,22 @@ export const gymOwnerService = {
     const response = await api.put<ApiResponse<GymOwnerProfile>>('/gym-owner/profile', data);
     return response.data.data;
   },
+
+  // ================== FILE DOWNLOAD - PRESIGNED URLs ==================
+
+  async getPresignedUrl(url: string, expiresIn: number = 3600): Promise<string> {
+    const response = await api.post<ApiResponse<{ presignedUrl: string; isLocal?: boolean }>>('/gym-owner/files/presigned-url', {
+      url,
+      expiresIn,
+    });
+    return response.data.data.presignedUrl;
+  },
+
+  async getPresignedUrls(urls: string[], expiresIn: number = 3600): Promise<{ original: string; presignedUrl: string | null; isLocal: boolean }[]> {
+    const response = await api.post<ApiResponse<{ urls: { original: string; presignedUrl: string | null; isLocal: boolean }[] }>>('/gym-owner/files/presigned-urls', {
+      urls,
+      expiresIn,
+    });
+    return response.data.data.urls;
+  },
 };

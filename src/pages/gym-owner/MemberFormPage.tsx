@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addYears, addMonths } from 'date-fns';
 import {
-    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video,
+    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { BMICalculator } from '@/components/BMICalculator';
 import { CameraCapture } from '@/components/CameraCapture';
@@ -67,9 +67,34 @@ export function MemberFormPage() {
     const [docFile, setDocFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string>('');
     const [docPreview, setDocPreview] = useState<string>('');
+    const [originalDocUrl, setOriginalDocUrl] = useState<string>(''); // Track original document URL for download
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
     const [showBMICalculator, setShowBMICalculator] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
+
+    // Download document handler
+    const handleDownloadDocument = async () => {
+        if (!originalDocUrl) return;
+
+        try {
+            // Check if it's a local file (backward compatibility)
+            if (originalDocUrl.startsWith('/uploads/')) {
+                window.open(getImageUrl(originalDocUrl), '_blank');
+                return;
+            }
+
+            // Get presigned URL for R2 files
+            const presignedUrl = await gymOwnerService.getPresignedUrl(originalDocUrl);
+            window.open(presignedUrl, '_blank');
+        } catch (error) {
+            console.error('Failed to get download URL:', error);
+            toast({
+                title: 'Download Failed',
+                description: 'Failed to generate download link. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    };
 
     const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<MemberFormData>({
         resolver: zodResolver(memberSchema),
@@ -168,9 +193,11 @@ export function MemberFormPage() {
                 extraDiscount: member.extraDiscount || 0,
             });
 
-            // Set photo and document previews
-            setPhotoPreview(member.memberPhoto ? `${BACKEND_BASE_URL}${member.memberPhoto}` : '');
-            setDocPreview(member.idProofDocument ? `${BACKEND_BASE_URL}${member.idProofDocument}` : '');
+            // Set photo and document previews (handles both R2 URLs and legacy local paths)
+            setPhotoPreview(getImageUrl(member.memberPhoto));
+            setDocPreview(getImageUrl(member.idProofDocument));
+            // Store original document URL for download functionality
+            setOriginalDocUrl(member.idProofDocument || '');
 
             // Set selected package if member has one
             if (member.coursePackageId && coursePackages.length > 0) {
@@ -415,9 +442,16 @@ export function MemberFormPage() {
                                         )}
                                     </div>
                                     <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'doc')} className="hidden" />
-                                    <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="mt-2 h-8 text-xs">
-                                        <Upload className="h-3 w-3 mr-1" />{docPreview ? 'Change' : 'Upload'}
-                                    </Button>
+                                    <div className="flex gap-1 mt-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="h-8 text-xs">
+                                            <Upload className="h-3 w-3 mr-1" />{docPreview ? 'Change' : 'Upload'}
+                                        </Button>
+                                        {originalDocUrl && (
+                                            <Button type="button" variant="outline" size="sm" onClick={handleDownloadDocument} className="h-8 text-xs">
+                                                <Download className="h-3 w-3 mr-1" /> Download
+                                            </Button>
+                                        )}
+                                    </div>
                                     {/* ID Proof Type */}
                                     <Select onValueChange={(v) => setValue('idProofType', v)} value={watch('idProofType')}>
                                         <SelectTrigger className="h-8 text-xs mt-2 w-full"><SelectValue placeholder="ID Type" /></SelectTrigger>

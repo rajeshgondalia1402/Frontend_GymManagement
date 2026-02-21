@@ -18,7 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Expense, ExpenseGroup, PaymentMode } from '@/types';
 
@@ -65,6 +65,28 @@ export function ExpensePage() {
   // Validation State
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Download attachment helper function
+  const handleDownloadAttachment = async (attachmentUrl: string) => {
+    try {
+      // Check if it's a local file (backward compatibility)
+      if (attachmentUrl.startsWith('/uploads/')) {
+        window.open(getImageUrl(attachmentUrl), '_blank');
+        return;
+      }
+
+      // Get presigned URL for R2 files
+      const presignedUrl = await gymOwnerService.getPresignedUrl(attachmentUrl);
+      window.open(presignedUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to get download URL:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to generate download link. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Debounce search
   useEffect(() => {
@@ -557,10 +579,49 @@ export function ExpensePage() {
                         </TableCell>
                         <TableCell>
                           {expense.attachments && expense.attachments.length > 0 ? (
-                            <Badge variant="secondary" className="gap-1 text-xs">
-                              <Paperclip className="h-3 w-3" />
-                              {expense.attachments.length}
-                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="gap-1 text-xs">
+                                <Paperclip className="h-3 w-3" />
+                                {expense.attachments.length}
+                              </Badge>
+                              {expense.attachments.length === 1 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleDownloadAttachment(expense.attachments![0])}
+                                  title="Download attachment"
+                                >
+                                  <Download className="h-3.5 w-3.5 text-blue-600" />
+                                </Button>
+                              ) : (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" title="Download attachments">
+                                      <Download className="h-3.5 w-3.5 text-blue-600" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    {expense.attachments.map((attachment, idx) => {
+                                      const isPdf = attachment.endsWith('.pdf');
+                                      return (
+                                        <DropdownMenuItem
+                                          key={idx}
+                                          onClick={() => handleDownloadAttachment(attachment)}
+                                        >
+                                          {isPdf ? (
+                                            <FileText className="mr-2 h-4 w-4 text-red-500" />
+                                          ) : (
+                                            <ImageIcon className="mr-2 h-4 w-4 text-blue-500" />
+                                          )}
+                                          {isPdf ? `Receipt ${idx + 1} (PDF)` : `Image ${idx + 1}`}
+                                        </DropdownMenuItem>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">-</span>
                           )}
@@ -684,14 +745,11 @@ export function ExpensePage() {
                   <div className="grid grid-cols-2 gap-2">
                     {viewingExpense.attachments.map((attachment, index) => {
                       const isPdf = attachment.endsWith('.pdf');
-                      const fullUrl = `${BACKEND_BASE_URL}${attachment}`;
                       return (
-                        <a
+                        <button
                           key={index}
-                          href={fullUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 border rounded hover:bg-muted/50 transition-colors"
+                          onClick={() => handleDownloadAttachment(attachment)}
+                          className="flex items-center gap-2 p-2 border rounded hover:bg-muted/50 transition-colors text-left"
                         >
                           {isPdf ? (
                             <FileText className="h-5 w-5 text-red-500" />
@@ -702,7 +760,7 @@ export function ExpensePage() {
                             {isPdf ? `Receipt ${index + 1} (PDF)` : `Image ${index + 1}`}
                           </span>
                           <Download className="h-4 w-4 text-muted-foreground" />
-                        </a>
+                        </button>
                       );
                     })}
                   </div>
