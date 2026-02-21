@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { gymOwnerService } from '@/services/gymOwner.service';
+import { adminService } from '@/services/admin.service';
 import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Expense, ExpenseGroup, PaymentMode } from '@/types';
@@ -25,7 +25,7 @@ import type { Expense, ExpenseGroup, PaymentMode } from '@/types';
 const PAYMENT_MODES: PaymentMode[] = ['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE'];
 const ITEMS_PER_PAGE = 10;
 
-export function ExpensePage() {
+export function AdminExpensePage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(ITEMS_PER_PAGE);
@@ -76,7 +76,7 @@ export function ExpensePage() {
       }
 
       // Get presigned URL for R2 files
-      const presignedUrl = await gymOwnerService.getPresignedUrl(attachmentUrl);
+      const presignedUrl = await adminService.getPresignedUrl(attachmentUrl);
       window.open(presignedUrl, '_blank');
     } catch (error) {
       console.error('Failed to get download URL:', error);
@@ -115,25 +115,24 @@ export function ExpensePage() {
 
   // Fetch expense groups for filter
   const { data: expenseGroups = [] } = useQuery({
-    queryKey: ['expenseGroups'],
-    queryFn: () => gymOwnerService.getExpenseGroups(),
+    queryKey: ['admin-expense-groups'],
+    queryFn: () => adminService.getExpenseGroups(),
   });
 
   // Fetch expenses
   const { data, isLoading, error } = useQuery({
-    queryKey: ['expenses', queryParams],
-    queryFn: () => gymOwnerService.getExpenses(queryParams),
+    queryKey: ['admin-expenses', queryParams],
+    queryFn: () => adminService.getExpenses(queryParams),
   });
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (formData: FormData) => gymOwnerService.createExpense(formData),
+    mutationFn: (formData: FormData) => adminService.createExpense(formData),
     onSuccess: () => {
-      // Sort by most recent created date
       setSortBy('createdAt');
       setSortOrder('desc');
       setPage(1);
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-expenses'] });
       resetForm();
       setCreateEditDialogOpen(false);
       toast({ title: 'Expense created successfully' });
@@ -143,13 +142,12 @@ export function ExpensePage() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, formData }: { id: string; formData: FormData }) => gymOwnerService.updateExpense(id, formData),
+    mutationFn: ({ id, formData }: { id: string; formData: FormData }) => adminService.updateExpense(id, formData),
     onSuccess: () => {
-      // Sort by most recent created date (for consistency with backend)
       setSortBy('createdAt');
       setSortOrder('desc');
       setPage(1);
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-expenses'] });
       resetForm();
       setCreateEditDialogOpen(false);
       toast({ title: 'Expense updated successfully' });
@@ -159,9 +157,9 @@ export function ExpensePage() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => gymOwnerService.deleteExpense(id),
+    mutationFn: (id: string) => adminService.deleteExpense(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-expenses'] });
       setDeleteDialogOpen(false);
       setDeletingExpense(null);
       toast({ title: 'Expense deleted successfully' });
@@ -348,7 +346,7 @@ export function ExpensePage() {
     let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
     html += '<head><meta charset="utf-8">';
     html += '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-    html += '<x:Name>Expenses Report</x:Name>';
+    html += '<x:Name>Admin Expenses Report</x:Name>';
     html += '<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>1</x:SplitHorizontal><x:TopRowBottomPane>1</x:TopRowBottomPane><x:ActivePane>2</x:ActivePane></x:WorksheetOptions>';
     html += '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
     html += '<style>';
@@ -384,10 +382,10 @@ export function ExpensePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `expenses_report_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.xls`;
+    a.download = `admin_expenses_report_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.xls`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: 'Expenses report exported successfully' });
+    toast({ title: 'Admin expenses report exported successfully' });
   };
 
   const removeAttachment = (path: string) => {
@@ -411,8 +409,8 @@ export function ExpensePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Expenses</h1>
-          <p className="text-sm text-muted-foreground">Manage gym expenses and track spending</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Admin Expenses</h1>
+          <p className="text-sm text-muted-foreground">Manage platform expenses and track spending</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -793,7 +791,7 @@ export function ExpensePage() {
               <div className="col-span-2 space-y-2">
                 <Label>Expense Name <span className="text-red-500">*</span></Label>
                 <Input
-                  placeholder="e.g., Monthly Rent"
+                  placeholder="e.g., Server Hosting, Office Rent"
                   value={formData.name}
                   onChange={(e) => {
                     setFormData({ ...formData, name: e.target.value });
@@ -981,3 +979,5 @@ export function ExpensePage() {
     </div>
   );
 }
+
+export default AdminExpensePage;

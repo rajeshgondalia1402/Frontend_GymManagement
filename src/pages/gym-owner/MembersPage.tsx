@@ -18,14 +18,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -69,6 +71,15 @@ export function MembersPage() {
     queryKey: ['activeCoursePackages'],
     queryFn: () => gymOwnerService.getActiveCoursePackages(),
   });
+
+  // Fetch gym owner profile to get gym name for WhatsApp messages
+  const { data: gymProfile } = useQuery({
+    queryKey: ['gymOwnerProfile'],
+    queryFn: () => gymOwnerService.getProfile(),
+  });
+
+  // Get gym name from profile
+  const gymName = gymProfile?.gym?.name || 'Our Gym';
 
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
@@ -805,7 +816,7 @@ export function MembersPage() {
                   <TableBody>
                     {members.map((member: Member, index: number) => {
                       const status = getMembershipStatus(member);
-                      const photoUrl = member.memberPhoto ? `${BACKEND_BASE_URL}${member.memberPhoto}` : '';
+                      const photoUrl = member.memberPhoto ? getImageUrl(member.memberPhoto) : '';
                       const memberName = member.firstName && member.lastName
                         ? `${member.firstName} ${member.lastName}`
                         : member.user?.name || 'Unknown';
@@ -816,10 +827,30 @@ export function MembersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                {photoUrl ? <AvatarImage src={photoUrl} /> : null}
-                                <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
-                              </Avatar>
+                              {photoUrl ? (
+                                <HoverCard openDelay={200} closeDelay={100}>
+                                  <HoverCardTrigger asChild>
+                                    <Avatar className="h-8 w-8 cursor-pointer">
+                                      <AvatarImage src={photoUrl} />
+                                      <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
+                                    </Avatar>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-auto p-2" side="right" align="start">
+                                    <div className="flex flex-col items-center gap-2">
+                                      <img
+                                        src={photoUrl}
+                                        alt={memberName}
+                                        className="w-48 h-48 object-cover rounded-lg shadow-lg"
+                                      />
+                                      <p className="text-sm font-medium text-center">{memberName}</p>
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
+                              ) : (
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
+                                </Avatar>
+                              )}
                               <div>
                                 <p className="font-medium text-sm">{memberName}</p>
                                 <p className="text-xs text-muted-foreground">{member.email || member.user?.email}</p>
@@ -845,7 +876,21 @@ export function MembersPage() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm">{member.phone || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm">{member.phone || '-'}</span>
+                              {member.phone && (
+                                <WhatsAppButton
+                                  memberName={memberName}
+                                  memberPhone={member.phone}
+                                  gymName={gymName}
+                                  expiryDate={(member.membershipEnd || member.membershipEndDate) ? format(new Date(member.membershipEnd || member.membershipEndDate!), 'dd/MM/yyyy') : undefined}
+                                  variant="icon"
+                                  showTemplateSelector={true}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {member.memberType === 'REGULAR_PT' ? (
                               <div className="flex flex-col gap-0.5">
@@ -1003,7 +1048,7 @@ export function MembersPage() {
               {/* Member Header - Always Visible */}
               <div className="flex gap-4">
                 <Avatar className="h-20 w-20 border-4 border-purple-200">
-                  {viewingMember.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${viewingMember.memberPhoto}`} /> : null}
+                  {viewingMember.memberPhoto ? <AvatarImage src={getImageUrl(viewingMember.memberPhoto)} /> : null}
                   <AvatarFallback className="text-xl bg-gradient-to-br from-purple-500 to-blue-500 text-white">
                     {getInitials(viewingMember.firstName && viewingMember.lastName ? `${viewingMember.firstName} ${viewingMember.lastName}` : viewingMember.user?.name || '')}
                   </AvatarFallback>
@@ -1050,7 +1095,7 @@ export function MembersPage() {
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() => window.open(`${BACKEND_BASE_URL}${viewingMember.idProofDocument}`, '_blank')}
+                      onClick={() => window.open(getImageUrl(viewingMember.idProofDocument), '_blank')}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download
@@ -1350,7 +1395,7 @@ export function MembersPage() {
               {/* Member Info Header */}
               <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl">
                 <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${selectedMemberForPayment.memberPhoto}`} /> : null}
+                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={getImageUrl(selectedMemberForPayment.memberPhoto)} /> : null}
                   <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                     {getInitials(selectedMemberForPayment.firstName && selectedMemberForPayment.lastName ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}` : selectedMemberForPayment.user?.name || '')}
                   </AvatarFallback>

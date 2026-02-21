@@ -9,6 +9,8 @@ import { GymOwnersPage } from '@/pages/admin/GymOwnersPage';
 import { SubscriptionPlansPage } from '@/pages/admin/SubscriptionPlansPage';
 import { GymSubscriptionHistoryPage } from '@/pages/admin/GymSubscriptionHistoryPage';
 import { GymInquiryPage } from '@/pages/admin/GymInquiryPage';
+import { AdminExpenseGroupMasterPage } from '@/pages/admin/AdminExpenseGroupMasterPage';
+import { AdminExpensePage } from '@/pages/admin/AdminExpensePage';
 
 /**
  * Admin Routes - STRICT ISOLATION
@@ -83,6 +85,26 @@ export const AdminRoutes = () => (
         <AdminGuard>
           <TopNavLayout>
             <GymInquiryPage />
+          </TopNavLayout>
+        </AdminGuard>
+      }
+    />
+    <Route
+      path="/admin/expenses"
+      element={
+        <AdminGuard>
+          <TopNavLayout>
+            <AdminExpensePage />
+          </TopNavLayout>
+        </AdminGuard>
+      }
+    />
+    <Route
+      path="/admin/master/expense-groups"
+      element={
+        <AdminGuard>
+          <TopNavLayout>
+            <AdminExpenseGroupMasterPage />
           </TopNavLayout>
         </AdminGuard>
       }

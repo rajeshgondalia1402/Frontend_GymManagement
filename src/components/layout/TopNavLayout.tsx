@@ -53,6 +53,7 @@ import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/auth.service';
 import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
+import { GymOwnerProfileDialog } from '@/components/GymOwnerProfileDialog';
 import type { Role } from '@/types';
 
 interface NavItem {
@@ -85,6 +86,14 @@ const staticNavItemsByRole: Partial<Record<Role, NavEntry[]>> = {
         { title: 'Gym Inquiry', href: '/admin/gym-inquiry', icon: ClipboardCheck },
         { title: 'New Gyms', href: '/admin/gyms', icon: Building2 },
         { title: 'Gym Owners', href: '/admin/gym-owners', icon: Users },
+      ],
+    },
+    {
+      title: 'Expenses',
+      icon: Receipt,
+      submenu: [
+        { title: 'Expenses', href: '/admin/expenses', icon: Wallet },
+        { title: 'Expense Groups', href: '/admin/master/expense-groups', icon: Package },
       ],
     },
     {
@@ -196,6 +205,7 @@ interface TopNavLayoutProps {
 export function TopNavLayout({ children }: TopNavLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -468,10 +478,18 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate(getProfileRoute())}>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
+                  {user?.role !== 'ADMIN' && (
+                    <DropdownMenuItem onClick={() => {
+                      if (user?.role === 'GYM_OWNER') {
+                        setProfileDialogOpen(true);
+                      } else {
+                        navigate(getProfileRoute());
+                      }
+                    }}>
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
                     <KeyRound className="mr-2 h-4 w-4" />
                     Change Password
@@ -591,17 +609,23 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        navigate(getProfileRoute());
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Button>
+                    {user?.role !== 'ADMIN' && (
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => {
+                          if (user?.role === 'GYM_OWNER') {
+                            setProfileDialogOpen(true);
+                          } else {
+                            navigate(getProfileRoute());
+                          }
+                          setMobileMenuOpen(false);
+                        }}
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       className="w-full justify-start"
@@ -754,6 +778,14 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Gym Owner Profile Dialog */}
+      {user?.role === 'GYM_OWNER' && (
+        <GymOwnerProfileDialog
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+        />
+      )}
     </div>
   );
 }

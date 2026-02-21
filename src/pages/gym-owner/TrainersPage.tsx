@@ -72,7 +72,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { LimitReachedBanner } from '@/components/common/UpgradeBanner';
@@ -239,8 +239,8 @@ export function TrainersPage() {
         idProofType: editingTrainer.idProofType || '',
       });
 
-      setPhotoPreview(editingTrainer.trainerPhoto ? `${BACKEND_BASE_URL}${editingTrainer.trainerPhoto}` : '');
-      setDocPreview(editingTrainer.idProofDocument ? `${BACKEND_BASE_URL}${editingTrainer.idProofDocument}` : '');
+      setPhotoPreview(editingTrainer.trainerPhoto ? getImageUrl(editingTrainer.trainerPhoto) : '');
+      setDocPreview(editingTrainer.idProofDocument ? getImageUrl(editingTrainer.idProofDocument) : '');
     }
   }, [editingTrainer, dialogOpen, reset]);
 
@@ -679,7 +679,7 @@ export function TrainersPage() {
                     {paginatedTrainers.map((trainer: Trainer, index: number) => {
                       const trainerName = getTrainerName(trainer);
                       const trainerEmail = getTrainerEmail(trainer);
-                      const photoUrl = trainer.trainerPhoto ? `${BACKEND_BASE_URL}${trainer.trainerPhoto}` : '';
+                      const photoUrl = trainer.trainerPhoto ? getImageUrl(trainer.trainerPhoto) : '';
                       const isExpanded = expandedTrainerId === trainer.id;
                       const trainerPtData = ptMembersData[trainer.id];
                       const isLoadingPtMembers = ptMembersLoading[trainer.id];
@@ -972,7 +972,7 @@ export function TrainersPage() {
             <div className="space-y-4">
               <div className="flex gap-4">
                 <Avatar className="h-20 w-20 border-4 border-purple-200">
-                  {viewingTrainer.trainerPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${viewingTrainer.trainerPhoto}`} /> : null}
+                  {viewingTrainer.trainerPhoto ? <AvatarImage src={getImageUrl(viewingTrainer.trainerPhoto)} /> : null}
                   <AvatarFallback className="text-xl bg-gradient-to-br from-purple-500 to-blue-500 text-white">
                     {getInitials(getTrainerName(viewingTrainer))}
                   </AvatarFallback>
@@ -1006,7 +1006,7 @@ export function TrainersPage() {
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() => window.open(`${BACKEND_BASE_URL}${viewingTrainer.idProofDocument}`, '_blank')}
+                      onClick={() => window.open(getImageUrl(viewingTrainer.idProofDocument), '_blank')}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       Download

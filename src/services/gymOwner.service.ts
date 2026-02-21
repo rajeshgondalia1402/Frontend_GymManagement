@@ -59,6 +59,9 @@ import type {
   DashboardFollowUpInquiryItem,
   DashboardExpenseItem,
   DashboardRenewalItem,
+  // Profile types
+  GymOwnerProfile,
+  UpdateGymOwnerProfile,
 } from '@/types';
 
 export const gymOwnerService = {
@@ -1486,5 +1489,35 @@ export const gymOwnerService = {
     const response = await api.get<MemberPaymentDetailResponse>(`/gym-owner/reports/income/${memberId}/payments`, { params: queryParams });
     console.debug('Member payment details response:', response.data);
     return response.data;
+  },
+
+  // ================== GYM OWNER PROFILE ==================
+
+  async getProfile(): Promise<GymOwnerProfile> {
+    const response = await api.get<ApiResponse<GymOwnerProfile>>('/gym-owner/profile');
+    return response.data.data;
+  },
+
+  async updateProfile(data: UpdateGymOwnerProfile): Promise<GymOwnerProfile> {
+    const response = await api.put<ApiResponse<GymOwnerProfile>>('/gym-owner/profile', data);
+    return response.data.data;
+  },
+
+  // ================== FILE DOWNLOAD - PRESIGNED URLs ==================
+
+  async getPresignedUrl(url: string, expiresIn: number = 3600): Promise<string> {
+    const response = await api.post<ApiResponse<{ presignedUrl: string; isLocal?: boolean }>>('/gym-owner/files/presigned-url', {
+      url,
+      expiresIn,
+    });
+    return response.data.data.presignedUrl;
+  },
+
+  async getPresignedUrls(urls: string[], expiresIn: number = 3600): Promise<{ original: string; presignedUrl: string | null; isLocal: boolean }[]> {
+    const response = await api.post<ApiResponse<{ urls: { original: string; presignedUrl: string | null; isLocal: boolean }[] }>>('/gym-owner/files/presigned-urls', {
+      urls,
+      expiresIn,
+    });
+    return response.data.data.urls;
   },
 };

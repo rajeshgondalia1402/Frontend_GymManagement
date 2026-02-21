@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { BACKEND_BASE_URL } from '@/services/api';
+import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Member } from '@/types';
 
@@ -110,7 +110,7 @@ export function RemovePTMembershipDialog({ open, onOpenChange, member, onSuccess
                     {/* Member Info Header */}
                     <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl">
                         <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                            {member.memberPhoto ? <AvatarImage src={`${BACKEND_BASE_URL}${member.memberPhoto}`} /> : null}
+                            {member.memberPhoto ? <AvatarImage src={getImageUrl(member.memberPhoto)} /> : null}
                             <AvatarFallback className="text-lg bg-gradient-to-br from-red-500 to-rose-600 text-white">
                                 {getInitials(memberName)}
                             </AvatarFallback>

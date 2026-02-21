@@ -72,6 +72,8 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { adminService } from '@/services/admin.service';
 import { toast } from '@/hooks/use-toast';
+import { openWhatsApp, replaceTemplatePlaceholders, getTemplateById } from '@/utils/whatsapp';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
 import type { Gym, GymSubscriptionPlan, User, GymSubscriptionStatus, GymSubscriptionType, GymSubscriptionHistory, GymRenewalType, GymPaymentStatus } from '@/types';
 import { getGymSubscriptionStatus, getGymDaysRemaining, getGymSubscriptionType } from '@/types';
 
@@ -174,17 +176,51 @@ const SubscriptionTypeBadge = ({ type }: { type: GymSubscriptionType }) => {
 // Helper to extract error message from API response
 const getApiErrorMessage = (error: any): string => {
   const responseData = error?.response?.data;
-  
+
   // Check for validation errors array
   if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
     // Join all validation error messages
-    return responseData.errors.map((err: { field?: string; message: string }) => 
+    return responseData.errors.map((err: { field?: string; message: string }) =>
       err.field ? `${err.field}: ${err.message}` : err.message
     ).join(', ');
   }
-  
+
   // Fallback to message field or generic error
   return responseData?.message || error?.message || 'An error occurred';
+};
+
+// Helper to format date for WhatsApp message
+const formatDateForWhatsApp = (dateStr: string | null | undefined) => {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+// Helper to send WhatsApp message for gym subscription expiring/expired
+const handleGymSubscriptionWhatsApp = (gym: Gym, status: GymSubscriptionStatus) => {
+  const templateId = status === 'EXPIRED' ? 'GYM_SUBSCRIPTION_EXPIRED' : 'GYM_SUBSCRIPTION_EXPIRING';
+  const template = getTemplateById(templateId);
+  if (!template) return;
+
+  const messageData = {
+    memberName: gym.name,
+    memberPhone: gym.mobileNo || '',
+    gymName: gym.name,
+    planName: gym.subscriptionPlan?.name || 'N/A',
+    planPrice: gym.subscriptionPlan?.price?.toLocaleString('en-IN') || 'N/A',
+    amountPaid: gym.subscriptionPlan?.price?.toLocaleString('en-IN') || 'N/A',
+    expiryDate: formatDateForWhatsApp(gym.subscriptionEnd),
+  };
+
+  const message = replaceTemplatePlaceholders(template.message, messageData);
+  const result = openWhatsApp(gym.mobileNo, message);
+
+  if (!result.success) {
+    toast({
+      title: 'Error',
+      description: result.error || 'Failed to open WhatsApp',
+      variant: 'destructive',
+    });
+  }
 };
 
 export function GymsPage() {
@@ -1415,42 +1451,56 @@ export function GymsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleViewClick(gym)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openHistoryDialog(gym)}>
-                                <History className="mr-2 h-4 w-4" />
-                                Subscription History
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditClick(gym)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(gym.id)}>
-                                <Power className="mr-2 h-4 w-4" />
-                                {gym.isActive ? 'Deactivate' : 'Activate'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to delete this gym?')) {
-                                    deleteMutation.mutate(gym.id);
-                                  }
-                                }}
+                          <div className="flex items-center gap-1">
+                            {/* WhatsApp button for Expiring and Expired gyms */}
+                            {(subscriptionStatus === 'EXPIRING_SOON' || subscriptionStatus === 'EXPIRED') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-green-50"
+                                onClick={() => handleGymSubscriptionWhatsApp(gym, subscriptionStatus)}
+                                title={`Send WhatsApp to ${gym.name}`}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                <WhatsAppFilledIcon size={16} className="text-green-600" />
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewClick(gym)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openHistoryDialog(gym)}>
+                                  <History className="mr-2 h-4 w-4" />
+                                  Subscription History
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditClick(gym)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleStatusMutation.mutate(gym.id)}>
+                                  <Power className="mr-2 h-4 w-4" />
+                                  {gym.isActive ? 'Deactivate' : 'Activate'}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this gym?')) {
+                                      deleteMutation.mutate(gym.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );}) : (
