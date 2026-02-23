@@ -132,15 +132,6 @@ export function LoginPage() {
               )}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 font-medium mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-xs text-gray-500">
-              <p><strong>Admin:</strong> admin@gymmanager.com / admin123</p>
-              <p><strong>Gym Owner:</strong> owner@fitnesspro.com / owner123</p>
-              <p><strong>Member:</strong> alice@example.com / member123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
