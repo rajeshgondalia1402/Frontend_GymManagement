@@ -26,7 +26,9 @@ import {
   Eye,
   EyeOff,
   Package,
-  ClipboardCheck
+  ClipboardCheck,
+  BarChart2,
+  CalendarCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -102,6 +104,13 @@ const navItemsByRole: Record<Role, NavEntry[]> = {
     { title: 'Member Inquiries', href: '/gym-owner/member-inquiries', icon: UserPlus },
     { title: 'Diet Plans', href: '/gym-owner/diet-plans', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/gym-owner/exercise-plans', icon: ClipboardList },
+    {
+      title: 'Reports',
+      icon: BarChart2,
+      submenu: [
+        { title: 'Attendance', href: '/gym-owner/attendance', icon: CalendarCheck },
+      ],
+    },
     {
       title: 'Master',
       icon: FolderCog,

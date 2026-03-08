@@ -29,6 +29,9 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { adminService } from '@/services/admin.service';
+import { emailService } from '@/services/email.service';
+import { buildEmailPayload } from '@/utils/emailTemplates';
+import type { GymInquiryEmailData } from '@/utils/emailTemplates';
 import { openWhatsApp, replaceTemplatePlaceholders, getTemplateById } from '@/utils/whatsapp';
 import { WhatsAppFilledIcon } from '@/components/ui/icons';
 import type { GymInquiry, GymInquiryFollowup, GymSubscriptionPlan, EnquiryType } from '@/types';
@@ -225,11 +228,55 @@ export function GymInquiryPage() {
       };
       return adminService.createGymInquiry(requestData);
     },
-    onSuccess: () => {
+    onSuccess: async (_createdInquiry: GymInquiry, variables: InquiryFormData) => {
       queryClient.invalidateQueries({ queryKey: ['gym-inquiries'] });
       setCreateDialogOpen(false);
       reset();
       toast({ title: 'Inquiry created successfully' });
+
+      // Send email notification if email is provided
+      const recipientEmail = variables.email?.trim();
+      if (recipientEmail) {
+        try {
+          // Find the selected plan details for the email
+          const selectedPlan = plans.find(p => p.id === variables.subscriptionPlanId);
+          const selectedEnqType = enquiryTypes.find(et => et.id === variables.enquiryTypeId);
+
+          const emailData: GymInquiryEmailData = {
+            gymName: variables.gymName,
+            mobileNo: variables.mobileNo,
+            email: recipientEmail,
+            address1: variables.address1,
+            address2: variables.address2,
+            city: variables.city,
+            state: variables.state,
+            planName: selectedPlan?.name,
+            planPrice: selectedPlan?.price,
+            planDuration: selectedPlan?.durationDays,
+            enquiryType: selectedEnqType?.name,
+            memberSize: variables.memberSize ? parseInt(variables.memberSize, 10) : undefined,
+            sellerName: variables.sellerName,
+            sellerMobileNo: variables.sellerMobileNo,
+            nextFollowupDate: variables.nextFollowupDate
+              ? new Date(variables.nextFollowupDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+              : undefined,
+            note: variables.note,
+          };
+
+          const payload = buildEmailPayload('GYM_INQUIRY', recipientEmail, emailData);
+          if (payload) {
+            await emailService.sendEmail(payload);
+            toast({ title: 'Inquiry email sent', description: `Email sent to ${recipientEmail}` });
+          }
+        } catch (emailError: any) {
+          console.error('Failed to send inquiry email:', emailError);
+          toast({
+            title: 'Inquiry saved, but email failed',
+            description: emailError?.response?.data?.message || 'Could not send the email notification.',
+            variant: 'destructive',
+          });
+        }
+      }
     },
     onError: (error: any) => {
       toast({ title: 'Failed to create inquiry', description: error?.response?.data?.message || error.message, variant: 'destructive' });
@@ -498,7 +545,7 @@ export function GymInquiryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Plans</SelectItem>
-                  {plans.map((p) => (
+                  {plans.filter(p => p.isActive).map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -756,12 +803,12 @@ export function GymInquiryPage() {
               {/* Subscription Plan */}
               <div>
                 <Label className="text-xs">Subscription Plan *</Label>
-                <Select value={selectedPlanId} onValueChange={(v) => setValue('subscriptionPlanId', v)}>
+                <Select value={selectedPlanId || ''} onValueChange={(v) => setValue('subscriptionPlanId', v)}>
                   <SelectTrigger className="h-8">
                     <SelectValue placeholder="Select plan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {plans.map((p) => (
+                    {plans.filter(p => p.isActive).map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.name} - ₹{p.price}</SelectItem>
                     ))}
                   </SelectContent>
@@ -772,7 +819,7 @@ export function GymInquiryPage() {
               {/* Enquiry Type */}
               <div>
                 <Label className="text-xs">Enquiry Type *</Label>
-                <Select value={selectedEnquiryTypeId} onValueChange={(v) => setValue('enquiryTypeId', v)}>
+                <Select value={selectedEnquiryTypeId || ''} onValueChange={(v) => setValue('enquiryTypeId', v)}>
                   <SelectTrigger className="h-8">
                     <SelectValue placeholder="Select enquiry type" />
                   </SelectTrigger>

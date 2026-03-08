@@ -111,6 +111,7 @@ export const SUBSCRIPTION_FEATURES: Record<SubscriptionPlan, FeatureCode[]> = {
     'SUBSCRIPTION_HISTORY',
     'REPORT_INCOME',
     'REPORT_EXPENSE',
+    'ATTENDANCE_MANAGE',
   ],
 
   STARTER: [
@@ -166,6 +167,7 @@ export const SUBSCRIPTION_FEATURES: Record<SubscriptionPlan, FeatureCode[]> = {
     'MEMBER_BMI',
     'EXPENSE_ATTACHMENTS',
     'PORTAL_TRAINER',
+    'ATTENDANCE_MANAGE',
   ],
 
   ENTERPRISE: [

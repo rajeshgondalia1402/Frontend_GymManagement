@@ -29,7 +29,9 @@ import {
   Banknote,
   ClipboardCheck,
   FileSpreadsheet,
-  IndianRupee
+  IndianRupee,
+  Fingerprint,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -115,12 +117,14 @@ const staticNavItemsByRole: Partial<Record<Role, NavEntry[]>> = {
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
+    { title: 'My Attendance', href: '/member/attendance', icon: Calendar },
   ],
   PT_MEMBER: [
     { title: 'Dashboard', href: '/member', icon: LayoutDashboard },
     { title: 'Diet Plan', href: '/member/diet-plan', icon: UtensilsCrossed },
     { title: 'Exercise Plans', href: '/member/exercise-plans', icon: ClipboardList },
     { title: 'Membership', href: '/member/membership', icon: CreditCard },
+    { title: 'My Attendance', href: '/member/attendance', icon: Calendar },
   ],
 };
 
@@ -179,21 +183,22 @@ function getGymOwnerNavItems(canAccess: (feature: FeatureCode) => boolean): NavE
 
   items.push({ title: 'Master', icon: FolderCog, submenu: masterSubmenu });
 
-  // Reports submenu - only if plan allows any reports
-  if (canAccess('REPORT_EXPENSE') || canAccess('REPORT_INCOME')) {
-    const reportsSubmenu: NavItem[] = [];
+  // Reports submenu - always show with Attendance; add financial reports if plan allows
+  const reportsSubmenu: NavItem[] = [
+    { title: 'Attendance', href: '/gym-owner/attendance', icon: Calendar },
+  ];
 
-    if (canAccess('REPORT_EXPENSE')) {
-      reportsSubmenu.push({ title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt });
-    }
-    if (canAccess('REPORT_INCOME')) {
-      reportsSubmenu.push({ title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee });
-    }
-
-    if (reportsSubmenu.length > 0) {
-      items.push({ title: 'Reports', icon: FileSpreadsheet, submenu: reportsSubmenu });
-    }
+  if (canAccess('BIOMETRIC_INTEGRATION')) {
+    reportsSubmenu.push({ title: 'Biometric Devices', href: '/gym-owner/biometric-devices', icon: Fingerprint });
   }
+  if (canAccess('REPORT_EXPENSE')) {
+    reportsSubmenu.push({ title: 'Expense Report', href: '/gym-owner/reports/expenses', icon: Receipt });
+  }
+  if (canAccess('REPORT_INCOME')) {
+    reportsSubmenu.push({ title: 'Income Report', href: '/gym-owner/reports/income', icon: IndianRupee });
+  }
+
+  items.push({ title: 'Reports', icon: FileSpreadsheet, submenu: reportsSubmenu });
 
   return items;
 }
