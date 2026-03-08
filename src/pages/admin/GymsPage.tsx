@@ -71,6 +71,9 @@ import {
 } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
 import { adminService } from '@/services/admin.service';
+import { emailService } from '@/services/email.service';
+import { buildEmailPayload } from '@/utils/emailTemplates';
+import type { GymWelcomeEmailData } from '@/utils/emailTemplates';
 import { toast } from '@/hooks/use-toast';
 import { openWhatsApp, replaceTemplatePlaceholders, getTemplateById } from '@/utils/whatsapp';
 import { WhatsAppFilledIcon } from '@/components/ui/icons';
@@ -466,7 +469,7 @@ export function GymsPage() {
       
       return createdGym;
     },
-    onSuccess: () => {
+    onSuccess: async (_createdGym, variables) => {
       queryClient.invalidateQueries({ queryKey: ['gyms'] });
       setDialogOpen(false);
       reset();
@@ -474,6 +477,43 @@ export function GymsPage() {
       setLogoPreview('');
       setCreateExtraDiscount(0);
       toast({ title: 'Gym created successfully' });
+
+      // Send welcome email if gym has an email
+      const gymEmail = variables.email?.trim();
+      if (gymEmail) {
+        try {
+          const selectedPlan = plans?.find(p => p.id === variables.subscriptionPlanId);
+
+          const emailData: GymWelcomeEmailData = {
+            gymName: variables.name,
+            email: gymEmail,
+            mobileNo: variables.mobileNo,
+            address1: variables.address1,
+            address2: variables.address2,
+            city: variables.city,
+            state: variables.state,
+            zipcode: variables.zipcode,
+            planName: selectedPlan?.name,
+            planPrice: selectedPlan?.price,
+            planDuration: selectedPlan?.durationDays,
+            gstRegNo: variables.gstRegNo,
+            website: variables.website,
+          };
+
+          const payload = buildEmailPayload('GYM_WELCOME', gymEmail, emailData);
+          if (payload) {
+            await emailService.sendEmail(payload);
+            toast({ title: 'Welcome email sent', description: `Email sent to ${gymEmail}` });
+          }
+        } catch (emailError: any) {
+          console.error('Failed to send welcome email:', emailError);
+          toast({
+            title: 'Gym created, but welcome email failed',
+            description: emailError?.response?.data?.message || 'Could not send the welcome email.',
+            variant: 'destructive',
+          });
+        }
+      }
     },
     onError: (error: any) => {
       const message = getApiErrorMessage(error);

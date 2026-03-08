@@ -15,6 +15,7 @@ import {
   UserPlus,
   Wallet,
   Receipt,
+  Fingerprint,
 } from 'lucide-react';
 
 interface NavItem {
@@ -48,6 +49,7 @@ const memberNavItems: NavItem[] = [
   { label: 'Diet Plan', path: '/member/diet-plan', icon: <UtensilsCrossed className="h-5 w-5" /> },
   { label: 'Exercise Plans', path: '/member/exercise-plans', icon: <Dumbbell className="h-5 w-5" /> },
   { label: 'Membership', path: '/member/membership', icon: <Calendar className="h-5 w-5" /> },
+  { label: 'My Attendance', path: '/member/attendance', icon: <Fingerprint className="h-5 w-5" /> },
 ];
 
 export function Sidebar() {

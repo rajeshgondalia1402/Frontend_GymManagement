@@ -7,6 +7,7 @@ import { MemberDashboard } from '@/pages/member/MemberDashboard';
 import { MyDietPlanPage } from '@/pages/member/MyDietPlanPage';
 import { MyExercisePlansPage } from '@/pages/member/MyExercisePlansPage';
 import { MembershipPage } from '@/pages/member/MembershipPage';
+import { MyAttendancePage } from '@/pages/member/MyAttendancePage';
 
 /**
  * Member Routes - STRICT ISOLATION
@@ -64,6 +65,16 @@ export const MemberRoutes = () => (
         <MemberGuard>
           <TopNavLayout>
             <MembershipPage />
+          </TopNavLayout>
+        </MemberGuard>
+      }
+    />
+    <Route
+      path="/member/attendance"
+      element={
+        <MemberGuard>
+          <TopNavLayout>
+            <MyAttendancePage />
           </TopNavLayout>
         </MemberGuard>
       }

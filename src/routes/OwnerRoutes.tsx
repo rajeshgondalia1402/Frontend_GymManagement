@@ -16,6 +16,8 @@ import { AddPTMembershipPage } from '@/pages/gym-owner/AddPTMembershipPage';
 import { EditPTMembershipPage } from '@/pages/gym-owner/EditPTMembershipPage';
 import { DietTemplatesPage } from '@/pages/gym-owner/DietTemplatesPage';
 import { SubscriptionHistoryPage } from '@/pages/gym-owner/SubscriptionHistoryPage';
+import { AttendancePage } from '@/pages/gym-owner/AttendancePage';
+import { BiometricDevicesPage } from '@/pages/gym-owner/BiometricDevicesPage';
 
 /**
  * Gym Owner Routes - STRICT ISOLATION
@@ -175,6 +177,26 @@ export const OwnerRoutes = () => (
         <GymOwnerGuard>
           <TopNavLayout>
             <SubscriptionHistoryPage />
+          </TopNavLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/attendance"
+      element={
+        <GymOwnerGuard>
+          <TopNavLayout>
+            <AttendancePage />
+          </TopNavLayout>
+        </GymOwnerGuard>
+      }
+    />
+    <Route
+      path="/gym-owner/biometric-devices"
+      element={
+        <GymOwnerGuard>
+          <TopNavLayout>
+            <BiometricDevicesPage />
           </TopNavLayout>
         </GymOwnerGuard>
       }

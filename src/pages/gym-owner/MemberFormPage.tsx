@@ -16,6 +16,9 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
+import emailService from '@/services/email.service';
+import { buildEmailPayload } from '@/utils/emailTemplates';
+import { useAuthStore } from '@/store/authStore';
 import { getImageUrl } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { BMICalculator } from '@/components/BMICalculator';
@@ -60,6 +63,7 @@ export function MemberFormPage() {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
     const isEditMode = !!id;
+    const authUser = useAuthStore((state) => state.user);
 
     const photoInputRef = useRef<HTMLInputElement>(null);
     const docInputRef = useRef<HTMLInputElement>(null);
@@ -211,7 +215,60 @@ export function MemberFormPage() {
 
     const createMutation = useMutation({
         mutationFn: gymOwnerService.createMember,
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['members'] }); toast({ title: 'Member created successfully' }); navigate('/gym-owner/members'); },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['members'] });
+            toast({ title: 'Member created successfully' });
+            navigate('/gym-owner/members');
+
+            // Send welcome + credentials email to the new member
+            const fd = variables as FormData;
+            const email = fd.get('email') as string | null;
+            if (email) {
+                const firstName = (fd.get('firstName') as string) || '';
+                const lastName = (fd.get('lastName') as string) || '';
+                const memberName = `${firstName} ${lastName}`.trim() || email;
+                const password = (fd.get('password') as string) || '';
+                const phone = (fd.get('phone') as string) || undefined;
+                const startDate = (fd.get('membershipStartDate') as string) || undefined;
+                const endDate = (fd.get('membershipEndDate') as string) || undefined;
+                const pkgFees = (fd.get('finalFees') as string) || undefined;
+                const gymName =
+                    authUser?.ownedGym?.name ||
+                    (authUser as any)?.gymName ||
+                    undefined;
+
+                const emailData = {
+                    memberName,
+                    email,
+                    phone,
+                    password,
+                    packageName: selectedPackage?.packageName || undefined,
+                    packageFees: pkgFees ? Number(pkgFees) : undefined,
+                    membershipStartDate: startDate
+                        ? new Date(startDate).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                          })
+                        : undefined,
+                    membershipEndDate: endDate
+                        ? new Date(endDate).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                          })
+                        : undefined,
+                    gymName,
+                };
+
+                const payload = buildEmailPayload('NEW_MEMBER_CREDENTIALS', email, emailData);
+                if (payload) {
+                    emailService.sendEmail(payload).catch((err) => {
+                        console.error('[MemberFormPage] Failed to send welcome email:', err);
+                    });
+                }
+            }
+        },
         onError: (err: any) => toast({ title: 'Failed to create member', description: err?.response?.data?.message, variant: 'destructive' }),
     });
 
@@ -472,7 +529,9 @@ export function MemberFormPage() {
                                         <Select onValueChange={handlePackageChange} value={watch('coursePackageId')}>
                                             <SelectTrigger className="h-10"><SelectValue placeholder="Select Package" /></SelectTrigger>
                                             <SelectContent>
-                                                {coursePackages.map((pkg: CoursePackage) => {
+                                                {coursePackages
+                                                    .filter((pkg: CoursePackage) => pkg.coursePackageType === 'REGULAR')
+                                                    .map((pkg: CoursePackage) => {
                                                     const months = pkg.Months || pkg.months || 0;
                                                     return (
                                                         <SelectItem key={pkg.id} value={pkg.id}>

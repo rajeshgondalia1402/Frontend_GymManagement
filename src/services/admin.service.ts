@@ -99,8 +99,20 @@ export const adminService = {
 
   // Subscription Plans
   async getSubscriptionPlans(): Promise<GymSubscriptionPlan[]> {
-    const response = await api.get<ApiResponse<{ items: GymSubscriptionPlan[], pagination: any }>>('/admin/subscription-plans');
-    return response.data.data.items;
+    const response = await api.get<ApiResponse<GymSubscriptionPlan[] | { items: GymSubscriptionPlan[], pagination: any }>>('/admin/subscription-plans');
+    const data = response.data.data;
+
+    // Handle different response structures
+    if (Array.isArray(data)) {
+      return data;
+    } else if (data && typeof data === 'object') {
+      if ('items' in data) {
+        return (data as { items: GymSubscriptionPlan[] }).items;
+      } else if ('data' in data) {
+        return (data as { data: GymSubscriptionPlan[] }).data;
+      }
+    }
+    return [];
   },
 
   async createSubscriptionPlan(data: Partial<GymSubscriptionPlan>): Promise<GymSubscriptionPlan> {
