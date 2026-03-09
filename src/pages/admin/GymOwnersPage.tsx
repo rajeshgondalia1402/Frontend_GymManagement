@@ -40,6 +40,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { adminService } from '@/services/admin.service';
+import emailService from '@/services/email.service';
+import { buildEmailPayload } from '@/utils/emailTemplates';
 import { toast } from '@/hooks/use-toast';
 import type { User, Gym } from '@/types';
 
@@ -172,13 +174,49 @@ export function GymOwnersPage() {
 
       return newOwner;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Capture assigned gym details before clearing state
+      const assignedGym =
+        selectedGymId && selectedGymId !== 'none'
+          ? (gymsData?.items || []).find((g: Gym) => g.id === selectedGymId)
+          : null;
+
       queryClient.invalidateQueries({ queryKey: ['gym-owners'] });
       queryClient.invalidateQueries({ queryKey: ['gyms'] });
       setDialogOpen(false);
       reset();
       setSelectedGymId('');
       toast({ title: 'Gym owner created successfully' });
+
+      // Send credentials email to the new gym owner
+      if (variables.email) {
+        const gymName = (assignedGym as any)?.name || variables.name;
+        const emailData = {
+          gymName,
+          ownerName: variables.name,
+          email: variables.email,
+          password: variables.password,
+          planName: (assignedGym as any)?.subscriptionPlan?.name || undefined,
+          subscriptionEnd: (assignedGym as any)?.subscriptionEnd
+            ? new Date((assignedGym as any).subscriptionEnd).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+              })
+            : undefined,
+        };
+        const payload = buildEmailPayload(
+          'GYM_OWNER_CREDENTIALS',
+          variables.email,
+          emailData,
+          { gymName },
+        );
+        if (payload) {
+          emailService.sendEmail(payload).catch((err) => {
+            console.error('[GymOwnersPage] Failed to send credentials email:', err);
+          });
+        }
+      }
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || error?.message || 'Failed to create gym owner';

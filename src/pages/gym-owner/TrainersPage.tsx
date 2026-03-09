@@ -987,7 +987,7 @@ export function TrainersPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-purple-500" /><span>Phone: {viewingTrainer.phone || '-'}</span></div>
-                <div className="flex items-center gap-2"><Lock className="h-4 w-4 text-purple-500" /><span>Password: {viewingTrainer.passwordHint || '-'}</span></div>
+                <div className="flex items-center gap-2"><Lock className="h-4 w-4 text-purple-500" /><span>Password: {viewingTrainer.password || viewingTrainer.passwordHint || '-'}</span></div>
                 <div className="flex items-center gap-2"><User className="h-4 w-4 text-purple-500" /><span>Gender: {viewingTrainer.gender || '-'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-purple-500" /><span>DOB: {viewingTrainer.dateOfBirth ? format(new Date(viewingTrainer.dateOfBirth), 'MMM dd, yyyy') : '-'}</span></div>
                 <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-purple-500" /><span>Joining: {viewingTrainer.joiningDate ? format(new Date(viewingTrainer.joiningDate), 'MMM dd, yyyy') : '-'}</span></div>

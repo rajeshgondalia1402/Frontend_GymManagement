@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { gymOwnerService } from '@/services/gymOwner.service';
+import { BACKEND_BASE_URL } from '@/services/api';
 import { BalancePaymentDialog } from '@/components/BalancePaymentDialog';
 import type { Member } from '@/types';
 
@@ -121,7 +122,7 @@ export function MemberSearchDropdown() {
         if (member.memberPhoto.startsWith('http')) {
             return member.memberPhoto;
         }
-        return `${import.meta.env.VITE_API_URL?.replace('/api/v1', '')}/${member.memberPhoto}`;
+        return `${BACKEND_BASE_URL}/${member.memberPhoto}`;
     };
 
     return (

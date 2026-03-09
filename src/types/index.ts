@@ -159,6 +159,7 @@ export interface Trainer {
   firstName?: string;
   lastName?: string;
   email?: string;
+  password?: string;
   passwordHint?: string;
   phone?: string;
   specialization?: string;
@@ -2054,5 +2055,269 @@ export interface UpdateGymOwnerProfile {
   website?: string;
   memberSize?: number;
   note?: string;
+}
+
+// ============================================
+// Biometric Attendance Types
+// ============================================
+
+export type FingerPosition =
+  | 'RIGHT_THUMB' | 'RIGHT_INDEX' | 'RIGHT_MIDDLE' | 'RIGHT_RING' | 'RIGHT_LITTLE'
+  | 'LEFT_THUMB' | 'LEFT_INDEX' | 'LEFT_MIDDLE' | 'LEFT_RING' | 'LEFT_LITTLE';
+
+export type AttendanceStatus = 'CHECKED_IN' | 'CHECKED_OUT' | 'ABSENT';
+
+export type VerificationMethod = 'FINGERPRINT' | 'MANUAL' | 'CARD' | 'FACE' | 'QR_CODE';
+
+export type DeviceType = 'FINGERPRINT' | 'FINGERPRINT_DOOR' | 'FACE' | 'IRIS';
+
+export type DoorLockType = 'NONE' | 'USB_RELAY' | 'SMART_LOCK_API' | 'ESP32_HTTP' | 'ZKTECO_DEVICE';
+
+export interface BiometricDevice {
+  id: string;
+  gymId: string;
+  deviceName: string;
+  deviceSerial: string;
+  deviceModel: string;
+  deviceType: DeviceType;
+  vendorId?: number;
+  productId?: number;
+  ipAddress?: string;
+  port?: number;
+  doorLockType: DoorLockType;
+  doorLockConfig?: {
+    relayPin?: number;
+    apiUrl?: string;
+    apiKey?: string;
+    unlockDuration?: number;
+  };
+  lastSeenAt?: string;
+  isOnline: boolean;
+  location?: string;
+  isActive: boolean;
+  registeredAt: string;
+  registeredBy: string;
+  updatedAt: string;
+}
+
+export interface CreateBiometricDeviceRequest {
+  deviceName: string;
+  deviceSerial: string;
+  deviceModel: string;
+  deviceType?: DeviceType;
+  vendorId?: number;
+  productId?: number;
+  ipAddress?: string;
+  port?: number;
+  doorLockType?: DoorLockType;
+  doorLockConfig?: {
+    relayPin?: number;
+    apiUrl?: string;
+    apiKey?: string;
+    unlockDuration?: number;
+  };
+  location?: string;
+}
+
+export interface UpdateBiometricDeviceRequest {
+  deviceName?: string;
+  deviceModel?: string;
+  deviceType?: DeviceType;
+  vendorId?: number;
+  productId?: number;
+  ipAddress?: string;
+  port?: number;
+  doorLockType?: DoorLockType;
+  doorLockConfig?: {
+    relayPin?: number;
+    apiUrl?: string;
+    apiKey?: string;
+    unlockDuration?: number;
+  };
+  location?: string;
+  isActive?: boolean;
+}
+
+export interface MemberBiometric {
+  id: string;
+  memberId: string;
+  gymId: string;
+  fingerPosition1?: FingerPosition;
+  fingerPosition2?: FingerPosition;
+  templateFormat: string;
+  templateVersion: string;
+  quality1?: number;
+  quality2?: number;
+  enrolledAt: string;
+  enrolledBy?: string;
+  lastUpdatedAt: string;
+  deviceId?: string;
+  isActive: boolean;
+  failedAttempts: number;
+  lastFailedAt?: string;
+}
+
+export interface BiometricEnrollmentStatus {
+  isEnrolled: boolean;
+  enrolledAt?: string;
+  fingerPosition1?: FingerPosition;
+  fingerPosition2?: FingerPosition;
+  hasBackupFinger: boolean;
+}
+
+export interface EnrollBiometricRequest {
+  fingerTemplate: string;
+  fingerPosition: FingerPosition;
+  quality?: number;
+  deviceId?: string;
+  isBackupFinger?: boolean;
+}
+
+export interface Attendance {
+  id: string;
+  memberId: string;
+  gymId: string;
+  attendanceDate: string;
+  checkInTime: string;
+  checkOutTime?: string;
+  durationMinutes?: number;
+  verificationMethod: VerificationMethod;
+  verificationScore?: number;
+  deviceId?: string;
+  status: AttendanceStatus;
+  isManualEntry: boolean;
+  manualEntryBy?: string;
+  manualEntryReason?: string;
+  doorUnlocked: boolean;
+  doorUnlockTime?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AttendanceWithMember extends Attendance {
+  member: {
+    id: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    memberId?: string;
+    memberPhoto?: string;
+  };
+}
+
+export interface CheckInRequest {
+  fingerTemplate: string;
+  deviceId?: string;
+  unlockDoor?: boolean;
+}
+
+export interface CheckInResponse {
+  success: boolean;
+  attendance?: Attendance;
+  member?: {
+    id: string;
+    name?: string;
+    memberId?: string;
+    memberPhoto?: string;
+  };
+  doorUnlocked?: boolean;
+  message: string;
+  alreadyCheckedIn?: boolean;
+}
+
+export interface CheckOutResponse {
+  success: boolean;
+  attendance?: Attendance;
+  durationMinutes?: number;
+  message: string;
+}
+
+export interface ManualAttendanceRequest {
+  memberId: string;
+  attendanceDate?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  reason: string;
+}
+
+export interface UpdateAttendanceRequest {
+  checkInTime?: string;
+  checkOutTime?: string;
+  status?: AttendanceStatus;
+  manualEntryReason?: string;
+}
+
+export interface DailyAttendanceSummary {
+  date: string;
+  totalCheckIns: number;
+  totalCheckOuts: number;
+  currentlyInGym: number;
+  averageDuration?: number;
+}
+
+export interface MemberAttendanceSummary {
+  memberId: string;
+  memberName: string;
+  totalDays: number;
+  presentDays: number;
+  absentDays: number;
+  attendancePercentage: number;
+  averageDuration?: number;
+  lastAttendance?: string;
+}
+
+export interface AttendanceReport {
+  period: string;
+  startDate: string;
+  endDate: string;
+  totalMembers: number;
+  totalAttendance: number;
+  averageDaily: number;
+  peakDay?: {
+    date: string;
+    count: number;
+  };
+  lowDay?: {
+    date: string;
+    count: number;
+  };
+  byDay?: { date: string; count: number }[];
+}
+
+export interface AttendanceStreak {
+  memberId: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastAttendanceDate?: string;
+}
+
+export interface AttendanceCalendarEntry {
+  date: string;
+  status: 'present' | 'absent' | 'no_data';
+  checkInTime?: string;
+  checkOutTime?: string;
+  duration?: number;
+}
+
+export interface AttendanceListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  startDate?: string;
+  endDate?: string;
+  memberId?: string;
+  status?: AttendanceStatus;
+}
+
+export interface DailyReportWithMembers extends DailyAttendanceSummary {
+  members: AttendanceWithMember[];
+}
+
+export interface MemberAttendanceHistory {
+  items: Attendance[];
+  total: number;
+  summary: MemberAttendanceSummary;
 }
 
