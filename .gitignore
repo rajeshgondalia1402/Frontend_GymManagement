@@ -5,7 +5,6 @@ dist
 .env.production
 .env.local
 .env.*.local
-!.env.example
 .DS_Store   
 .vscode
 .idea       
