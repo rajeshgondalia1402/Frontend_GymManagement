@@ -57,6 +57,9 @@ import { MyDietPlanPage } from '@/pages/member/MyDietPlanPage';
 import { MyExercisePlansPage } from '@/pages/member/MyExercisePlansPage';
 import { MembershipPage } from '@/pages/member/MembershipPage';
 
+// Landing Page
+import { LandingPage } from '@/pages/landing/LandingPage';
+
 /**
  * STRICT ROLE ISOLATION
  * 
@@ -130,8 +133,11 @@ function App() {
           element={isAuthenticated ? <RoleBasedRedirect /> : <LoginPage />}
         />
 
-        {/* Role-based redirect */}
-        <Route path="/" element={<RoleBasedRedirect />} />
+        {/* Landing page for unauthenticated users, dashboard redirect for logged-in users */}
+        <Route
+          path="/"
+          element={isAuthenticated ? <RoleBasedRedirect /> : <LandingPage />}
+        />
 
         {/* ==================== ADMIN ROUTES (STRICT ISOLATION) ==================== */}
         {/* Only ADMIN role can access these routes */}
