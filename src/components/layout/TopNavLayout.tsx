@@ -210,6 +210,7 @@ interface TopNavLayoutProps {
 export function TopNavLayout({ children }: TopNavLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [mobileOpenDropdown, setMobileOpenDropdown] = useState<string | null>(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -228,6 +229,7 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   // Fetch member photo for MEMBER/PT_MEMBER users
   const isMemberUser = user?.role === 'MEMBER' || user?.role === 'PT_MEMBER';
@@ -243,23 +245,50 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   // Get subscription feature access for dynamic navigation
   const { canAccess } = useSubscriptionFeatures();
 
-  // Close dropdown when clicking outside
+  // Close desktop dropdown when clicking/tapping outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleOutside = (event: MouseEvent | TouchEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
   }, []);
 
-  // Close mobile menu on route change
+  // Close mobile menu & all dropdowns on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setOpenDropdown(null);
+    setMobileOpenDropdown(null);
   }, [location.pathname]);
+
+  // Close mobile menu when screen resizes to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+        setMobileOpenDropdown(null);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
 
   // Memoize GYM_OWNER nav items to prevent unnecessary re-renders
   const gymOwnerNavItems = useMemo(() => {
@@ -349,11 +378,15 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
     setOpenDropdown(openDropdown === title ? null : title);
   };
 
+  const toggleMobileDropdown = (title: string) => {
+    setMobileOpenDropdown(mobileOpenDropdown === title ? null : title);
+  };
+
   // Get the correct profile route based on user role
   const getProfileRoute = () => {
     const profileRoutes: Record<Role, string> = {
-      ADMIN: '/admin', // Admin doesn't have a separate profile page yet
-      GYM_OWNER: '/gym-owner', // Gym owner doesn't have a separate profile page yet
+      ADMIN: '/admin',
+      GYM_OWNER: '/gym-owner',
       TRAINER: '/trainer/profile',
       MEMBER: '/member',
       PT_MEMBER: '/member',
@@ -364,48 +397,59 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Top Navigation Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
-        <div className="w-full px-4">
-          <div className="flex h-16 items-center justify-between">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm"
+        style={{ paddingTop: 'var(--safe-area-top)' }}
+      >
+        <div className="w-full px-3 sm:px-4">
+          <div className="flex h-14 sm:h-16 items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 mr-6 flex-shrink-0">
-              <div className="bg-gradient-to-br from-primary to-purple-600 p-2 rounded-lg">
-                <Dumbbell className="h-6 w-6 text-white" />
+            <Link to="/" className="flex items-center gap-2 mr-3 md:mr-4 lg:mr-6 flex-shrink-0 active:opacity-70 transition-opacity">
+              <div className="bg-gradient-to-br from-primary to-purple-600 p-1.5 sm:p-2 rounded-lg">
+                <Dumbbell className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent hidden sm:inline">
+              <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent hidden sm:inline">
                 Gym Desk Pro
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1 flex-1" ref={dropdownRef}>
-              {navItems.map((item) => {
+            {/* Desktop Navigation - visible on lg+ screens */}
+            <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 flex-1 min-w-0" ref={dropdownRef}>
+              {navItems.map((item, idx) => {
                 if (isSubmenuItem(item)) {
                   const hasActiveChild = isSubmenuActive(item.submenu);
                   const isOpen = openDropdown === item.title;
+                  // Align last two dropdowns to the right to prevent overflow
+                  const alignRight = idx >= navItems.length - 2;
 
                   return (
                     <div key={item.title} className="relative">
                       <button
                         onClick={() => toggleDropdown(item.title)}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                          "flex items-center gap-1.5 xl:gap-2 px-2.5 xl:px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none",
                           hasActiveChild
                             ? "bg-gradient-to-r from-primary to-purple-600 text-white shadow-md"
-                            : "text-gray-700 hover:bg-gray-100"
+                            : "text-gray-700 hover:bg-gray-100 active:bg-gray-200"
                         )}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap">{item.title}</span>
                         <ChevronDown className={cn(
-                          "h-4 w-4 transition-transform duration-200",
+                          "h-3.5 w-3.5 transition-transform duration-200 flex-shrink-0",
                           isOpen && "rotate-180"
                         )} />
                       </button>
 
-                      {/* Dropdown Menu */}
+                      {/* Desktop Dropdown Panel */}
                       {isOpen && (
-                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 animate-in slide-in-from-top-2">
+                        <div
+                          className={cn(
+                            "absolute top-full mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-[60] animate-in fade-in-0 zoom-in-95 duration-150",
+                            alignRight ? "right-0" : "left-0"
+                          )}
+                        >
                           {item.submenu.map((subItem) => {
                             const isActive = location.pathname === subItem.href;
                             return (
@@ -414,13 +458,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                                 to={subItem.href}
                                 onClick={() => setOpenDropdown(null)}
                                 className={cn(
-                                  "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors",
+                                  "flex items-center gap-3 px-4 py-2.5 text-sm transition-colors select-none",
                                   isActive
                                     ? "bg-gradient-to-r from-primary/10 to-purple-600/10 text-primary font-medium border-l-4 border-primary"
-                                    : "text-gray-700 hover:bg-gray-50"
+                                    : "text-gray-700 hover:bg-gray-50 active:bg-gray-100"
                                 )}
                               >
-                                <subItem.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-gray-500")} />
+                                <subItem.icon className={cn("h-4 w-4 flex-shrink-0", isActive ? "text-primary" : "text-gray-500")} />
                                 <span>{subItem.title}</span>
                               </Link>
                             );
@@ -437,13 +481,13 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                     key={item.href}
                     to={item.href}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                      "flex items-center gap-1.5 xl:gap-2 px-2.5 xl:px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 select-none whitespace-nowrap",
                       isActive
                         ? "bg-gradient-to-r from-primary to-purple-600 text-white shadow-md"
-                        : "text-gray-700 hover:bg-gray-100"
+                        : "text-gray-700 hover:bg-gray-100 active:bg-gray-200"
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
                     <span>{item.title}</span>
                   </Link>
                 );
@@ -451,7 +495,7 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
             </nav>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Member Search (GYM_OWNER only) */}
               {user?.role === 'GYM_OWNER' && (
                 <div className="hidden md:block">
@@ -459,10 +503,10 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 </div>
               )}
 
-              {/* User Profile Dropdown */}
+              {/* User Profile Dropdown - desktop only */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="hidden lg:flex items-center gap-2 h-10">
+                  <Button variant="ghost" className="hidden lg:flex items-center gap-2 h-10 px-2 xl:px-3">
                     <Avatar className="h-8 w-8">
                       {memberPhoto && (
                         <AvatarImage
@@ -471,18 +515,18 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                           className="object-cover"
                         />
                       )}
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-xs">
                         {getInitials(user?.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="text-left">
-                      <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{user?.role?.replace('_', ' ') || 'User'}</p>
+                    <div className="text-left hidden xl:block">
+                      <p className="text-sm font-medium leading-tight">{user?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground leading-tight">{user?.role?.replace('_', ' ') || 'User'}</p>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden xl:block" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 z-[60]">
                   {user?.role !== 'ADMIN' && (
                     <DropdownMenuItem onClick={() => {
                       if (user?.role === 'GYM_OWNER') {
@@ -507,96 +551,138 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Mobile Menu Toggle */}
+              {/* Mobile/Tablet Menu Toggle - visible below lg */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden h-10 w-10 active:scale-95 transition-transform"
+                onClick={() => {
+                  setMobileMenuOpen(!mobileMenuOpen);
+                  if (!mobileMenuOpen) setMobileOpenDropdown(null);
+                }}
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             </div>
           </div>
+        </div>
 
-          {/* Mobile Navigation Menu */}
-          {mobileMenuOpen && (
-            <div className="lg:hidden border-t bg-white animate-in slide-in-from-top-4">
-              <nav className="py-4 space-y-1 max-h-[calc(100vh-4rem)] overflow-y-auto">
-                {navItems.map((item) => {
-                  if (isSubmenuItem(item)) {
-                    const hasActiveChild = isSubmenuActive(item.submenu);
-                    const isOpen = openDropdown === item.title;
+        {/* Mobile/Tablet Navigation Drawer */}
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop overlay - tap to close */}
+            <div
+              className="lg:hidden fixed inset-0 bg-black/30 z-[45]"
+              style={{ top: headerRef.current?.offsetHeight || 56 }}
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
 
-                    return (
-                      <div key={item.title}>
-                        <button
-                          onClick={() => toggleDropdown(item.title)}
-                          className={cn(
-                            "flex items-center justify-between w-full px-4 py-3 text-sm font-medium transition-colors",
-                            hasActiveChild
-                              ? "bg-gradient-to-r from-primary/10 to-purple-600/10 text-primary"
-                              : "text-gray-700 hover:bg-gray-50"
+            {/* Menu panel */}
+            <div
+              className="lg:hidden fixed left-0 right-0 bg-white border-t shadow-lg z-[46] animate-in slide-in-from-top-2 duration-200"
+              style={{
+                top: headerRef.current?.offsetHeight || 56,
+                maxHeight: `calc(100vh - ${headerRef.current?.offsetHeight || 56}px)`,
+              }}
+            >
+              <nav
+                className="overflow-y-auto overscroll-contain"
+                style={{
+                  maxHeight: `calc(100vh - ${headerRef.current?.offsetHeight || 56}px)`,
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {/* Search bar for GYM_OWNER on mobile */}
+                {user?.role === 'GYM_OWNER' && (
+                  <div className="md:hidden px-4 py-3 border-b">
+                    <MemberSearchDropdown />
+                  </div>
+                )}
+
+                {/* Navigation Items */}
+                <div className="py-2">
+                  {navItems.map((item) => {
+                    if (isSubmenuItem(item)) {
+                      const hasActiveChild = isSubmenuActive(item.submenu);
+                      const isOpen = mobileOpenDropdown === item.title;
+
+                      return (
+                        <div key={item.title} className="border-b border-gray-100 last:border-b-0">
+                          {/* Parent menu button */}
+                          <button
+                            onClick={() => toggleMobileDropdown(item.title)}
+                            className={cn(
+                              "flex items-center justify-between w-full px-4 py-3 text-sm font-medium transition-colors select-none active:bg-gray-100",
+                              hasActiveChild
+                                ? "text-primary bg-primary/5"
+                                : "text-gray-700"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon className={cn("h-5 w-5", hasActiveChild ? "text-primary" : "text-gray-500")} />
+                              <span>{item.title}</span>
+                              {hasActiveChild && (
+                                <span className="h-2 w-2 rounded-full bg-primary" />
+                              )}
+                            </div>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-gray-400 transition-transform duration-200",
+                              isOpen && "rotate-180"
+                            )} />
+                          </button>
+
+                          {/* Child submenu items */}
+                          {isOpen && (
+                            <div className="bg-gray-50 pb-1">
+                              {item.submenu.map((subItem) => {
+                                const isActive = location.pathname === subItem.href;
+                                return (
+                                  <Link
+                                    key={subItem.href}
+                                    to={subItem.href}
+                                    className={cn(
+                                      "flex items-center gap-3 py-3 text-sm transition-colors select-none active:bg-gray-200",
+                                      isActive
+                                        ? "bg-primary/10 text-primary font-medium pl-5 border-l-4 border-primary pr-4"
+                                        : "text-gray-600 hover:bg-gray-100 pl-12 pr-4"
+                                    )}
+                                  >
+                                    <subItem.icon className={cn("h-4 w-4 flex-shrink-0", isActive ? "text-primary" : "text-gray-400")} />
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
                           )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <item.icon className="h-5 w-5" />
-                            <span>{item.title}</span>
-                          </div>
-                          <ChevronDown className={cn(
-                            "h-4 w-4 transition-transform",
-                            isOpen && "rotate-180"
-                          )} />
-                        </button>
+                        </div>
+                      );
+                    }
 
-                        {isOpen && (
-                          <div className="bg-gray-50 border-l-4 border-primary/20">
-                            {item.submenu.map((subItem) => {
-                              const isActive = location.pathname === subItem.href;
-                              return (
-                                <Link
-                                  key={subItem.href}
-                                  to={subItem.href}
-                                  className={cn(
-                                    "flex items-center gap-3 px-8 py-3 text-sm transition-colors",
-                                    isActive
-                                      ? "bg-primary/10 text-primary font-medium border-l-4 border-primary"
-                                      : "text-gray-600 hover:bg-gray-100"
-                                  )}
-                                >
-                                  <subItem.icon className="h-4 w-4" />
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors select-none active:bg-gray-100 border-b border-gray-100 last:border-b-0",
+                          isActive
+                            ? "text-primary bg-primary/5 border-l-4 border-l-primary pl-3"
+                            : "text-gray-700"
                         )}
-                      </div>
+                      >
+                        <item.icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-gray-500")} />
+                        <span>{item.title}</span>
+                      </Link>
                     );
-                  }
+                  })}
+                </div>
 
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      to={item.href}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-gradient-to-r from-primary/10 to-purple-600/10 text-primary border-l-4 border-primary"
-                          : "text-gray-700 hover:bg-gray-50"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  );
-                })}
-
-                {/* Mobile User Section */}
-                <div className="border-t mt-4 pt-4 px-4">
+                {/* User Section at bottom of mobile menu */}
+                <div className="border-t bg-gray-50 px-4 py-3">
                   <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
                       {memberPhoto && (
                         <AvatarImage
                           src={memberPhoto}
@@ -608,16 +694,17 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                         {getInitials(user?.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col sm:gap-1">
                     {user?.role !== 'ADMIN' && (
                       <Button
-                        variant="ghost"
-                        className="w-full justify-start"
+                        variant="outline"
+                        size="sm"
+                        className="justify-start text-xs sm:text-sm sm:w-full"
                         onClick={() => {
                           if (user?.role === 'GYM_OWNER') {
                             setProfileDialogOpen(true);
@@ -627,40 +714,42 @@ export function TopNavLayout({ children }: TopNavLayoutProps) {
                           setMobileMenuOpen(false);
                         }}
                       >
-                        <User className="mr-2 h-4 w-4" />
+                        <User className="mr-2 h-4 w-4 flex-shrink-0" />
                         Profile
                       </Button>
                     )}
                     <Button
-                      variant="ghost"
-                      className="w-full justify-start"
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-xs sm:text-sm sm:w-full"
                       onClick={() => {
                         setChangePasswordOpen(true);
                         setMobileMenuOpen(false);
                       }}
                     >
-                      <KeyRound className="mr-2 h-4 w-4" />
-                      Change Password
+                      <KeyRound className="mr-2 h-4 w-4 flex-shrink-0" />
+                      Password
                     </Button>
                     <Button
-                      variant="ghost"
-                      className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-xs sm:text-sm sm:w-full text-red-600 border-red-200 hover:bg-red-50 col-span-2 sm:col-span-1"
                       onClick={handleLogout}
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
+                      <LogOut className="mr-2 h-4 w-4 flex-shrink-0" />
                       Logout
                     </Button>
                   </div>
                 </div>
               </nav>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </header>
 
       {/* Main Content - Full Width, Responsive */}
-      <main className="w-full min-h-[calc(100vh-4rem)]">
-        <div className="w-full px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6 lg:px-8 lg:py-8">
+      <main className="w-full min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="w-full px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6 lg:px-8 lg:py-8">
           {children}
         </div>
       </main>
