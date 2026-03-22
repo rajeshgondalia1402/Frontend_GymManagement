@@ -36,14 +36,14 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
+    <header className="h-14 sm:h-16 border-b border-gray-200 bg-white px-3 sm:px-6 flex items-center justify-between">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
           Welcome back, {user?.name?.split(' ')[0]}!
         </h2>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">

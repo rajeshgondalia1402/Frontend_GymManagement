@@ -14,9 +14,15 @@ export function Navbar() {
   }, []);
 
   const handleNavClick = (href: string) => {
-    setIsOpen(false);
-    const el = document.querySelector(href);
-    el?.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen) {
+      setIsOpen(false);
+      // Delay scroll until the exit animation (0.3s) completes
+      setTimeout(() => {
+        document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+      }, 350);
+    } else {
+      document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
