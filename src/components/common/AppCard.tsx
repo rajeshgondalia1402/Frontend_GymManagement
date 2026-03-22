@@ -68,7 +68,7 @@ const AppCard = React.forwardRef<HTMLDivElement, AppCardProps>(
           variantClasses[variant],
           padding && paddingClasses[padding],
           hoverable && 'transition-shadow hover:shadow-md',
-          clickable && 'cursor-pointer',
+          clickable && 'cursor-pointer active:scale-[0.99] active:shadow-sm transition-all duration-150',
           className
         )}
         {...props}

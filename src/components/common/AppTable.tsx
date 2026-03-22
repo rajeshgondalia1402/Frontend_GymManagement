@@ -117,7 +117,7 @@ function AppTable<T>({
   return (
     <>
       {/* Desktop Table */}
-      <div className={cn('relative w-full overflow-x-auto', breakpointClass, className)} style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className={cn('relative w-full overflow-x-auto overscroll-x-contain', breakpointClass, className)} style={{ WebkitOverflowScrolling: 'touch' }}>
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
@@ -140,7 +140,7 @@ function AppTable<T>({
               <TableRow
                 key={getRowKey(item, index)}
                 className={cn(
-                  onRowClick && 'cursor-pointer',
+                  onRowClick && 'cursor-pointer active:bg-muted/50 transition-colors',
                   rowClassName?.(item, index)
                 )}
                 onClick={() => onRowClick?.(item)}
@@ -150,6 +150,7 @@ function AppTable<T>({
                     key={col.key}
                     className={cn(
                       col.hideOnMobile && 'hidden md:table-cell',
+                      'py-3 sm:py-2',
                       col.className
                     )}
                   >
@@ -166,7 +167,7 @@ function AppTable<T>({
 
       {/* Mobile Cards */}
       {renderMobileCard && (
-        <div className={cn('space-y-3', mobileClass)}>
+        <div className={cn('space-y-2 sm:space-y-3', mobileClass)}>
           {data.map((item, index) => (
             <div key={getRowKey(item, index)}>
               {renderMobileCard(item, index)}
@@ -191,8 +192,8 @@ function AppTableMobile({ children, onClick, className }: AppTableMobileProps) {
   return (
     <Card
       className={cn(
-        'p-4',
-        onClick && 'cursor-pointer hover:bg-muted/50 transition-colors',
+        'p-3 sm:p-4',
+        onClick && 'cursor-pointer hover:bg-muted/50 active:bg-muted/70 active:scale-[0.99] transition-all duration-150',
         className
       )}
       onClick={onClick}
