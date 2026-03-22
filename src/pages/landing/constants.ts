@@ -20,9 +20,9 @@ export const FEATURES = [
     icon: 'creditCard',
   },
   {
-    title: 'Attendance System',
+    title: 'Trainer Management',
     description:
-      'Coming Soon — Biometric fingerprint check-in/out, manual attendance entry, daily reports, calendar views, and attendance streaks.',
+      'Manage trainers, assign PT members, track salary history, and streamline trainer operations all in one place.',
     icon: 'calendarCheck',
   },
   {
@@ -106,16 +106,16 @@ export const PLANS = [
 
 export const TESTIMONIALS = [
   {
-    name: 'Rajesh Sharma',
-    role: 'Owner, FitZone Gym',
+    name: 'Rohit Gujjar',
+    role: 'Owner, Rudra Fitness Gym',
     text: 'Gym Desk Pro has completely transformed how we manage our 300+ members. The attendance tracking and salary settlement features save us hours every month.',
-    avatar: 'RS',
+    avatar: 'RG',
   },
   {
-    name: 'Priya Patel',
-    role: 'Owner, PowerHouse Fitness',
+    name: 'Sanatan',
+    role: 'Owner, King Fitness',
     text: 'The diet plan and exercise plan features are exactly what we needed. Our trainers love how easy it is to assign plans to members.',
-    avatar: 'PP',
+    avatar: 'S',
   },
   {
     name: 'Vikram Singh',
@@ -144,7 +144,7 @@ export const FAQS = [
   {
     question: 'Is there a mobile app?',
     answer:
-      'Gym Desk Pro is a fully responsive web application that works perfectly on mobile phones, tablets, and desktops. No separate app download needed — just open it in your browser.',
+      'Coming soon.',
   },
   {
     question: 'Can I export my data?',
@@ -154,6 +154,6 @@ export const FAQS = [
   {
     question: 'What about biometric attendance?',
     answer:
-      'Our Professional and Enterprise plans support biometric fingerprint devices. Members can check-in and check-out using their fingerprint for automated attendance tracking.',
+      'Coming soon.',
   },
 ];
