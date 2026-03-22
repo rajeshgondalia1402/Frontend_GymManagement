@@ -6,11 +6,32 @@ import { NAV_LINKS } from './constants';
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('#home');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Scroll-spy: track which section is currently in the viewport
+  useEffect(() => {
+    const sectionIds = NAV_LINKS.map((l) => l.href.replace('#', ''));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(`#${entry.target.id}`);
+          }
+        }
+      },
+      { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+    );
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
   }, []);
 
   const handleNavClick = (href: string) => {
@@ -67,9 +88,11 @@ export function Navbar() {
                   handleNavClick(link.href);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  scrolled
-                    ? 'text-gray-300 hover:text-emerald-400 hover:bg-white/5'
-                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                  activeSection === link.href
+                    ? 'text-emerald-400 bg-white/10'
+                    : scrolled
+                      ? 'text-gray-300 hover:text-emerald-400 hover:bg-white/5'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {link.label}
@@ -77,6 +100,8 @@ export function Navbar() {
             ))}
             <a
               href="/login"
+              target="_blank"
+              rel="noopener noreferrer"
               className="ml-3 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:-translate-y-0.5"
             >
               Login
@@ -117,13 +142,19 @@ export function Navbar() {
                     e.preventDefault();
                     handleNavClick(link.href);
                   }}
-                  className="block px-4 py-3 rounded-xl text-gray-300 hover:text-emerald-400 hover:bg-white/5 font-medium transition-colors"
+                  className={`block px-4 py-3 rounded-xl font-medium transition-colors ${
+                    activeSection === link.href
+                      ? 'text-emerald-400 bg-white/10'
+                      : 'text-gray-300 hover:text-emerald-400 hover:bg-white/5'
+                  }`}
                 >
                   {link.label}
                 </a>
               ))}
               <a
                 href="/login"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block mt-3 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white text-center font-semibold"
               >
                 Login

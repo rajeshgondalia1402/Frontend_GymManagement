@@ -95,7 +95,7 @@ export function Footer() {
             <ul className="space-y-3">
               {[
                 'Member Management',
-                'Attendance Tracking',
+                'Trainer Management',
                 'Diet & Exercise Plans',
                 'Member & Trainer Panel',
                 'Reports & Analytics',
@@ -114,12 +114,13 @@ export function Footer() {
               <li className="text-gray-400 text-sm">
                 logikshubsolution@gmail.com
               </li>
+              <li className="text-gray-400 text-sm">+91 9723657967</li>
               <li className="text-gray-400 text-sm">India</li>
             </ul>
 
             {/* Social Icons */}
             <div className="flex gap-3 mt-6">
-              {['X', 'In', 'Ig', 'Fb'].map((icon) => (
+              {['Ig', 'In', 'Fb'].map((icon) => (
                 <div
                   key={icon}
                   className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
