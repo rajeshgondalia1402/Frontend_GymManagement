@@ -2321,3 +2321,151 @@ export interface MemberAttendanceHistory {
   summary: MemberAttendanceSummary;
 }
 
+// ============================================================
+// HIRE TRAINER — Public marketplace types
+// ============================================================
+
+export type HireTrainerRole = 'FIRST_HALF' | 'SECOND_HALF' | 'FULL_TIME';
+export type HireTrainerStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface HireTrainer {
+  id: string;
+  email: string;
+  mobile: string;
+  fullName: string | null;
+  address: string | null;
+  whatsappNumber: string | null;
+  country: string;
+  state: string | null;
+  city: string | null;
+  role: HireTrainerRole | null;
+  totalYearsExperience: number | null;
+  ptExperienceYears: number | null;
+  ptExperienceMonths: number | null;
+  currentSalary: number | null;
+  expectedSalary: number | null;
+  howSoonCanJoin: string | null;
+  specialization: string | null;
+  currentGymName: string | null;
+  reasonForLeaving: string | null;
+  numberOfGymsChanged: number | null;
+  gender: string | null;
+  maritalStatus: string | null;
+  status: HireTrainerStatus;
+  currentStep: number;
+  isSubmitted: boolean;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  documents?: HireTrainerDocument[];
+}
+
+export interface HireTrainerDocument {
+  id: string;
+  hireTrainerId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  createdAt: string;
+}
+
+export interface HireTrainerSearchResult {
+  id: string;
+  fullName: string | null;
+  city: string | null;
+  state: string | null;
+  role: HireTrainerRole | null;
+  totalYearsExperience: number | null;
+  ptExperienceYears: number | null;
+  ptExperienceMonths: number | null;
+  expectedSalary: number | null;
+  specialization: string | null;
+  gender: string | null;
+  howSoonCanJoin: string | null;
+  createdAt: string;
+}
+
+export interface HireTrainerSearchParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  city?: string;
+  role?: HireTrainerRole | string;
+  experienceMin?: number;
+  experienceMax?: number;
+  salaryMin?: number;
+  salaryMax?: number;
+  specialization?: string;
+  gender?: string;
+  availability?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface OtpResponse {
+  isAlreadyVerified: boolean;
+  message: string;
+}
+
+export interface VerificationStatus {
+  isVerified: boolean;
+  hasExistingDraft: boolean;
+  currentStep: number;
+}
+
+// Gym Owner Lead (hire-trainer contact flow)
+export interface GymOwnerLead {
+  id: string;
+  email: string;
+  name: string;
+  gymName: string;
+  mobile: string;
+  gender: string;
+  createdAt: string;
+}
+
+export interface GymOwnerLeadOtpResponse {
+  isAlreadyVerified: boolean;
+  isRegistered: boolean;
+  message: string;
+}
+
+export interface GymOwnerLeadVerifyResponse {
+  verified: boolean;
+  isRegistered: boolean;
+  lead: GymOwnerLead | null;
+  message: string;
+}
+
+export interface TrainerLoginInfo {
+  id: string;
+  email: string;
+  mobile: string;
+  fullName: string | null;
+  city: string | null;
+  state: string | null;
+  role: string | null;
+}
+
+export interface GymOwnerLeadSessionResponse {
+  isVerified: boolean;
+  isRegistered: boolean;
+  userType: 'gym_owner' | 'trainer' | null;
+  lead: GymOwnerLead | null;
+  trainer: TrainerLoginInfo | null;
+}
+
+export interface GymOwnerLeadCheckMobileResponse {
+  exists: boolean;
+  isVerified: boolean;
+  userType: 'gym_owner' | 'trainer' | null;
+  lead: GymOwnerLead | null;
+  trainer: TrainerLoginInfo | null;
+}
+
+export interface GymOwnerLeadRegisterResponse {
+  lead: GymOwnerLead;
+  message: string;
+}
+
