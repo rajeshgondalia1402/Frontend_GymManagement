@@ -60,6 +60,12 @@ import { MembershipPage } from '@/pages/member/MembershipPage';
 // Landing Page
 import { LandingPage } from '@/pages/landing/LandingPage';
 
+// Hire Trainer (Public)
+import { TrainerApplicationPage } from '@/pages/hire-trainer/TrainerApplicationPage';
+import { SearchTrainersPage } from '@/pages/hire-trainer/SearchTrainersPage';
+import { ApplicationSuccessPage } from '@/pages/hire-trainer/ApplicationSuccessPage';
+import { GymOwnerLoginPage } from '@/pages/hire-trainer/GymOwnerLoginPage';
+
 /**
  * STRICT ROLE ISOLATION
  * 
@@ -138,6 +144,12 @@ function App() {
           path="/"
           element={isAuthenticated ? <RoleBasedRedirect /> : <LandingPage />}
         />
+
+        {/* Hire Trainer — public pages (no auth required) */}
+        <Route path="/hire-trainer/apply" element={<TrainerApplicationPage />} />
+        <Route path="/hire-trainer/search" element={<SearchTrainersPage />} />
+        <Route path="/hire-trainer/success" element={<ApplicationSuccessPage />} />
+        <Route path="/hire-trainer/login" element={<GymOwnerLoginPage />} />
 
         {/* ==================== ADMIN ROUTES (STRICT ISOLATION) ==================== */}
         {/* Only ADMIN role can access these routes */}

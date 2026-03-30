@@ -1,6 +1,7 @@
 import { Navbar } from './Navbar';
 import { Hero } from './Hero';
 import { Features } from './Features';
+import { HireTrainers } from './HireTrainers';
 import { Subscription } from './Subscription';
 import { About } from './About';
 import { Testimonials } from './Testimonials';
@@ -14,6 +15,7 @@ export function LandingPage() {
       <Navbar />
       <Hero />
       <Features />
+      <HireTrainers />
       <Subscription />
       <About />
       <Testimonials />
