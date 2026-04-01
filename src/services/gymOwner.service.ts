@@ -931,6 +931,7 @@ export const gymOwnerService = {
     maxDiscount: number;
     discountType: 'PERCENTAGE' | 'AMOUNT';
     coursePackageType?: 'REGULAR' | 'PT';
+    orderNo?: number;
   }): Promise<CoursePackage> {
     const response = await api.post<ApiResponse<CoursePackage>>('/gym-owner/course-packages', data);
     return response.data.data;
@@ -943,6 +944,7 @@ export const gymOwnerService = {
     maxDiscount?: number;
     discountType?: 'PERCENTAGE' | 'AMOUNT';
     coursePackageType?: 'REGULAR' | 'PT';
+    orderNo?: number;
     isActive?: boolean;
   }): Promise<CoursePackage> {
     const response = await api.put<ApiResponse<CoursePackage>>(`/gym-owner/course-packages/${id}`, data);

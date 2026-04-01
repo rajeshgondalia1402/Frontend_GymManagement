@@ -79,6 +79,10 @@ const coursePackageSchema = z.object({
         (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
         z.number({ required_error: 'Months is required', invalid_type_error: 'Months is required' }).min(1, 'Months must be greater than 0')
     ),
+    orderNo: z.preprocess(
+        (val) => (val === '' || val === undefined || val === null ? undefined : Number(val)),
+        z.number({ invalid_type_error: 'Order No must be a number' }).int('Order No must be a whole number').min(0, 'Order No must be 0 or greater').optional()
+    ),
 });
 
 type CoursePackageFormData = z.infer<typeof coursePackageSchema>;
@@ -95,8 +99,8 @@ export function CoursePackagesPage() {
     const [page, setPage] = useState(1);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [packageTypeFilter, setPackageTypeFilter] = useState<string>('all');
-    const [sortBy, setSortBy] = useState('createdAt');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [sortBy, setSortBy] = useState('orderNo');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -215,14 +219,17 @@ export function CoursePackagesPage() {
 
     const handleEdit = (pkg: CoursePackage) => {
         setSelectedPackage(pkg);
-        setValueEdit('packageName', pkg.packageName);
-        setValueEdit('description', pkg.description || '');
-        setValueEdit('fees', pkg.fees);
-        setValueEdit('maxDiscount', pkg.maxDiscount);
-        setValueEdit('discountType', pkg.discountType);
-        setValueEdit('coursePackageType', pkg.coursePackageType || 'REGULAR');
-        setValueEdit('months', pkg.Months || pkg.months || pkg.durationInMonths || 1);
-        setValueEdit('isActive', pkg.isActive);
+        resetEdit({
+            packageName: pkg.packageName,
+            description: pkg.description || '',
+            fees: pkg.fees,
+            maxDiscount: pkg.maxDiscount,
+            discountType: pkg.discountType,
+            coursePackageType: pkg.coursePackageType || 'REGULAR',
+            months: pkg.Months || pkg.months || pkg.durationInMonths || 1,
+            orderNo: pkg.orderNo != null ? pkg.orderNo : undefined,
+            isActive: pkg.isActive,
+        });
         setEditDialogOpen(true);
     };
 
@@ -371,7 +378,7 @@ export function CoursePackagesPage() {
                                         <p className="text-sm text-red-500">{errors.maxDiscount.message}</p>
                                     )}
                                 </div>
-                                <div className="space-y-2 sm:col-span-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="coursePackageType">Package Type *</Label>
                                     <Controller
                                         name="coursePackageType"
@@ -393,6 +400,20 @@ export function CoursePackagesPage() {
                                     />
                                     {errors.coursePackageType && (
                                         <p className="text-sm text-red-500">{errors.coursePackageType.message}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="orderNo">Order No</Label>
+                                    <Input
+                                        id="orderNo"
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        placeholder="Display order"
+                                        {...register('orderNo')}
+                                    />
+                                    {errors.orderNo && (
+                                        <p className="text-sm text-red-500">{errors.orderNo.message}</p>
                                     )}
                                 </div>
                                 <div className="space-y-2 sm:col-span-2">
@@ -514,6 +535,27 @@ export function CoursePackagesPage() {
                                     <TableHeader>
                                         <TableRow className="bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-700 hover:to-gray-800">
                                             <TableHead className="w-[50px] py-3 text-white font-semibold">#</TableHead>
+                                            <TableHead
+                                                className="cursor-pointer hover:bg-white/10 py-3"
+                                                onClick={() => {
+                                                    if (sortBy === 'orderNo') {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy('orderNo');
+                                                        setSortOrder('asc');
+                                                    }
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1 text-white font-semibold">
+                                                    Order No
+                                                    {sortBy === 'orderNo' ? (
+                                                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpDown className="h-4 w-4 text-gray-300" />
+                                                    )}
+                                                </div>
+                                            </TableHead>
                                             <TableHead
                                                 className="cursor-pointer hover:bg-white/10 py-3"
                                                 onClick={() => {
@@ -711,6 +753,9 @@ export function CoursePackagesPage() {
                                             <TableRow key={pkg.id}>
                                                 <TableCell className="font-medium">
                                                     {(page - 1) * ITEMS_PER_PAGE + index + 1}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {pkg.orderNo ?? '-'}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
@@ -927,7 +972,7 @@ export function CoursePackagesPage() {
                                     <p className="text-sm text-red-500">{errorsEdit.maxDiscount.message}</p>
                                 )}
                             </div>
-                            <div className="space-y-2 sm:col-span-2">
+                            <div className="space-y-2">
                                 <Label htmlFor="editCoursePackageType">Package Type *</Label>
                                 <Controller
                                     name="coursePackageType"
@@ -949,6 +994,20 @@ export function CoursePackagesPage() {
                                 />
                                 {errorsEdit.coursePackageType && (
                                     <p className="text-sm text-red-500">{errorsEdit.coursePackageType.message}</p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="editOrderNo">Order No</Label>
+                                <Input
+                                    id="editOrderNo"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="Display order"
+                                    {...registerEdit('orderNo')}
+                                />
+                                {errorsEdit.orderNo && (
+                                    <p className="text-sm text-red-500">{errorsEdit.orderNo.message}</p>
                                 )}
                             </div>
                             <div className="space-y-2 sm:col-span-2">

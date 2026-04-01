@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addYears, addMonths } from 'date-fns';
 import {
-    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video, Download,
+    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video, Download, ChevronsUpDown, Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Spinner } from '@/components/ui/spinner';
 import { gymOwnerService } from '@/services/gymOwner.service';
 import emailService from '@/services/email.service';
@@ -71,10 +73,12 @@ export function MemberFormPage() {
     const [docFile, setDocFile] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string>('');
     const [docPreview, setDocPreview] = useState<string>('');
+    const [pkgOpen, setPkgOpen] = useState(false);
     const [originalDocUrl, setOriginalDocUrl] = useState<string>(''); // Track original document URL for download
     const [selectedPackage, setSelectedPackage] = useState<CoursePackage | null>(null);
     const [showBMICalculator, setShowBMICalculator] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
+    const [showDocCamera, setShowDocCamera] = useState(false);
 
     // Download document handler
     const handleDownloadDocument = async () => {
@@ -161,6 +165,42 @@ export function MemberFormPage() {
         const finalFees = Math.max(0, afterDiscount - extraDiscount);
         return { packageFees, maxDiscountAmount, afterDiscount, finalFees };
     }, [selectedPackage, extraDiscount]);
+
+    // Reset form to clean defaults when in "new member" mode
+    useEffect(() => {
+        if (!isEditMode) {
+            reset({
+                firstName: '',
+                lastName: '',
+                email: '',
+                password: '',
+                phone: '',
+                altContactNo: '',
+                dateOfBirth: '',
+                gender: undefined,
+                address: '',
+                occupation: '',
+                maritalStatus: undefined,
+                bloodGroup: undefined,
+                anniversaryDate: '',
+                emergencyContact: '',
+                healthNotes: '',
+                idProofType: '',
+                smsFacility: true,
+                membershipStartDate: getTodayDate(),
+                membershipEndDate: getOneYearLater(),
+                coursePackageId: '',
+                extraDiscount: 0,
+            });
+            setPhotoFile(null);
+            setDocFile(null);
+            setPhotoPreview('');
+            setDocPreview('');
+            setOriginalDocUrl('');
+            setSelectedPackage(null);
+            setPkgOpen(false);
+        }
+    }, [isEditMode, reset]);
 
     // Bind member data to form when editing - use reset for reliable form population
     useEffect(() => {
@@ -353,6 +393,14 @@ export function MemberFormPage() {
         setShowCamera(false);
     };
 
+    const handleDocCameraCapture = (file: File) => {
+        setDocFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setDocPreview(reader.result as string);
+        reader.readAsDataURL(file);
+        setShowDocCamera(false);
+    };
+
     const handlePackageChange = (packageId: string) => {
         setValue('coursePackageId', packageId);
         const pkg = coursePackages.find((p: CoursePackage) => p.id === packageId);
@@ -469,46 +517,58 @@ export function MemberFormPage() {
                                     <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
                                         <FileText className="h-4 w-4 text-blue-600" /> ID Doc
                                     </Label>
-                                    <div className="relative w-32 h-24 border-2 border-dashed border-blue-300 rounded-xl overflow-hidden bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                                        {docPreview ? (
-                                            docPreview.startsWith('data:image') || docPreview.startsWith('http') ? (
-                                                <>
-                                                    <img src={docPreview} alt="ID Preview" className="w-full h-full object-cover" />
-                                                    <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
-                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="text-center p-1">
-                                                        <CheckCircle className="h-6 w-6 mx-auto text-green-500" />
-                                                        <span className="text-[10px] text-blue-600 break-all">{docPreview.length > 12 ? docPreview.substring(0, 12) + '...' : docPreview}</span>
+                                    {showDocCamera ? (
+                                        <CameraCapture
+                                            onCapture={handleDocCameraCapture}
+                                            onCancel={() => setShowDocCamera(false)}
+                                        />
+                                    ) : (
+                                        <>
+                                            <div className="relative w-32 h-24 border-2 border-dashed border-blue-300 rounded-xl overflow-hidden bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                                                {docPreview ? (
+                                                    docPreview.startsWith('data:image') || docPreview.startsWith('http') ? (
+                                                        <>
+                                                            <img src={docPreview} alt="ID Preview" className="w-full h-full object-cover" />
+                                                            <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); setShowDocCamera(false); }}
+                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="text-center p-1">
+                                                                <CheckCircle className="h-6 w-6 mx-auto text-green-500" />
+                                                                <span className="text-[10px] text-blue-600 break-all">{docPreview.length > 12 ? docPreview.substring(0, 12) + '...' : docPreview}</span>
+                                                            </div>
+                                                            <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); setShowDocCamera(false); }}
+                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </>
+                                                    )
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Upload className="h-6 w-6 mx-auto text-blue-400" />
+                                                        <span className="text-[10px] text-blue-400 mt-1 block">ID Doc</span>
                                                     </div>
-                                                    <button type="button" onClick={() => { setDocFile(null); setDocPreview(''); }}
-                                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600">
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </>
-                                            )
-                                        ) : (
-                                            <div className="text-center">
-                                                <Upload className="h-6 w-6 mx-auto text-blue-400" />
-                                                <span className="text-[10px] text-blue-400 mt-1 block">ID Doc</span>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'doc')} className="hidden" />
-                                    <div className="flex gap-1 mt-2">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="h-8 text-xs">
-                                            <Upload className="h-3 w-3 mr-1" />{docPreview ? 'Change' : 'Upload'}
-                                        </Button>
-                                        {originalDocUrl && (
-                                            <Button type="button" variant="outline" size="sm" onClick={handleDownloadDocument} className="h-8 text-xs">
-                                                <Download className="h-3 w-3 mr-1" /> Download
-                                            </Button>
-                                        )}
-                                    </div>
+                                            <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={(e) => handleFileChange(e, 'doc')} className="hidden" />
+                                            <div className="flex gap-1 mt-2">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} className="h-7 text-xs px-2">
+                                                    <Upload className="h-3 w-3 mr-1" />{docPreview ? 'Change' : 'Upload'}
+                                                </Button>
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setShowDocCamera(true)} className="h-7 text-xs px-2">
+                                                    <Video className="h-3 w-3 mr-1" /> Capture
+                                                </Button>
+                                                {originalDocUrl && (
+                                                    <Button type="button" variant="outline" size="sm" onClick={handleDownloadDocument} className="h-7 text-xs px-2">
+                                                        <Download className="h-3 w-3 mr-1" /> Download
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                     {/* ID Proof Type */}
                                     <Select onValueChange={(v) => setValue('idProofType', v)} value={watch('idProofType')}>
                                         <SelectTrigger className="h-8 text-xs mt-2 w-full"><SelectValue placeholder="ID Type" /></SelectTrigger>
@@ -526,21 +586,57 @@ export function MemberFormPage() {
                                     {/* Course Package */}
                                     <div>
                                         <Label className="text-xs font-semibold text-green-700 mb-1 block">Course Package</Label>
-                                        <Select onValueChange={handlePackageChange} value={watch('coursePackageId')}>
-                                            <SelectTrigger className="h-10"><SelectValue placeholder="Select Package" /></SelectTrigger>
-                                            <SelectContent>
-                                                {coursePackages
-                                                    .filter((pkg: CoursePackage) => pkg.coursePackageType === 'REGULAR')
-                                                    .map((pkg: CoursePackage) => {
-                                                    const months = pkg.Months || pkg.months || 0;
-                                                    return (
-                                                        <SelectItem key={pkg.id} value={pkg.id}>
-                                                            {pkg.packageName} - ₹{pkg.fees.toLocaleString()} - {months} {months === 1 ? 'Month' : 'Months'}
-                                                        </SelectItem>
-                                                    );
-                                                })}
-                                            </SelectContent>
-                                        </Select>
+                                        <Popover open={pkgOpen} onOpenChange={setPkgOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={pkgOpen}
+                                                    className="h-10 w-full justify-between font-normal overflow-hidden"
+                                                >
+                                                    <span className="truncate">
+                                                        {watch('coursePackageId')
+                                                            ? (() => {
+                                                                const selected = coursePackages.find((pkg: CoursePackage) => pkg.id === watch('coursePackageId'));
+                                                                if (!selected) return 'Select Package';
+                                                                const months = selected.Months || selected.months || 0;
+                                                                return `${selected.packageName} - ₹${selected.fees.toLocaleString()} - ${months} ${months === 1 ? 'Mo' : 'Mo'}`;
+                                                            })()
+                                                            : 'Select Package'}
+                                                    </span>
+                                                    <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[min(350px,90vw)] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search package..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No package found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {coursePackages
+                                                                .filter((pkg: CoursePackage) => pkg.coursePackageType === 'REGULAR')
+                                                                .map((pkg: CoursePackage) => {
+                                                                const months = pkg.Months || pkg.months || 0;
+                                                                const label = `${pkg.packageName} - ₹${pkg.fees.toLocaleString()} - ${months} ${months === 1 ? 'Month' : 'Months'}`;
+                                                                return (
+                                                                    <CommandItem
+                                                                        key={pkg.id}
+                                                                        value={label}
+                                                                        onSelect={() => {
+                                                                            handlePackageChange(pkg.id);
+                                                                            setPkgOpen(false);
+                                                                        }}
+                                                                    >
+                                                                        <Check className={`mr-2 h-4 w-4 shrink-0 ${watch('coursePackageId') === pkg.id ? 'opacity-100' : 'opacity-0'}`} />
+                                                                        <span className="truncate">{label}</span>
+                                                                    </CommandItem>
+                                                                );
+                                                            })}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
 
                                     {/* Membership Start */}
@@ -624,8 +720,8 @@ export function MemberFormPage() {
                                 </div>
                             </div>
 
-                            {/* SMS Facility Toggle - Desktop */}
-                            <div className="hidden lg:flex flex-col items-center justify-start shrink-0">
+                            {/* SMS Facility Toggle - Desktop (temporarily hidden, default true) */}
+                            {/* <div className="hidden lg:flex flex-col items-center justify-start shrink-0">
                                 <div className="bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 p-3 rounded-xl border">
                                     <Label className="text-xs font-semibold mb-2 block text-center">SMS</Label>
                                     <div className="flex flex-col items-center gap-1">
@@ -633,7 +729,7 @@ export function MemberFormPage() {
                                         <span className="text-xs font-medium">{watch('smsFacility') ? 'ON' : 'OFF'}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
 
                         {/* Form Grid - Personal Information */}
@@ -830,14 +926,14 @@ export function MemberFormPage() {
                                 <Input {...register('emergencyContact')} placeholder="Emergency Phone" className="h-11" />
                             </div>
 
-                            {/* SMS Facility - Mobile/Tablet */}
-                            <div className="lg:hidden">
+                            {/* SMS Facility - Mobile/Tablet (temporarily hidden, default true) */}
+                            {/* <div className="lg:hidden">
                                 <Label className="text-sm font-semibold mb-2 block">SMS Facility</Label>
                                 <div className="flex items-center gap-3 h-11 px-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border">
                                     <Switch checked={watch('smsFacility')} onCheckedChange={(c) => setValue('smsFacility', c)} />
                                     <span className="text-sm font-medium">{watch('smsFacility') ? 'Enabled' : 'Disabled'}</span>
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Health Notes - Full Width */}
                             <div className="col-span-full">

@@ -904,6 +904,7 @@ export interface CoursePackage {
   months?: number;             // Alias for Months
   durationInDays?: number;
   durationInMonths?: number;
+  orderNo?: number;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
