@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,26 +20,6 @@ import { toast } from '@/hooks/use-toast';
 import type { IncomeReportParams, MemberIncomeItem, MemberPaymentDetailItem } from '@/types';
 
 const ITEMS_PER_PAGE = 10;
-
-// Generate year options (last 5 years)
-const currentYear = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => currentYear - i);
-
-// Month options
-const MONTH_OPTIONS = [
-  { value: '1', label: 'January' },
-  { value: '2', label: 'February' },
-  { value: '3', label: 'March' },
-  { value: '4', label: 'April' },
-  { value: '5', label: 'May' },
-  { value: '6', label: 'June' },
-  { value: '7', label: 'July' },
-  { value: '8', label: 'August' },
-  { value: '9', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
 
 export function IncomeReportPage() {
   const [page, setPage] = useState(1);
@@ -53,11 +32,8 @@ export function IncomeReportPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Filters
-  const [yearFilter, setYearFilter] = useState<string>('');
-  const [monthFilter, setMonthFilter] = useState<string>('');
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
-  const [membershipStatusFilter, setMembershipStatusFilter] = useState<string>('all');
 
   // Payment Details Dialog
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -82,13 +58,10 @@ export function IncomeReportPage() {
       sortOrder,
     };
     if (debouncedSearch) params.search = debouncedSearch;
-    if (yearFilter) params.year = parseInt(yearFilter);
-    if (monthFilter) params.month = parseInt(monthFilter);
     if (dateFromFilter) params.dateFrom = dateFromFilter;
     if (dateToFilter) params.dateTo = dateToFilter;
-    if (membershipStatusFilter !== 'all') params.membershipStatus = membershipStatusFilter as 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
     return params;
-  }, [page, limit, sortBy, sortOrder, debouncedSearch, yearFilter, monthFilter, dateFromFilter, dateToFilter, membershipStatusFilter]);
+  }, [page, limit, sortBy, sortOrder, debouncedSearch, dateFromFilter, dateToFilter]);
 
   // Fetch income report
   const { data, isLoading, error } = useQuery({
@@ -98,8 +71,13 @@ export function IncomeReportPage() {
 
   // Fetch payment details for selected member
   const { data: detailsData, isLoading: detailsLoading } = useQuery({
-    queryKey: ['memberPaymentDetails', selectedMember?.memberId, detailsPage],
-    queryFn: () => gymOwnerService.getMemberPaymentDetails(selectedMember!.memberId, { page: detailsPage, limit: 10 }),
+    queryKey: ['memberPaymentDetails', selectedMember?.memberId, detailsPage, dateFromFilter, dateToFilter],
+    queryFn: () => gymOwnerService.getMemberPaymentDetails(selectedMember!.memberId, {
+      page: detailsPage,
+      limit: 10,
+      dateFrom: dateFromFilter || undefined,
+      dateTo: dateToFilter || undefined,
+    }),
     enabled: !!selectedMember?.memberId && detailsDialogOpen,
   });
 
@@ -114,16 +92,13 @@ export function IncomeReportPage() {
   // Clear filters
   const clearFilters = () => {
     setSearch('');
-    setYearFilter('');
-    setMonthFilter('');
     setDateFromFilter('');
     setDateToFilter('');
-    setMembershipStatusFilter('all');
     setPage(1);
   };
 
   // Check if any filter is active
-  const hasActiveFilters = debouncedSearch || yearFilter || monthFilter || dateFromFilter || dateToFilter || membershipStatusFilter !== 'all';
+  const hasActiveFilters = debouncedSearch || dateFromFilter || dateToFilter;
 
   // Handle sort
   const handleSort = (column: string) => {
@@ -317,67 +292,36 @@ export function IncomeReportPage() {
           <div className="relative col-span-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search..."
+              placeholder="Search member..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-full md:w-[150px] pl-8 text-sm"
+              className="h-9 w-full md:w-[180px] pl-8 text-sm"
             />
           </div>
 
-          <Select value={yearFilter} onValueChange={(v) => { setYearFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-full md:w-[100px] text-sm">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {YEAR_OPTIONS.map((year) => (
-                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-0.5">
+            <label className="text-[10px] font-medium text-muted-foreground px-1">From Date</label>
+            <Input
+              type="date"
+              value={dateFromFilter}
+              onChange={(e) => { setDateFromFilter(e.target.value); setPage(1); }}
+              className="h-9 w-full md:w-[150px] text-sm"
+            />
+          </div>
 
-          <Select value={monthFilter} onValueChange={(v) => { setMonthFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-full md:w-[110px] text-sm">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {MONTH_OPTIONS.map((month) => (
-                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={membershipStatusFilter} onValueChange={(v) => { setMembershipStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-full md:w-[110px] text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="EXPIRED">Expired</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Input
-            type="date"
-            placeholder="From"
-            value={dateFromFilter}
-            onChange={(e) => { setDateFromFilter(e.target.value); setPage(1); }}
-            className="h-8 w-full md:w-[140px] text-sm"
-          />
-
-          <Input
-            type="date"
-            placeholder="To"
-            value={dateToFilter}
-            onChange={(e) => { setDateToFilter(e.target.value); setPage(1); }}
-            className="h-8 w-full md:w-[140px] text-sm"
-          />
+          <div className="flex flex-col gap-0.5">
+            <label className="text-[10px] font-medium text-muted-foreground px-1">To Date</label>
+            <Input
+              type="date"
+              value={dateToFilter}
+              min={dateFromFilter || undefined}
+              onChange={(e) => { setDateToFilter(e.target.value); setPage(1); }}
+              className="h-9 w-full md:w-[150px] text-sm"
+            />
+          </div>
 
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-sm col-span-2 md:col-span-1" onClick={clearFilters}>
+            <Button variant="ghost" size="sm" className="h-9 px-2 text-sm col-span-2 md:col-span-1 self-end" onClick={clearFilters}>
               <X className="h-3.5 w-3.5 mr-1" />
               Clear
             </Button>
