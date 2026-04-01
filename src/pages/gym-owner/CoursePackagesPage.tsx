@@ -144,7 +144,6 @@ export function CoursePackagesPage() {
         register: registerEdit,
         handleSubmit: handleSubmitEdit,
         reset: resetEdit,
-        setValue: setValueEdit,
         control: controlEdit,
         formState: { errors: errorsEdit }
     } = useForm<EditCoursePackageFormData>({
