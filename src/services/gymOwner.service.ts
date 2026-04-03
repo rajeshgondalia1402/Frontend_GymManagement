@@ -219,6 +219,25 @@ export const gymOwnerService = {
     return responseData;
   },
 
+  // Dashboard Chart Data
+  async getDashboardIncomeExpenseChart(months: number = 6): Promise<{
+    data: { month: string; income: number; expenses: number }[];
+    totalIncome: number;
+    totalExpenses: number;
+    incomeBreakdown: { category: string; amount: number }[];
+    expenseBreakdown: { category: string; amount: number }[];
+  }> {
+    const response = await api.get('/gym-owner/dashboard/income-expense-chart', { params: { months } });
+    return response.data.data;
+  },
+
+  async getDashboardMonthlyActivityChart(months: number = 6): Promise<{
+    data: { month: string; newInquiries: number; newJoiners: number; newPT: number; renewals: number }[];
+  }> {
+    const response = await api.get('/gym-owner/dashboard/monthly-activity-chart', { params: { months } });
+    return response.data.data;
+  },
+
   // Trainers
   async getTrainers(): Promise<Trainer[]> {
     const response = await api.get('/gym-owner/trainers');
