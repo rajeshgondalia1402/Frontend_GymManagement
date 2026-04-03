@@ -72,7 +72,7 @@ export function HireTrainers() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <a
-              href="/hire-trainer/login"
+              href="/hire-trainer/search"
               target="_blank"
               rel="noopener noreferrer"
               className="group block p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-800/50 border border-white/10 hover:border-emerald-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10"
@@ -81,7 +81,7 @@ export function HireTrainers() {
                 <Search className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3">
-                Search Trainer
+                Search Trainers and Vacancies
               </h3>
               <p className="text-gray-400 mb-6">
                 Looking for skilled trainers for your gym? Search by location,

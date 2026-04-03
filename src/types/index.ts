@@ -2470,3 +2470,56 @@ export interface GymOwnerLeadRegisterResponse {
   message: string;
 }
 
+// ── Trainer Vacancy (Gym Owner posts job openings) ──────────
+export type VacancySalaryType = 'PER_MONTH' | 'PER_YEAR';
+export type TrainerVacancyStatus = 'ACTIVE' | 'CLOSED' | 'EXPIRED';
+
+export interface TrainerVacancy {
+  id: string;
+  gymOwnerLeadId: string;
+  role: HireTrainerRole;
+  yearsOfExperience: number | null;
+  ptClientExperience: number | null;
+  description: string | null;
+  specialization: string | null;
+  certificate: string | null;
+  isPTTrainer: boolean;
+  howSoonCanJoin: string | null;
+  gender: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryType: VacancySalaryType;
+  country: string;
+  state: string | null;
+  city: string | null;
+  closeDate: string | null;
+  status: TrainerVacancyStatus;
+  createdAt: string;
+  updatedAt: string;
+  gymOwnerLead: {
+    id: string;
+    name: string;
+    gymName: string;
+    mobile: string;
+  };
+}
+
+export interface TrainerVacancySearchParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: string;
+  state?: string;
+  city?: string;
+  isPTTrainer?: string;
+  gender?: string;
+  salaryType?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  specialization?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+

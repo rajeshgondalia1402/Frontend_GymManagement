@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { StepWizard } from '@/components/shared/StepWizard';
@@ -23,11 +23,12 @@ const BENEFITS = [
 
 export function TrainerApplicationPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState('');
-  const [mobile, setMobile] = useState('');
+  const [mobile, setMobile] = useState(() => searchParams.get('mobile') || '');
   const [hireTrainerId, setHireTrainerId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({ country: 'India' });
   const [documents, setDocuments] = useState<HireTrainerDocument[]>([]);
