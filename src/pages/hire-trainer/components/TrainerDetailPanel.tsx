@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   MapPin,
@@ -13,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { WhatsAppFilledIcon } from '@/components/ui/icons';
 import { gymOwnerLeadService } from '@/services/gymOwnerLead.service';
-import { GymOwnerAuthModal } from './GymOwnerAuthModal';
 import type { HireTrainerSearchResult, GymOwnerLead } from '@/types';
 
 interface TrainerDetailPanelProps {
@@ -52,11 +52,11 @@ function openWhatsApp(trainer: HireTrainerSearchResult, lead: GymOwnerLead) {
 }
 
 export function TrainerDetailPanel({ trainer, onClose }: TrainerDetailPanelProps) {
+  const navigate = useNavigate();
   const totalExp = trainer.totalYearsExperience ?? 0;
   const ptYears = trainer.ptExperienceYears ?? 0;
   const ptMonths = trainer.ptExperienceMonths ?? 0;
 
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [gymOwnerLead, setGymOwnerLead] = useState<GymOwnerLead | null>(null);
 
   // Check if gym owner is already authenticated (from localStorage)
@@ -73,18 +73,13 @@ export function TrainerDetailPanel({ trainer, onClose }: TrainerDetailPanelProps
 
   const handleContactClick = useCallback(() => {
     if (!gymOwnerLead) {
-      setShowAuthModal(true);
+      navigate('/hire-trainer/login?from=trainer');
       return;
     }
     openWhatsApp(trainer, gymOwnerLead);
-  }, [gymOwnerLead, trainer]);
+  }, [gymOwnerLead, trainer, navigate]);
 
-  const handleAuthenticated = useCallback((lead: GymOwnerLead) => {
-    setGymOwnerLead(lead);
-    setShowAuthModal(false);
-    // Open WhatsApp after auth completes
-    setTimeout(() => openWhatsApp(trainer, lead), 300);
-  }, [trainer]);
+
 
   function fmtExp(years: number, months?: number): string {
     const parts: string[] = [];
@@ -275,12 +270,6 @@ export function TrainerDetailPanel({ trainer, onClose }: TrainerDetailPanelProps
         </div>
       </div>
 
-      {/* Auth Modal */}
-      <GymOwnerAuthModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onAuthenticated={handleAuthenticated}
-      />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Send, CheckCircle2, AlertCircle, Loader2, Mail, Phone, MessageSquare } from 'lucide-react';
+import { Send, CheckCircle2, AlertCircle, Loader2, Mail, MessageSquare } from 'lucide-react';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
 import axios from 'axios';
 
 interface FormData {
@@ -77,10 +78,11 @@ export function Contact() {
                   color: 'bg-emerald-500/10 text-emerald-400',
                 },
                 {
-                  icon: Phone,
-                  label: 'Phone',
+                  icon: WhatsAppFilledIcon,
+                  label: 'WhatsApp',
                   value: '+91 9723657967',
                   color: 'bg-green-500/10 text-green-400',
+                  link: 'https://wa.me/919723657967',
                 },
                 {
                   icon: MessageSquare,
@@ -88,23 +90,32 @@ export function Contact() {
                   value: 'Within 24 hours',
                   color: 'bg-emerald-500/10 text-emerald-300',
                 },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-xl ${item.color} flex items-center justify-center`}
-                  >
-                    <item.icon size={22} />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-400 font-medium">
-                      {item.label}
+              ].map((item) => {
+                const content = (
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-12 h-12 rounded-xl ${item.color} flex items-center justify-center`}
+                    >
+                      <item.icon size={22} />
                     </div>
-                    <div className="text-white font-semibold">
-                      {item.value}
+                    <div>
+                      <div className="text-sm text-gray-400 font-medium">
+                        {item.label}
+                      </div>
+                      <div className="text-white font-semibold">
+                        {item.value}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+                return 'link' in item && item.link ? (
+                  <a key={item.label} href={item.link} target="_blank" rel="noopener noreferrer" className="block hover:opacity-80 transition-opacity">
+                    {content}
+                  </a>
+                ) : (
+                  <div key={item.label}>{content}</div>
+                );
+              })}
             </div>
           </motion.div>
 

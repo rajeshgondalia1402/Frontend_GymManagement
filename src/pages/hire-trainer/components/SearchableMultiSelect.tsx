@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, Check, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 
 interface Option {
   value: string;
@@ -47,14 +46,14 @@ export function SearchableMultiSelect({
     : options;
 
   const toggle = (value: string) => {
-    if (selected.includes(value)) {
-      onChange(selected.filter((v) => v !== value));
-    } else {
-      onChange([...selected, value]);
-    }
+    const newValues = selected.includes(value)
+      ? selected.filter((v) => v !== value)
+      : [...selected, value];
+    onChange(newValues);
   };
 
   const removeTag = (value: string, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     onChange(selected.filter((v) => v !== value));
   };
@@ -109,7 +108,10 @@ export function SearchableMultiSelect({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg overflow-hidden">
+        <div
+          className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg overflow-hidden"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {/* Search input */}
           <div className="p-2 border-b">
             <div className="relative">
@@ -141,24 +143,29 @@ export function SearchableMultiSelect({
               filtered.map((option) => {
                 const isSelected = selected.includes(option.value);
                 return (
-                  <button
+                  <div
                     key={option.value}
-                    type="button"
-                    onClick={() => toggle(option.value)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors ${
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(option.value); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-emerald-50 text-emerald-800'
                         : 'hover:bg-gray-50 text-gray-700'
                     }`}
                   >
-                    <Checkbox
-                      checked={isSelected}
-                      className="pointer-events-none h-3.5 w-3.5"
-                      tabIndex={-1}
-                    />
+                    <div
+                      className={`h-3.5 w-3.5 shrink-0 rounded-sm border flex items-center justify-center ${
+                        isSelected
+                          ? 'bg-emerald-600 border-emerald-600 text-white'
+                          : 'border-gray-300 bg-white'
+                      }`}
+                    >
+                      {isSelected && <Check className="h-2.5 w-2.5" />}
+                    </div>
                     <span className="truncate">{option.label}</span>
                     {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto shrink-0" />}
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -170,7 +177,7 @@ export function SearchableMultiSelect({
               <span className="text-xs text-gray-500">{selected.length} selected</span>
               <button
                 type="button"
-                onClick={() => onChange([])}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
                 className="text-xs text-red-600 hover:text-red-700 font-medium"
               >
                 Clear all

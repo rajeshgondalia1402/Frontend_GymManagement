@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Phone,
   Loader2,
@@ -23,6 +23,8 @@ type Step = 'mobile' | 'register' | 'otp' | 'success' | 'forgot';
 
 export function GymOwnerLoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get('from'); // 'vacancy' | 'trainer' | null
   const [step, setStep] = useState<Step>('mobile');
   const [loading, setLoading] = useState(false);
 
@@ -86,8 +88,15 @@ export function GymOwnerLoginPage() {
         toast({ title: `Welcome back, ${res.trainer.fullName || 'Trainer'}!` });
         setTimeout(() => navigate('/hire-trainer/search', { replace: true }), 1200);
       } else {
-        // Not found — show registration form
-        setStep('register');
+        // Not found
+        if (from === 'vacancy') {
+          // Trainer needs to register via /hire-trainer/apply
+          toast({ title: 'Mobile not registered. Please register as a trainer first.' });
+          navigate(`/hire-trainer/apply?mobile=${encodeURIComponent(mobile)}`, { replace: true });
+        } else {
+          // Gym owner registration flow
+          setStep('register');
+        }
       }
     } catch (err: any) {
       toast({
@@ -98,7 +107,7 @@ export function GymOwnerLoginPage() {
     } finally {
       setLoading(false);
     }
-  }, [mobile, navigate]);
+  }, [mobile, navigate, from]);
 
   // ── Register ──
   const handleRegister = useCallback(async () => {
