@@ -55,6 +55,17 @@ export const hireTrainerService = {
     return response.data.data!;
   },
 
+  // My Profile
+  async getMyProfile(email: string): Promise<HireTrainer> {
+    const response = await api.get<ApiResponse<HireTrainer>>(`/hire-trainer/my?email=${encodeURIComponent(email)}`);
+    return response.data.data!;
+  },
+
+  async updateProfile(email: string, data: Record<string, any>): Promise<HireTrainer> {
+    const response = await api.put<ApiResponse<HireTrainer>>('/hire-trainer/update', { email, ...data });
+    return response.data.data!;
+  },
+
   // Search
   async searchTrainers(params: HireTrainerSearchParams): Promise<PaginatedResponse<HireTrainerSearchResult>> {
     const queryParams = new URLSearchParams();

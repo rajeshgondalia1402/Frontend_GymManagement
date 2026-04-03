@@ -305,7 +305,7 @@ export function VerificationStep({
         {/* Resume link */}
         <div className="pt-3 text-center border-t border-gray-100">
           <button
-            onClick={() => setShowResume(true)}
+            onClick={() => { setShowResume(true); if (mobile) setResumeMobile(mobile); }}
             className="text-sm text-gray-500 hover:text-emerald-600 transition-colors"
           >
             Already have an application? <span className="font-semibold underline underline-offset-2">Resume here</span>
