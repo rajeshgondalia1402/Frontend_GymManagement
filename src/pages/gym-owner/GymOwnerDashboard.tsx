@@ -41,6 +41,7 @@ import { useAuthStore } from '@/store/authStore';
 import { BalancePaymentDialog } from '@/components/BalancePaymentDialog';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { IncomeExpensePieChart, MonthlyActivityBarChart } from './components/DashboardCharts';
 import type { WhatsAppTemplateType } from '@/utils/whatsapp';
 import type {
   Member,
@@ -870,6 +871,12 @@ export function GymOwnerDashboard() {
           </CardContent>
         </Card>
       </div>
+      {/* Charts Section */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <IncomeExpensePieChart />
+        <MonthlyActivityBarChart />
+      </div>
+
       {/* Balance Payment Dialog */}
       <BalancePaymentDialog
         open={balancePaymentDialogOpen}
