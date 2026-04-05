@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, addYears, addMonths } from 'date-fns';
 import {
-    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video, Download, ChevronsUpDown, Check,
+    ArrowLeft, Save, Camera, Upload, X, CheckCircle, IndianRupee, User, Phone, Mail, Calendar, MapPin, Heart, AlertTriangle, FileText, Calculator, Video, Download, ChevronsUpDown, Check, Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,7 @@ const getOneYearLater = () => format(addYears(new Date(), 1), 'yyyy-MM-dd');
 const memberSchema = z.object({
     firstName: z.string().min(2, 'Required'),
     lastName: z.string().min(2, 'Required'),
-    email: z.string().email('Invalid email'),
+    email: z.string().email('Invalid email').or(z.literal('')).optional(),
     password: z.string().min(6, 'Min 6 chars').optional(),
     phone: z.string().min(10, 'Min 10 digits'),
     altContactNo: z.string().optional(),
@@ -78,6 +78,7 @@ export function MemberFormPage() {
     const [showBMICalculator, setShowBMICalculator] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
     const [showDocCamera, setShowDocCamera] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Download document handler
     const handleDownloadDocument = async () => {
@@ -172,7 +173,7 @@ export function MemberFormPage() {
                 firstName: '',
                 lastName: '',
                 email: '',
-                password: '',
+                password: 'Password@123',
                 phone: '',
                 altContactNo: '',
                 dateOfBirth: '',
@@ -254,10 +255,10 @@ export function MemberFormPage() {
 
     const createMutation = useMutation({
         mutationFn: gymOwnerService.createMember,
-        onSuccess: (_, variables) => {
+        onSuccess: (createdMember, variables) => {
             queryClient.invalidateQueries({ queryKey: ['members'] });
             toast({ title: 'Member created successfully' });
-            navigate('/gym-owner/members');
+            navigate('/gym-owner/members', { state: { newlyCreatedMember: createdMember } });
 
             // Send welcome + credentials email to the new member
             const fd = variables as FormData;
@@ -323,7 +324,7 @@ export function MemberFormPage() {
         // Add all form fields
         fd.append('firstName', formData.firstName);
         fd.append('lastName', formData.lastName);
-        fd.append('email', formData.email);
+        fd.append('email', formData.email?.trim() || 'test@gmail.com');
         if (formData.password) fd.append('password', formData.password);
         fd.append('phone', formData.phone);
         if (formData.altContactNo) fd.append('altContactNo', formData.altContactNo);
@@ -463,7 +464,7 @@ export function MemberFormPage() {
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 md:p-6">
                         
                         {/* Top Section: Photo/Document + Membership & Fees side by side */}
@@ -786,12 +787,13 @@ export function MemberFormPage() {
                             {/* Email */}
                             <div>
                                 <Label className="text-sm font-semibold mb-2 flex items-center gap-1">
-                                    <Mail className="h-4 w-4 text-blue-600" /> Email <span className="text-red-500">*</span>
+                                    <Mail className="h-4 w-4 text-blue-600" /> Email
                                 </Label>
                                 <Input 
                                     {...register('email')} 
                                     type="email" 
-                                    placeholder="email@example.com" 
+                                    placeholder="Leave empty for default (test@gmail.com)" 
+                                    autoComplete="off"
                                     className={`h-11 ${errors.email ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                                 />
                                 {errors.email && (
@@ -804,13 +806,23 @@ export function MemberFormPage() {
                             {/* Password - Only for new member */}
                             {!isEditMode && (
                                 <div>
-                                    <Label className="text-sm font-semibold mb-2 block">Password <span className="text-red-500">*</span></Label>
-                                    <Input 
-                                        {...register('password')} 
-                                        type="password" 
-                                        placeholder="Min 6 characters" 
-                                        className={`h-11 ${errors.password ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
-                                    />
+                                    <Label className="text-sm font-semibold mb-2 block">Password</Label>
+                                    <div className="relative">
+                                        <Input 
+                                            {...register('password')} 
+                                            type={showPassword ? 'text' : 'password'} 
+                                            placeholder="Min 6 characters" 
+                                            autoComplete="new-password"
+                                            className={`h-11 pr-10 ${errors.password ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                        >
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                     {errors.password && (
                                         <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                                             <AlertTriangle className="h-3 w-3" />{errors.password.message}
