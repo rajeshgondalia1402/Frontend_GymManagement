@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { getImageUrl } from '@/utils/imageUrl';
+import { getImageUrl, isR2Url } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import type { Member, BalancePayment, CreateBalancePayment, PaymentFor } from '@/types';
 
@@ -38,6 +38,23 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
     const authUser = useAuthStore((state) => state.user);
     const gymName = authUser?.ownedGym?.name || 'Our Gym';
     const [editingPayment, setEditingPayment] = useState<BalancePayment | null>(null);
+    // Presigned photo URL for R2 images
+    const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string>('');
+
+    useEffect(() => {
+        if (!member?.memberPhoto || !open) {
+            setResolvedPhotoUrl('');
+            return;
+        }
+        if (isR2Url(member.memberPhoto)) {
+            gymOwnerService.getPresignedUrl(member.memberPhoto).then((url) => {
+                setResolvedPhotoUrl(url);
+            }).catch(() => setResolvedPhotoUrl(''));
+        } else {
+            setResolvedPhotoUrl(getImageUrl(member.memberPhoto));
+        }
+    }, [member?.id, member?.memberPhoto, open]);
+
     // Track member's active status locally so it updates after toggle
     const [memberIsActive, setMemberIsActive] = useState<boolean>(member?.isActive !== false);
     // Payment type selection (REGULAR or PT)
@@ -475,7 +492,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                     <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800">
                         <div className="flex gap-4 mb-4">
                             <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
-                                {member.memberPhoto ? <AvatarImage src={getImageUrl(member.memberPhoto)} /> : null}
+                                {resolvedPhotoUrl ? <AvatarImage src={resolvedPhotoUrl} /> : null}
                                 <AvatarFallback className="text-lg bg-gradient-to-br from-purple-500 to-blue-500 text-white">
                                     {getInitials(memberName)}
                                 </AvatarFallback>

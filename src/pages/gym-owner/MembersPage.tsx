@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -18,11 +18,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Spinner } from '@/components/ui/spinner';
 import { Label } from '@/components/ui/label';
 import { gymOwnerService } from '@/services/gymOwner.service';
-import { getImageUrl } from '@/utils/imageUrl';
+import { getImageUrl, isR2Url } from '@/utils/imageUrl';
 import { toast } from '@/hooks/use-toast';
 import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
@@ -87,6 +86,27 @@ export function MembersPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
   const [activeTab, setActiveTab] = useState<'regular' | 'pt'>('regular');
+
+  // Photo hover tooltip state
+  const [hoverPhoto, setHoverPhoto] = useState<{ url: string; name: string } | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRowMouseEnter = useCallback((photoUrl: string, memberName: string) => {
+    if (!photoUrl) return;
+    hoverTimeout.current = setTimeout(() => {
+      setHoverPhoto({ url: photoUrl, name: memberName });
+    }, 300);
+  }, []);
+
+  const handleRowMouseMove = useCallback((e: React.MouseEvent) => {
+    setHoverPos({ x: e.clientX + 16, y: e.clientY + 16 });
+  }, []);
+
+  const handleRowMouseLeave = useCallback(() => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setHoverPhoto(null);
+  }, []);
 
   // Balance Payment State
   const [balancePaymentDialogOpen, setBalancePaymentDialogOpen] = useState(false);
@@ -655,6 +675,38 @@ export function MembersPage() {
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.total || members.length;
 
+  // Presigned photo URLs for R2 images
+  const [photoUrlMap, setPhotoUrlMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!members.length) return;
+    const r2Photos = members
+      .filter((m: Member) => m.memberPhoto && isR2Url(m.memberPhoto))
+      .map((m: Member) => m.memberPhoto!);
+    if (!r2Photos.length) return;
+    // Skip if all URLs are already resolved
+    const unresolvedUrls = r2Photos.filter(url => !photoUrlMap[url]);
+    if (!unresolvedUrls.length) return;
+    let cancelled = false;
+    gymOwnerService.getPresignedUrls(unresolvedUrls).then((results) => {
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      results.forEach((r) => {
+        if (r.presignedUrl) map[r.original] = r.presignedUrl;
+      });
+      setPhotoUrlMap(prev => ({ ...prev, ...map }));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [members]);
+
+  const getMemberPhotoUrl = useCallback((member: Member): string => {
+    if (!member.memberPhoto) return '';
+    if (isR2Url(member.memberPhoto) && photoUrlMap[member.memberPhoto]) {
+      return photoUrlMap[member.memberPhoto];
+    }
+    return getImageUrl(member.memberPhoto);
+  }, [photoUrlMap]);
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full">
       {/* Header */}
@@ -857,41 +909,27 @@ export function MembersPage() {
                   <TableBody>
                     {members.map((member: Member, index: number) => {
                       const status = getMembershipStatus(member);
-                      const photoUrl = member.memberPhoto ? getImageUrl(member.memberPhoto) : '';
+                      const photoUrl = getMemberPhotoUrl(member);
                       const memberName = member.firstName && member.lastName
                         ? `${member.firstName} ${member.lastName}`
                         : member.user?.name || 'Unknown';
                       return (
-                        <TableRow key={member.id}>
+                        <TableRow
+                          key={member.id}
+                          className="cursor-pointer"
+                          onMouseEnter={() => handleRowMouseEnter(photoUrl, memberName)}
+                          onMouseMove={handleRowMouseMove}
+                          onMouseLeave={handleRowMouseLeave}
+                        >
                           <TableCell className="font-medium">
                             {(page - 1) * limit + index + 1}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              {photoUrl ? (
-                                <HoverCard openDelay={200} closeDelay={100}>
-                                  <HoverCardTrigger asChild>
-                                    <Avatar className="h-8 w-8 cursor-pointer">
-                                      <AvatarImage src={photoUrl} />
-                                      <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
-                                    </Avatar>
-                                  </HoverCardTrigger>
-                                  <HoverCardContent className="w-auto p-2" side="right" align="start">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <img
-                                        src={photoUrl}
-                                        alt={memberName}
-                                        className="w-48 h-48 object-cover rounded-lg shadow-lg"
-                                      />
-                                      <p className="text-sm font-medium text-center">{memberName}</p>
-                                    </div>
-                                  </HoverCardContent>
-                                </HoverCard>
-                              ) : (
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
-                                </Avatar>
-                              )}
+                              <Avatar className="h-8 w-8">
+                                {photoUrl && <AvatarImage src={photoUrl} />}
+                                <AvatarFallback className="text-xs">{getInitials(memberName)}</AvatarFallback>
+                              </Avatar>
                               <div>
                                 <p className="font-medium text-sm">{memberName}</p>
                                 <p className="text-xs text-muted-foreground">{member.email || member.user?.email}</p>
@@ -1089,7 +1127,7 @@ export function MembersPage() {
               {/* Member Header - Always Visible */}
               <div className="flex gap-4">
                 <Avatar className="h-20 w-20 border-4 border-purple-200">
-                  {viewingMember.memberPhoto ? <AvatarImage src={getImageUrl(viewingMember.memberPhoto)} /> : null}
+                  {viewingMember.memberPhoto ? <AvatarImage src={getMemberPhotoUrl(viewingMember)} /> : null}
                   <AvatarFallback className="text-xl bg-gradient-to-br from-purple-500 to-blue-500 text-white">
                     {getInitials(viewingMember.firstName && viewingMember.lastName ? `${viewingMember.firstName} ${viewingMember.lastName}` : viewingMember.user?.name || '')}
                   </AvatarFallback>
@@ -1436,7 +1474,7 @@ export function MembersPage() {
               {/* Member Info Header */}
               <div className="flex items-center gap-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl">
                 <Avatar className="h-14 w-14 border-4 border-white shadow-lg">
-                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={getImageUrl(selectedMemberForPayment.memberPhoto)} /> : null}
+                  {selectedMemberForPayment.memberPhoto ? <AvatarImage src={getMemberPhotoUrl(selectedMemberForPayment)} /> : null}
                   <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                     {getInitials(selectedMemberForPayment.firstName && selectedMemberForPayment.lastName ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}` : selectedMemberForPayment.user?.name || '')}
                   </AvatarFallback>
@@ -1826,6 +1864,23 @@ export function MembersPage() {
         member={selectedMemberForPausePT}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['members'] })}
       />
+
+      {/* Floating Photo Tooltip */}
+      {hoverPhoto && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{ left: hoverPos.x, top: hoverPos.y }}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border p-2 flex flex-col items-center gap-2">
+            <img
+              src={hoverPhoto.url}
+              alt={hoverPhoto.name}
+              className="w-48 h-48 object-cover rounded-lg"
+            />
+            <p className="text-sm font-medium text-center">{hoverPhoto.name}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
