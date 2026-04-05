@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Plus, Search, MoreVertical, Eye, Edit, Phone, Calendar,
@@ -28,6 +28,8 @@ import { useSubscriptionFeatures } from '@/hooks/useSubscriptionFeatures';
 import { MembershipRenewalDialog } from '@/components/MembershipRenewalDialog';
 import { PausePTMembershipDialog } from '@/components/PausePTMembershipDialog';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
+import { sharePaymentReceiptPDF } from '@/utils/paymentReceipt';
 import type { Member, CoursePackage, BalancePayment, CreateBalancePayment } from '@/types';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -38,6 +40,7 @@ const PAY_MODES = ['Cash', 'Card', 'UPI', 'Online', 'Cheque', 'Other'];
 
 export function MembersPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   // Subscription features for conditional UI
@@ -115,6 +118,27 @@ export function MembersPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Auto-open Balance Payment dialog for newly created member
+  useEffect(() => {
+    const state = location.state as { newlyCreatedMember?: Member } | null;
+    if (state?.newlyCreatedMember) {
+      const member = state.newlyCreatedMember;
+      setSelectedMemberForPayment(member);
+      setPaymentForm({
+        paymentFor: member.memberType === 'PT' ? 'PT' : 'REGULAR',
+        paymentDate: new Date().toISOString().split('T')[0],
+        paidFees: 0,
+        payMode: 'Cash',
+        contactNo: member.phone || '',
+        nextPaymentDate: '',
+        notes: '',
+      });
+      setBalancePaymentDialogOpen(true);
+      // Clear the state so it doesn't re-open on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
 
   // Build query params
   const queryParams = useMemo(() => {
@@ -210,6 +234,23 @@ export function MembersPage() {
       notes: '',
     });
     setEditingPayment(null);
+  };
+
+  const sendPaymentReceiptWhatsApp = async (payment: BalancePayment) => {
+    if (!selectedMemberForPayment) return;
+    const memberName = selectedMemberForPayment.firstName && selectedMemberForPayment.lastName
+      ? `${selectedMemberForPayment.firstName} ${selectedMemberForPayment.lastName}`
+      : selectedMemberForPayment.user?.name || 'Member';
+    const result = await sharePaymentReceiptPDF({
+      gymName,
+      memberName,
+      memberId: selectedMemberForPayment.memberId,
+      memberPhone: selectedMemberForPayment.phone,
+      payment,
+    });
+    if (!result.success) {
+      toast({ title: 'Receipt Error', description: result.error, variant: 'destructive' });
+    }
   };
 
   const openBalancePaymentDialog = (member: Member) => {
@@ -1708,7 +1749,7 @@ export function MembersPage() {
                             <TableHead className="text-xs py-2 text-white font-semibold">Amount</TableHead>
                             <TableHead className="text-xs py-2 text-white font-semibold">Mode</TableHead>
                             <TableHead className="text-xs py-2 text-white font-semibold">Next Due</TableHead>
-                            {!isSelectedMemberExpired && <TableHead className="text-xs w-[50px] py-2 text-white font-semibold"></TableHead>}
+                            <TableHead className="text-xs w-[80px] py-2 text-white font-semibold"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1740,13 +1781,18 @@ export function MembersPage() {
                               <TableCell className="text-xs text-muted-foreground">
                                 {payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd MMM yy') : '-'}
                               </TableCell>
-                              {!isSelectedMemberExpired && (
-                                <TableCell>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
-                                    <Pencil className="h-3 w-3" />
+                              <TableCell>
+                                <div className="flex items-center gap-0.5">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => sendPaymentReceiptWhatsApp(payment)} title="Send receipt via WhatsApp">
+                                    <WhatsAppFilledIcon size={14} />
                                   </Button>
-                                </TableCell>
-                              )}
+                                  {!isSelectedMemberExpired && (
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

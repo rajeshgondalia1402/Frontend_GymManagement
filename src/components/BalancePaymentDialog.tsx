@@ -7,6 +7,9 @@ import {
     MapPin, FileText, MessageSquare, Edit, XCircle, CheckCircle, AlertTriangle,
     Dumbbell, CreditCard, BadgeCheck,
 } from 'lucide-react';
+import { WhatsAppFilledIcon } from '@/components/ui/icons';
+import { sharePaymentReceiptPDF } from '@/utils/paymentReceipt';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +35,8 @@ interface BalancePaymentDialogProps {
 export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaymentDialogProps) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const authUser = useAuthStore((state) => state.user);
+    const gymName = authUser?.ownedGym?.name || 'Our Gym';
     const [editingPayment, setEditingPayment] = useState<BalancePayment | null>(null);
     // Track member's active status locally so it updates after toggle
     const [memberIsActive, setMemberIsActive] = useState<boolean>(member?.isActive !== false);
@@ -399,6 +404,23 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
         a.click();
         URL.revokeObjectURL(url);
         toast({ title: 'Payment report exported successfully' });
+    };
+
+    const sendPaymentReceiptWhatsApp = async (payment: BalancePayment) => {
+        if (!member) return;
+        const mName = member.firstName && member.lastName
+            ? `${member.firstName} ${member.lastName}`
+            : member.user?.name || 'Member';
+        const result = await sharePaymentReceiptPDF({
+            gymName,
+            memberName: mName,
+            memberId: member.memberId,
+            memberPhone: member.phone,
+            payment,
+        });
+        if (!result.success) {
+            toast({ title: 'Receipt Error', description: result.error, variant: 'destructive' });
+        }
     };
 
     const getInitials = (name: string) => name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
@@ -926,7 +948,7 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                                 <TableHead className="text-xs">Amount</TableHead>
                                                 <TableHead className="text-xs">Mode</TableHead>
                                                 <TableHead className="text-xs">Next Due</TableHead>
-                                                {!isExpired && <TableHead className="text-xs w-[50px]"></TableHead>}
+                                                <TableHead className="text-xs w-[80px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -961,13 +983,18 @@ export function BalancePaymentDialog({ open, onOpenChange, member }: BalancePaym
                                                     <TableCell className="text-xs text-muted-foreground">
                                                         {payment.nextPaymentDate ? format(new Date(payment.nextPaymentDate), 'dd MMM yy') : '-'}
                                                     </TableCell>
-                                                    {!isExpired && (
-                                                        <TableCell>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
-                                                                <Pencil className="h-3 w-3" />
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-0.5">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => sendPaymentReceiptWhatsApp(payment)} title="Send receipt via WhatsApp">
+                                                                <WhatsAppFilledIcon size={14} />
                                                             </Button>
-                                                        </TableCell>
-                                                    )}
+                                                            {!isExpired && (
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditPayment(payment)}>
+                                                                    <Pencil className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
